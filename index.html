@@ -426,6 +426,12 @@ tbody tr:hover{background:var(--panel-2)}
 .newgrp textarea{flex:1 1 100%}
 .chkline{padding:4px 0;line-height:1.55}
 .chkline+.chkline{border-top:1px solid var(--line);margin-top:4px;padding-top:8px}
+#newbar{position:fixed;left:0;right:0;top:0;z-index:120;display:flex;align-items:center;
+  gap:10px;flex-wrap:wrap;justify-content:center;padding:12px 16px;
+  background:var(--accent);color:var(--on-accent);font-size:15px;font-weight:600;
+  box-shadow:0 3px 14px rgba(0,0,0,.18)}
+#newbar .btn{background:var(--on-accent);border-color:var(--on-accent);color:var(--accent)}
+#newbar .btn.ghost{background:transparent;border-color:var(--on-accent);color:var(--on-accent)}
 .bkwarn{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;
   margin-top:10px;font-size:14px;color:var(--muted);border-color:var(--s4)}
 .bkwarn b{color:var(--text)}
@@ -653,6 +659,8 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
+const APP_VER = '20260831-2329';   // 새 내용이 올라왔는지 알아보는 표시
+
 /* ============================================================
    섬김노트 — 데이터
    ============================================================ */
@@ -2096,6 +2104,50 @@ function parseList(text){
   });
   return out;
 }
+
+/* ============================================================
+   새 내용이 올라왔는지 알아보기
+   ============================================================ */
+// 아이폰은 앱을 껐다 켜도 보던 화면을 그대로 되살린다.
+// 그래서 새 내용이 올라와도 모른다 — 조용히 확인하고 알려준다.
+let verAt = 0;
+async function checkUpdate(){
+  if(location.protocol === 'file:') return;
+  if(document.getElementById('newbar')) return;
+  if(Date.now() - verAt < 120000) return;
+  verAt = Date.now();
+  try{
+    const r = await fetch(location.pathname + '?v=' + Date.now(), { cache:'no-store' });
+    if(!r.ok) return;
+    const m = (await r.text()).match(/const APP_VER = '([^']+)'/);
+    if(m && m[1] !== APP_VER) showNewBar();
+  }catch(e){ /* 인터넷이 없으면 그냥 넘어간다 */ }
+}
+function showNewBar(){
+  if(document.getElementById('newbar')) return;
+  const el = document.createElement('div');
+  el.id = 'newbar';
+  el.innerHTML = `<span>✨ 새로워진 내용이 있습니다</span>
+    <button class="btn sm" id="nbGo">받기</button>
+    <button class="btn sm ghost" id="nbNo">나중에</button>`;
+  document.body.appendChild(el);
+  // 알림줄이 제목을 가리지 않도록 그만큼 아래로 민다
+  const push = () => document.body.style.paddingTop = el.offsetHeight + 'px';
+  push();
+  addEventListener('resize', push);
+  document.getElementById('nbGo').onclick = () => {
+    location.replace(location.pathname + '?v=' + Date.now());
+  };
+  document.getElementById('nbNo').onclick = () => {
+    el.remove();
+    document.body.style.paddingTop = '';
+    removeEventListener('resize', push);
+  };
+}
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible') checkUpdate();
+});
+setTimeout(checkUpdate, 4000);
 
 /* ============================================================
    엑셀 · CSV 로 명단 불러오기
