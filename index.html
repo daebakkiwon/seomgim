@@ -2097,6 +2097,176 @@ function parseList(text){
   return out;
 }
 
+/* ============================================================
+   엑셀 · CSV 로 명단 불러오기
+   ============================================================ */
+
+// 표 머리글 → 우리 항목. 띄어쓰기와 기호는 지우고 견준다.
+const SHEET_KEYS = [
+  ['name',      ['이름','성명','고객명','성함','name']],
+  ['phone',     ['연락처','전화','전화번호','휴대폰','핸드폰','휴대전화','phone','mobile','tel']],
+  ['memberNo',  ['회원번호','암웨이회원번호','abo','회원no']],
+  ['address',   ['주소','사는곳','거주지','address']],
+  ['source',    ['명단분류','분류','그룹','알게된경로','경로','group']],
+  ['stageName', ['단계','상태','stage']],
+  ['needs',     ['불편한점필요한것','불편한점','필요한것','니즈','불편']],
+  ['route',     ['고객동선확인','고객동선','동선']],
+  ['family',    ['가족관계','가족']],
+  ['network',   ['주변인맥','인맥','주변']],
+  ['tags',      ['관심사항','관심','태그','tag']],
+  ['memo',      ['메모특이사항','특이사항','메모','비고','memo','note']],
+  ['nextAction',['다음섬김','다음할일','할일']],
+  ['nextDate',  ['섬김날짜','예정일','날짜']],
+];
+const normKey  = v => String(v == null ? '' : v).replace(/[\s()·.,\-_/]/g, '').toLowerCase();
+const colIdx   = a => [...a].reduce((n, c) => n * 26 + c.charCodeAt(0) - 64, 0) - 1;
+const unxml    = t => t.replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+                       .replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+
+// 엑셀이 전화번호를 숫자로 저장하면 앞의 0이 떨어진다 — 되돌린다
+function sheetPhone(v){
+  let t = String(v == null ? '' : v).trim();
+  if(!t) return '';
+  if(/^\d+$/.test(t) && t.length >= 9 && t.length <= 10) t = '0' + t;
+  return fmtPhone(t);
+}
+// 엑셀 날짜는 1899-12-30 부터 센 숫자다
+function sheetDate(v){
+  const t = String(v == null ? '' : v).trim();
+  if(!t) return '';
+  if(/^\d{5}(\.\d+)?$/.test(t)){
+    const d = new Date(Date.UTC(1899, 11, 30) + Math.round(parseFloat(t)) * 86400000);
+    return d.toISOString().slice(0, 10);
+  }
+  const m = t.match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  return m ? `${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}` : '';
+}
+
+// 쉼표 · 탭 · 세미콜론 어느 것으로 나뉘어 있어도 읽는다
+function parseCsv(text){
+  const t = String(text).replace(/^﻿/, '');
+  const head = t.split(/\r?\n/)[0] || '';
+  const cnt = c => (head.split(c).length - 1);
+  const d = cnt('\t') > cnt(',') ? '\t' : cnt(';') > cnt(',') ? ';' : ',';
+  const rows = []; let row = [], cell = '', q = false;
+  for(let i = 0; i < t.length; i++){
+    const c = t[i];
+    if(q){
+      if(c === '"'){ if(t[i+1] === '"'){ cell += '"'; i++; } else q = false; }
+      else cell += c;
+    }
+    else if(c === '"') q = true;
+    else if(c === d){ row.push(cell); cell = ''; }
+    else if(c === '\n'){ row.push(cell); rows.push(row); row = []; cell = ''; }
+    else if(c !== '\r') cell += c;
+  }
+  if(cell || row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+
+// .xlsx 는 zip 파일이다 — 브라우저가 풀어준다
+async function unzip(buf){
+  const v = new DataView(buf), u = new Uint8Array(buf), dec = new TextDecoder();
+  let eo = -1;
+  for(let i = u.length - 22; i >= 0 && i > u.length - 65558; i--){
+    if(v.getUint32(i, true) === 0x06054b50){ eo = i; break; }
+  }
+  if(eo < 0) throw new Error('엑셀 파일이 아닌 것 같습니다');
+  const cnt = v.getUint16(eo + 10, true);
+  let p = v.getUint32(eo + 16, true);
+  const out = {};
+  for(let i = 0; i < cnt; i++){
+    const method = v.getUint16(p + 10, true), size = v.getUint32(p + 20, true),
+          nLen = v.getUint16(p + 28, true), eLen = v.getUint16(p + 30, true),
+          cLen = v.getUint16(p + 32, true), off  = v.getUint32(p + 42, true);
+    const name = dec.decode(u.subarray(p + 46, p + 46 + nLen));
+    const lnLen = v.getUint16(off + 26, true), leLen = v.getUint16(off + 28, true);
+    const start = off + 30 + lnLen + leLen;
+    const raw = u.subarray(start, start + size);
+    if(name === 'xl/sharedStrings.xml' || /^xl\/worksheets\/sheet\d+\.xml$/.test(name)){
+      out[name] = method === 0 ? raw : await inflateRaw(raw);
+    }
+    p += 46 + nLen + eLen + cLen;
+  }
+  return out;
+}
+async function inflateRaw(bytes){
+  const st = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(st).arrayBuffer());
+}
+
+async function xlsxToGrid(buf){
+  const files = await unzip(buf);
+  const dec = b => new TextDecoder().decode(b);
+  const texts = x => (x.match(/<t[^>]*>[\s\S]*?<\/t>/g) || [])
+                       .map(t => unxml(t.replace(/<[^>]+>/g, ''))).join('');
+  const shared = [];
+  if(files['xl/sharedStrings.xml']){
+    (dec(files['xl/sharedStrings.xml']).match(/<si[\s\S]*?<\/si>/g) || [])
+      .forEach(si => shared.push(texts(si)));
+  }
+  const sheet = Object.keys(files)
+    .filter(n => /^xl\/worksheets\/sheet\d+\.xml$/.test(n))
+    .sort((a, b) => (+a.match(/\d+/)[0]) - (+b.match(/\d+/)[0]))[0];
+  if(!sheet) throw new Error('엑셀 안에 표가 없습니다');
+  const grid = [];
+  (dec(files[sheet]).match(/<row[\s\S]*?<\/row>/g) || []).forEach(rw => {
+    const row = [];
+    (rw.match(/<c[\s\S]*?(\/>|<\/c>)/g) || []).forEach(c => {
+      const ref = (c.match(/r="([A-Z]+)/) || [])[1];
+      const ci  = ref ? colIdx(ref) : row.length;
+      const ty  = (c.match(/t="([^"]+)"/) || [])[1];
+      let val = '';
+      if(ty === 'inlineStr') val = texts(c);
+      else {
+        const m = c.match(/<v>([\s\S]*?)<\/v>/);
+        val = m ? unxml(m[1]) : '';
+        if(ty === 's') val = shared[+val] || '';
+      }
+      row[ci] = val;
+    });
+    grid.push(row);
+  });
+  return grid;
+}
+
+async function readSheetFile(f){
+  const n = f.name.toLowerCase();
+  if(n.endsWith('.xls'))
+    throw new Error('예전 엑셀(.xls)은 못 읽습니다. 엑셀에서 .xlsx 나 CSV 로 저장해 주세요.');
+  if(n.endsWith('.xlsx') || n.endsWith('.xlsm')){
+    if(typeof DecompressionStream === 'undefined')
+      throw new Error('이 브라우저는 엑셀을 바로 못 엽니다. 엑셀에서 CSV 로 저장해 주세요.');
+    return xlsxToGrid(await f.arrayBuffer());
+  }
+  return parseCsv(await f.text());
+}
+
+// 표 → 사람 목록. 첫 줄이 머리글이면 열 이름을 보고 맞춘다.
+function gridToRows(grid){
+  const rows = grid.filter(r => (r || []).some(c => String(c == null ? '' : c).trim()));
+  if(!rows.length) return [];
+  const head = (rows[0] || []).map(normKey);
+  const map = {};
+  SHEET_KEYS.forEach(([k, names]) => {
+    const i = head.findIndex(h => h && (names.includes(h) ||
+      names.some(n => n.length > 1 && h.includes(n))));
+    if(i >= 0 && map[k] === undefined) map[k] = i;
+  });
+  const titled = Object.keys(map).length >= 2;      // 머리글로 볼 만한가
+  const body = titled ? rows.slice(1) : rows;
+  if(!titled){ map.name = 0; map.phone = 1; map.source = 2; map.memo = 3; }
+  return body.map(r => {
+    const g = k => map[k] === undefined ? '' : String((r || [])[map[k]] == null ? '' : r[map[k]]).trim();
+    return {
+      name:g('name'), phone:sheetPhone(g('phone')), group:g('source'),
+      memberNo:g('memberNo'), address:g('address'), needs:g('needs'), route:g('route'),
+      family:g('family'), network:g('network'), tags:g('tags'), memo:g('memo'),
+      nextAction:g('nextAction'), nextDate:sheetDate(g('nextDate')), stageName:g('stageName'),
+    };
+  }).filter(o => o.name || o.phone);
+}
+
 function openImport(){
   document.getElementById('modal').innerHTML = `
   <div class="overlay" data-close>
@@ -2140,18 +2310,41 @@ function openImport(){
           </div>
 
           <button type="button" class="way" data-way="w3">
-            <b>🤖 클로드 앱으로 읽기</b><span>손글씨 · 표로 된 명단도 읽어냅니다</span></button>
+            <b>🤖 AI 앱으로 읽기</b><span>클로드 · 챗GPT · 제미나이 · 손글씨 명단도 읽어냅니다</span></button>
           <div class="waybox hide" id="w3">
+            <div style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:10px">
+              <b>클로드 · 챗GPT · 제미나이</b> 중 쓰시는 것 아무거나 괜찮습니다.
+              손으로 쓴 명단, 표로 된 명단도 잘 읽어냅니다.
+            </div>
             <ol class="cal-s">
-              <li>클로드 앱을 열고 명단 <b>사진을 올립니다</b>.</li>
+              <li>쓰시는 AI 앱을 열고 명단 <b>사진을 올립니다</b>.</li>
               <li>아래 질문을 <b>복사해서 함께 보냅니다</b>.</li>
               <li>정리해준 <b>목록을 복사</b>해서 아래 칸에 붙여넣으세요.</li>
             </ol>
-            <textarea id="aiPrompt" readonly rows="4" style="width:100%;border:1px solid var(--line);
+            <textarea id="aiPrompt" readonly rows="5" style="width:100%;border:1px solid var(--line);
               background:var(--panel);border-radius:9px;padding:10px 12px;font-size:14px;line-height:1.6;resize:vertical">이 사진은 제 고객 명단입니다. 한 줄에 한 분씩 아래 형식으로만 정리해 주세요. 다른 설명은 붙이지 마세요.
 이름, 연락처, 분류, 메모
 연락처는 010-0000-0000 형태로 적고, 없는 항목은 비워 두세요.</textarea>
-            <button type="button" class="btn sm" id="aiCopy" style="margin-top:8px">질문 복사하기</button>
+            <button type="button" class="btn sm primary" id="aiCopy" style="margin-top:8px">질문 복사하기</button>
+          </div>
+
+          <button type="button" class="way" data-way="w4">
+            <b>📊 엑셀 · CSV 파일에서</b><span>그동안 정리해 두신 표를 그대로 올리세요</span></button>
+          <div class="waybox hide" id="w4">
+            <div style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:10px">
+              엑셀 파일(.xlsx)이나 CSV 파일을 <b>그대로</b> 올리시면 됩니다.
+              <b>첫 줄에 열 이름</b>만 있으면 알아서 맞춰 넣습니다.
+            </div>
+            <div style="font-size:14px;color:var(--muted);line-height:1.8">
+              알아보는 열 이름 —<br>
+              <b>이름</b> · <b>연락처</b>(전화, 휴대폰) · <b>회원번호</b> · <b>주소</b> ·
+              <b>명단분류</b>(분류, 그룹) · <b>단계</b> · <b>불편한 점</b> · <b>고객동선확인</b> ·
+              <b>가족관계</b> · <b>주변인맥</b> · <b>관심사항</b> · <b>메모</b>
+            </div>
+            <div class="hint" style="margin-top:8px;line-height:1.7">
+              열 이름이 없으면 <b>이름 · 연락처 · 분류 · 메모</b> 순서로 읽습니다.<br>
+              전화번호 앞의 0이 떨어져 있어도 알아서 붙입니다.
+            </div>
           </div>
         </div>
 
@@ -2164,6 +2357,8 @@ function openImport(){
 
         <div style="display:flex;gap:7px;flex-wrap:wrap">
           <button class="btn primary" id="impParse">읽어들이기</button>
+          <button type="button" class="btn" id="impXlsBtn">📊 엑셀 · CSV 파일</button>
+          <input type="file" id="impXls" accept=".xlsx,.xlsm,.csv,.txt,text/csv" class="hide">
           <button type="button" class="btn" id="impVcfBtn">📇 연락처 파일(.vcf)</button>
           <input type="file" id="impVcf" accept=".vcf,text/vcard,text/x-vcard" multiple class="hide">
         </div>
@@ -2214,6 +2409,21 @@ function openImport(){
     });
   };
 
+  document.getElementById('impXlsBtn').onclick = () => document.getElementById('impXls').click();
+  document.getElementById('impXls').onchange = async e => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if(!f) return;
+    try{
+      const rows = gridToRows(await readSheetFile(f));
+      if(!rows.length){ toast('표에서 사람을 찾지 못했습니다'); return; }
+      drawImport(rows);
+      toast(`${rows.length}명을 읽었습니다`);
+    }catch(err){
+      toast(err.message || '파일을 읽지 못했습니다');
+    }
+  };
+
   document.getElementById('impParse').onclick = () => {
     const rows = parseList(document.getElementById('impText').value);
     drawImport(rows);
@@ -2222,7 +2432,10 @@ function openImport(){
   document.getElementById('impSave').onclick = commitImport;
 }
 
+let IMP_MORE = [];   // 표에서 같이 읽은 항목들 — 화면에는 안 보이지만 저장할 때 쓴다
+
 function drawImport(rows){
+  IMP_MORE = rows;
   const box  = document.getElementById('impResult');
   const btn  = document.getElementById('impSave');
   if(!rows.length){
@@ -2247,14 +2460,15 @@ function drawImport(rows){
       </div>
     </div>
     <div class="irowhead"><span>이름</span><span>연락처</span><span>메모</span><span></span></div>
-    <div class="irows" id="impRows">${rows.map(r => `
-      <div class="irow" data-grp="${esc(r.group || '')}">
+    <div class="irows" id="impRows">${rows.map((r, i) => `
+      <div class="irow" data-ix="${i}" data-grp="${esc(r.group || '')}">
         <input data-k="name"  value="${esc(r.name)}"  placeholder="이름">
         <input data-k="phone" value="${esc(r.phone)}" placeholder="연락처">
         <input data-k="memo"  value="${esc(r.memo)}"  placeholder="메모">
         <button type="button" class="rdel" title="이 줄 빼기">×</button>
       </div>`).join('')}</div>
-    <div class="hint" style="margin-top:8px">잘못 읽은 곳은 여기서 바로 고치시면 됩니다. 뺄 사람은 × 를 누르세요.</div>`;
+    <div class="hint" style="margin-top:8px">잘못 읽은 곳은 여기서 바로 고치시면 됩니다. 뺄 사람은 × 를 누르세요.
+    ${extraNote(rows)}</div>`;
   btn.classList.remove('hide');
 
   document.getElementById('impRows').onclick = e => {
@@ -2267,6 +2481,17 @@ function drawImport(rows){
   };
 }
 
+// 이름·연락처·메모 말고 더 읽어온 게 있으면 알려준다
+function extraNote(rows){
+  const KEYS = [['memberNo','회원번호'],['address','주소'],['stageName','단계'],
+    ['needs','불편한 점'],['route','고객동선확인'],['family','가족관계'],
+    ['network','주변인맥'],['tags','관심사항'],['nextAction','다음섬김']];
+  const found = KEYS.filter(k => rows.some(r => r[k[0]])).map(k => k[1]);
+  return found.length
+    ? `<br><b style="color:var(--accent)">${found.join(' · ')}</b> 도 함께 들어갑니다.`
+    : '';
+}
+
 function commitImport(){
   const els = [...document.querySelectorAll('#impRows .irow')];
   const stage = document.getElementById('impStage').value;
@@ -2276,14 +2501,18 @@ function commitImport(){
     const o = {};
     el.querySelectorAll('[data-k]').forEach(i => o[i.dataset.k] = i.value.trim());
     if(!o.name && !o.phone) return;
+    const m = IMP_MORE[+el.dataset.ix] || {};
     const src = gsel || el.dataset.grp || '';
     if(src && !DB.groups.includes(src)) DB.groups.push(src);
+    const byName = (STAGES.find(x => x.name === (m.stageName || '').trim()) || {}).id;
     const rec = {
       id:uid(), createdAt:new Date().toISOString(), logs:[],
-      name:o.name || '(이름 없음)', phone:fmtPhone(o.phone), stage,
-      memberNo:'', address:'', source:src, tags:[],
-      needs:'', route:'', family:'', network:'', memo:o.memo || '',
-      nextAction:'', nextDate:'',
+      name:o.name || '(이름 없음)', phone:fmtPhone(o.phone), stage: byName || stage,
+      memberNo:m.memberNo || '', address:m.address || '', source:src,
+      tags:(m.tags || '').split(/[,·]/).map(t => t.trim()).filter(Boolean),
+      needs:m.needs || '', route:m.route || '', family:m.family || '',
+      network:m.network || '', memo:o.memo || '',
+      nextAction:m.nextAction || '', nextDate:m.nextDate || '',
     };
     sysLog(rec, '명단에서 한 번에 등록');
     DB.people.push(rec);
