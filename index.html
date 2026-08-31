@@ -659,7 +659,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260831-2329';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260831-2331';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2657,6 +2657,16 @@ function openData(){
           데이터는 이 컴퓨터의 브라우저 안에만 저장됩니다. 인터넷으로 나가지 않습니다.
         </div>
 
+        <div class="section-title" style="margin-top:0">앱 최신으로 받기</div>
+        <div class="card" style="padding:14px 16px;margin-bottom:18px;box-shadow:none">
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.7;margin-bottom:10px">
+            앱이 새로워졌는데 그대로라면 여기서 받으세요.
+            <b>고객 자료는 그대로 있습니다.</b><br>
+            지금 쓰시는 것 — <b style="color:var(--text)">${esc(APP_VER)}</b>
+          </div>
+          <button type="button" class="btn primary" id="doUpgrade">🔄 최신으로 받기</button>
+        </div>
+
         <div class="section-title" style="margin-top:0">글로 백업 · 되살리기</div>
         <div style="font-size:13.5px;color:var(--muted);margin-bottom:8px">
           아래 글을 복사해 <b>카톡 '나에게 보내기'</b>나 메모장에 붙여두세요.
@@ -2708,6 +2718,12 @@ function openData(){
       <div class="mfoot"><button class="btn" data-close>닫기</button></div>
     </div>
   </div>`;
+
+  document.getElementById('doUpgrade').onclick = () => {
+    if(location.protocol === 'file:'){ toast('파일로 여신 상태라 받을 수 없습니다'); return; }
+    toast('최신으로 받는 중…');
+    location.replace(location.pathname + '?v=' + Date.now());
+  };
 
   // 글로 백업 · 되살리기
   const bakEl = document.getElementById('txtBak');
