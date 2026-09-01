@@ -426,6 +426,29 @@ tbody tr:hover{background:var(--panel-2)}
 .newgrp textarea{flex:1 1 100%}
 .chkline{padding:4px 0;line-height:1.55}
 .chkline+.chkline{border-top:1px solid var(--line);margin-top:4px;padding-top:8px}
+/* ---------- 월별 일정표 (사진) ---------- */
+.schead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.schead b{font-size:15.5px;flex:1}
+.schead .btn{padding:5px 10px;font-size:13px;min-height:0}
+.slots{display:grid;grid-template-columns:1fr;gap:10px}
+.slot{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel-2);
+  display:flex;flex-direction:column;text-align:left;padding:0}
+.slot .stitle{display:flex;align-items:center;gap:5px;padding:8px 10px;font-size:13px;font-weight:700}
+.slot .stitle i{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.slot .simg{width:100%;aspect-ratio:16/10;object-fit:contain;display:block;background:#fff}
+.slot .snone{aspect-ratio:16/10;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;color:var(--faint);font-size:13px;border-top:1px dashed var(--line)}
+.slot .snone .plus{font-size:26px;line-height:1}
+.shotwrap{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);overflow:auto;
+  -webkit-overflow-scrolling:touch}
+.shotbar{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:12px 14px;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(6px)}
+.shotbar b{flex:1;color:#fff;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shotbar .btn{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);color:#fff}
+.shotimg{display:block;margin:0 auto;max-width:100%;background:#fff}
+.shotimg.big{max-width:none;margin:0}
+.shothint{color:rgba(255,255,255,.6);text-align:center;font-size:13px;padding:10px 16px 26px}
+
 .teamrow{display:flex;gap:6px;align-items:center;overflow-x:auto;padding:7px 0 1px;
   -webkit-overflow-scrolling:touch;scrollbar-width:none}
 .teamrow::-webkit-scrollbar{display:none}
@@ -537,6 +560,9 @@ select.sel{font-size:15px}
 
   .btn{padding:10px 14px;font-size:15px;min-height:42px}
   .tchip{font-size:14.5px;padding:6px 13px}
+  .slot .stitle{font-size:14px}
+  .slot .snone{font-size:14px}
+  .schead b{font-size:16.5px}
   .tlabel{font-size:13px}
   .btn.sm{padding:8px 12px;font-size:14px;min-height:38px}
   .chip{padding:9px 14px;font-size:14px}
@@ -674,7 +700,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260901-1632';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260901-1816';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1323,6 +1349,9 @@ function viewDash(){
     <div class="section-title">이번 달 대화거리</div>
     ${seasonBox()}
 
+    <div class="section-title">월별 일정표</div>
+    ${schedCard()}
+
     ${checks.length ? `<div class="card" style="padding:13px 16px;font-size:14px;color:var(--muted)">
         ${checks.map(t => `<div class="chkline">${t}</div>`).join('')}
       </div>` : ''}
@@ -1345,6 +1374,227 @@ function viewDash(){
          </div><button class="btn sm" id="goBackup">지금 백업</button></div>`
       : ''}
   `;
+}
+
+/* ============================================================
+   월별 일정표 — 받은 사진을 그대로 담아둔다
+   ============================================================ */
+const SCHEDS = [
+  { id:'dream',   name:'드림센터일정',   c:'--s2' },
+  { id:'winners', name:'전국위너스일정', c:'--s4' },
+];
+const KEY_SCHED = 'crm.amway.v1.sched';   // 사진은 따로 담는다 — 백업 글이 무거워지지 않게
+const KEEP_MONTHS = 3;
+let SC_YM = '';
+
+function thisYM(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function shiftYM(ym, n){
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function ymLabel(ym){
+  const [y, m] = ym.split('-').map(Number);
+  return `${y}년 ${m}월`;
+}
+function loadSched(){
+  try{ return JSON.parse(localStorage.getItem(KEY_SCHED) || '{}') || {}; }
+  catch(e){ return {}; }
+}
+function saveSched(o){
+  // 오래된 달은 스스로 비운다 — 저장공간이 넘치지 않게
+  const keep = {};
+  for(let i = 0; i < KEEP_MONTHS; i++) keep[shiftYM(thisYM(), -i)] = 1;
+  keep[shiftYM(thisYM(), 1)] = 1;              // 다음 달 것을 미리 받아둘 수 있게
+  Object.keys(o).forEach(k => { if(!keep[k]) delete o[k]; });
+  for(;;){
+    try{
+      localStorage.setItem(KEY_SCHED, JSON.stringify(o));
+      return true;
+    }catch(e){
+      // 자리가 모자라면 오래된 달부터 비우고 다시 해 본다
+      const olds = Object.keys(o).filter(k => k !== thisYM()).sort();
+      if(!olds.length){ toast('사진이 너무 커서 담지 못했습니다'); return false; }
+      const gone = olds[0];
+      delete o[gone];
+      toast(`자리를 비우려고 ${ymLabel(gone)} 일정표를 지웠습니다`);
+    }
+  }
+}
+function schedOf(ym, kind){
+  const o = loadSched();
+  return (o[ym] || {})[kind] || '';
+}
+
+// 사진을 알맞게 줄여 담는다 — 원본 그대로면 저장공간을 다 먹는다
+function shrinkImage(file, maxPx, quality){
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onerror = () => rej(new Error('사진을 읽지 못했습니다'));
+    r.onload = () => {
+      const img = new Image();
+      img.onerror = () => rej(new Error('사진을 열지 못했습니다'));
+      img.onload = () => {
+        const sc = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * sc));
+        const h = Math.max(1, Math.round(img.height * sc));
+        const cv = document.createElement('canvas');
+        cv.width = w; cv.height = h;
+        const cx = cv.getContext('2d');
+        cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h);
+        cx.drawImage(img, 0, 0, w, h);
+        res(cv.toDataURL('image/jpeg', quality));
+      };
+      img.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+
+function pickSchedPhoto(ym, kind){
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const f = inp.files && inp.files[0];
+    if(!f) return;
+    toast('사진을 담는 중…');
+    try{
+      // 일정표는 글씨가 빽빽해서 해상도를 넉넉히 남긴다
+      let uri = await shrinkImage(f, 2400, 0.75);
+      if(uri.length > 1400000) uri = await shrinkImage(f, 1900, 0.68);
+      if(uri.length > 1400000) uri = await shrinkImage(f, 1500, 0.62);
+      const o = loadSched();
+      o[ym] = o[ym] || {};
+      o[ym][kind] = uri;
+      if(!saveSched(o)) return;
+      SC_YM = ym;
+      drawSched();
+      render();
+      toast('일정표를 담았습니다');
+    }catch(err){
+      toast(err.message || '사진을 담지 못했습니다');
+    }
+  };
+  inp.click();
+}
+
+// 홈 맨 아래 카드
+function schedCard(){
+  const ym = thisYM();
+  return `<div class="card" style="padding:14px">
+    <div class="schead">
+      <b>${ymLabel(ym)} 일정표</b>
+      <button type="button" class="btn sm ghost" id="scMore">지난 달 보기 →</button>
+    </div>
+    <div class="slots">${SCHEDS.map(k => schedSlot(ym, k)).join('')}</div>
+  </div>`;
+}
+function schedSlot(ym, k){
+  const uri = schedOf(ym, k.id);
+  return `<button type="button" class="slot" data-sc="${k.id}" data-ym="${ym}">
+    <span class="stitle"><i style="background:var(${k.c})"></i>${k.name}</span>
+    ${uri
+      ? `<img class="simg" src="${uri}" alt="${k.name}">`
+      : `<span class="snone"><span class="plus">＋</span>사진 올리기</span>`}
+  </button>`;
+}
+
+// 달을 넘겨 보는 화면
+function openSched(ym){
+  SC_YM = ym || thisYM();
+  document.getElementById('modal').innerHTML = `
+  <div class="overlay" data-close>
+    <div class="modal">
+      <div class="mhead"><h2 id="scTitle"></h2><button class="x" data-close>×</button></div>
+      <div class="mbody">
+        <div style="display:flex;gap:6px;margin-bottom:14px">
+          <button type="button" class="btn sm" id="scPrev">◀ 지난달</button>
+          <button type="button" class="btn sm" id="scNow">이번 달</button>
+          <button type="button" class="btn sm" id="scNext">다음달 ▶</button>
+        </div>
+        <div class="slots" id="scSlots"></div>
+        <div class="hint" style="margin-top:12px;line-height:1.7">
+          카톡으로 받은 일정표 사진을 올려두시면 언제든 꺼내 보실 수 있습니다.<br>
+          사진을 누르면 크게 보이고, 한 번 더 누르면 원래 크기로 커집니다.<br>
+          자리를 아끼려고 <b>최근 ${KEEP_MONTHS}달</b> 것만 두고 지난 것은 저절로 비워집니다.
+        </div>
+      </div>
+      <div class="mfoot"><button class="btn" data-close>닫기</button></div>
+    </div>
+  </div>`;
+  drawSched();
+  document.getElementById('scPrev').onclick = () => { SC_YM = shiftYM(SC_YM, -1); drawSched(); };
+  document.getElementById('scNext').onclick = () => { SC_YM = shiftYM(SC_YM,  1); drawSched(); };
+  document.getElementById('scNow').onclick  = () => { SC_YM = thisYM(); drawSched(); };
+}
+function drawSched(){
+  const t = document.getElementById('scTitle');
+  if(!t) return;
+  t.textContent = ymLabel(SC_YM) + ' 일정표';
+  const box = document.getElementById('scSlots');
+  box.innerHTML = SCHEDS.map(k => schedSlot(SC_YM, k)).join('');
+  bindSlots(box);
+}
+function bindSlots(box){
+  box.querySelectorAll('[data-sc]').forEach(b => b.onclick = e => {
+    e.stopPropagation();
+    const ym = b.dataset.ym, kind = b.dataset.sc;
+    if(schedOf(ym, kind)) showShot(ym, kind);
+    else pickSchedPhoto(ym, kind);
+  });
+}
+
+// 크게 보기
+function showShot(ym, kind){
+  const k = SCHEDS.find(x => x.id === kind);
+  const uri = schedOf(ym, kind);
+  if(!uri) return;
+  const el = document.createElement('div');
+  el.className = 'shotwrap';
+  el.innerHTML = `
+    <div class="shotbar">
+      <b>${+ym.slice(5)}월 ${k.name}</b>
+      <button type="button" class="btn sm" data-re>바꾸기</button>
+      <button type="button" class="btn sm" data-del>지우기</button>
+      <button type="button" class="btn sm" data-x>닫기</button>
+    </div>
+    <img class="shotimg" src="${uri}" alt="${k.name}">
+    <div class="shothint" id="shotHint">사진을 누르면 크게 보입니다</div>`;
+  document.body.appendChild(el);
+
+  // 화면맞춤 → 원래크기 → 두 배, 눌러서 돌아가며 커진다
+  const img = el.querySelector('.shotimg');
+  const hint = el.querySelector('#shotHint');
+  let step = 0;
+  img.onclick = () => {
+    step = (step + 1) % 3;
+    if(step === 0){
+      img.classList.remove('big'); img.style.width = '';
+      hint.textContent = '사진을 누르면 크게 보입니다';
+    }else{
+      img.classList.add('big');
+      img.style.width = (img.naturalWidth * (step === 1 ? 1 : 2)) + 'px';
+      hint.textContent = step === 1
+        ? '원래 크기 · 옆으로 밀어서 보세요 (눌러서 더 크게)'
+        : '두 배 크기 · 눌러서 처음으로';
+      el.scrollLeft = 0;
+    }
+  };
+  const close = () => el.remove();
+  el.querySelector('[data-x]').onclick = close;
+  el.querySelector('[data-re]').onclick = () => { close(); pickSchedPhoto(ym, kind); };
+  el.querySelector('[data-del]').onclick = async () => {
+    if(!await askConfirm(`${ymLabel(ym)} ${k.name} 사진을 지울까요?`, '지우기')) return;
+    const o = loadSched();
+    if(o[ym]) delete o[ym][kind];
+    saveSched(o);
+    close(); drawSched(); render();
+    toast('지웠습니다');
+  };
 }
 
 function emptyAll(){
@@ -3042,6 +3292,9 @@ function bindView(){
   if(ei) ei.onclick = () => openImport();
   const ea = document.getElementById('emptyAllTeams');
   if(ea) ea.onclick = () => setTeam('');
+  bindSlots(v);
+  const sm = document.getElementById('scMore');
+  if(sm) sm.onclick = e => { e.stopPropagation(); openSched(thisYM()); };
   const gb = document.getElementById('goBackup');
   if(gb) gb.onclick = () => openData();
   const gb2 = document.getElementById('goBackup2');
