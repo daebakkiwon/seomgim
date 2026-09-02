@@ -442,6 +442,23 @@ tbody tr:hover{background:var(--panel-2)}
 .ntc-tap{text-align:center;font-size:12.5px;color:var(--faint);padding-top:7px}
 .ntc-when{font-size:12.5px;color:var(--faint);padding:0 18px 4px}
 
+/* ---------- 어록 ---------- */
+.qwrap{position:fixed;inset:0;z-index:200;background:var(--bg);overflow:auto;
+  -webkit-overflow-scrolling:touch}
+.qbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:8px;
+  padding:13px 15px;background:var(--accent);color:var(--on-accent)}
+.qbar b{flex:1;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qbar .btn{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.35);color:var(--on-accent)}
+.qnote{padding:14px 18px 4px;font-size:13.5px;color:var(--faint)}
+.qbody{padding:8px 18px 60px;max-width:680px;margin:0 auto}
+.qb{margin-bottom:20px}
+.qb .lead{display:flex;gap:8px;font-size:17px;font-weight:700;line-height:1.65;
+  color:var(--text);word-break:keep-all}
+.qb .lead i{flex:0 0 auto;color:var(--accent);font-style:normal}
+.qb .sub{font-size:16px;line-height:1.75;color:var(--muted);margin:6px 0 0 20px;
+  word-break:keep-all}
+.qend{text-align:center;color:var(--faint);font-size:13.5px;padding:10px 0 30px}
+
 /* ---------- 월별 일정표 ---------- */
 .slots{display:flex;gap:8px}
 .sbtn{flex:1;min-width:0;text-align:center;border:1.5px solid var(--line);
@@ -573,6 +590,8 @@ select.sel{font-size:15px}
   .btn{padding:10px 14px;font-size:15px;min-height:42px}
   .tchip{font-size:14.5px;padding:6px 13px}
   .sbtn{font-size:15.5px;padding:14px 8px}
+  .qb .lead{font-size:18px}
+  .qb .sub{font-size:17px}
   .ntc-body{font-size:17px}
   .ntc-top h2{font-size:20px}
   .shothint{font-size:14px}
@@ -713,7 +732,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260902-2037';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260902-2223';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1363,6 +1382,7 @@ function viewDash(){
     ${seasonBox()}
 
     ${schedCard()}
+    ${quoteCard()}
 
     ${checks.length ? `<div class="card" style="padding:13px 16px;font-size:14px;color:var(--muted)">
         ${checks.map(t => `<div class="chkline">${t}</div>`).join('')}
@@ -1470,6 +1490,55 @@ function showNotice(n, markSeen){
   el.addEventListener('click', e => { if(e.target === el) close(); });
   const im = el.querySelector('.ntc-img');
   if(im) im.onclick = () => showImage(n.image, n.title || '');
+}
+
+/* ============================================================
+   어록 — 틈날 때 읽고 외우는 글
+   ============================================================ */
+const QUOTES = [
+  { id:'hjh', name:'홍진희어록',   c:'--s3', b:'--s3b' },
+  { id:'dx',  name:'더블엑스어록', c:'--s5', b:'--s5b' },
+];
+let QDATA = null;
+
+function quoteCard(){
+  return `<div class="slots">${QUOTES.map(k => `
+    <button type="button" class="sbtn" data-q="${k.id}"
+      style="background:var(${k.b});border-color:var(${k.c});color:var(${k.c})">
+      ${k.name}
+    </button>`).join('')}</div>`;
+}
+
+async function openQuote(id){
+  const el = document.createElement('div');
+  el.className = 'qwrap';
+  el.innerHTML = `
+    <div class="qbar"><b>불러오는 중…</b>
+      <button type="button" class="btn sm" data-x>닫기</button></div>
+    <div class="qbody" id="qBody"></div>`;
+  document.body.appendChild(el);
+  el.querySelector('[data-x]').onclick = () => el.remove();
+
+  try{
+    if(!QDATA){
+      const r = await fetch('quotes.json?v=' + Date.now(), { cache:'no-store' });
+      QDATA = await r.json();
+    }
+    const q = (QDATA.quotes || []).find(x => x.id === id);
+    if(!q) throw new Error('내용을 찾지 못했습니다');
+    el.querySelector('.qbar b').textContent = q.title;
+    el.querySelector('#qBody').innerHTML =
+      (q.note ? `<div class="qnote">${esc(q.note)}</div>` : '')
+      + q.blocks.map(b => `<div class="qb">
+          <div class="lead"><i>♣</i><span>${esc(b.q)}</span></div>
+          ${(b.lines || []).map(t => `<div class="sub">${esc(t)}</div>`).join('')}
+        </div>`).join('')
+      + `<div class="qend">— 끝 —</div>`;
+  }catch(e){
+    el.querySelector('.qbar b').textContent = '어록';
+    el.querySelector('#qBody').innerHTML =
+      `<div class="qnote">내용을 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.</div>`;
+  }
 }
 
 /* ============================================================
@@ -3286,6 +3355,8 @@ function bindView(){
   if(ea) ea.onclick = () => setTeam('');
   v.querySelectorAll('[data-sc]').forEach(b =>
     b.onclick = () => openSched(b.dataset.sc, thisYM()));
+  v.querySelectorAll('[data-q]').forEach(b =>
+    b.onclick = () => openQuote(b.dataset.q));
   const gb = document.getElementById('goBackup');
   if(gb) gb.onclick = () => openData();
   const gb2 = document.getElementById('goBackup2');
