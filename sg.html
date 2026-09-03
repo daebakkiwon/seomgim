@@ -11,15 +11,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="format-detection" content="telephone=no">
 <title>섬김성장노트</title>
+<meta name="apple-mobile-web-app-title" content="섬김성장노트">
 <link rel="manifest" href="sg-manifest.json">
 <link rel="apple-touch-icon" sizes="180x180" href="sg-icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="sg-icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="sg-icon-512.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="섬김성장노트">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#9d5a72">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap');
 
@@ -943,7 +939,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-0548';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-0851';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1536,7 +1532,7 @@ function render(){
   stamp();
 }
 
-/* ---------- 홈 ---------- */
+/* ---------- 대시보드 ---------- */
 function viewDash(){
   const total = people().length;
   if(!total) return TEAM ? emptyTeam() : emptyAll();
@@ -1886,7 +1882,7 @@ function viewList(){
 }
 
 /* ---------- 할 일 ---------- */
-// 홈 화면용 — 한 줄로 짧게
+// 대시보드용 — 한 줄로 짧게
 function todoMini(p){
   const d = fmtDue(p.nextDate);
   const st = stageOf(p.stage);
