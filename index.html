@@ -732,7 +732,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260902-2242';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-0548';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -769,30 +769,16 @@ const DEFAULT_GROUPS = ['친정식구','시댁식구','초등친구','중등친�
                         '이전직장','현직장','이전이웃','현재이웃','자모모임'];
 const NOGROUP = '미분류';
 
-// 누구의 움직임인지로 나눈다 — 내가 얼마나 했나보다, 고객이 얼마나 따라오고 있나가 보이도록
-const KIND_SETS = [
-  { key:'cust',  name:'고객이 한 일', c:'--s3',
-    items:['제품 구매','재구매','미팅 참석','세미나 참석','교육 수강','후기 나눔','지인 소개'] },
-  { key:'both',  name:'함께 한 일',   c:'--accent',
-    items:['통화','만남','식사','메시지'] },
-  { key:'mine',  name:'내가 한 섬김', c:'--s2',
-    items:['제품 전달','자료 전달','도움 · 섬김','안부 챙김','기타'] },
-];
-// 예전에 쓰던 이름과 자동으로 남는 기록까지 어디에 속하는지
-const KIND_MAP = (() => {
-  const m = {};
-  KIND_SETS.forEach(g => g.items.forEach(k => m[k] = g.key));
-  m['성장'] = 'cust';                    // 단계가 오른 것 = 고객이 따라온 것
-  m['완료'] = 'mine';
-  m['섬김'] = 'mine';                    // 예전 이름
-  m['세미나'] = 'cust';                  // 예전 이름
-  return m;
-})();
-function kindSet(kind){
-  const k = KIND_MAP[kind] || 'both';
-  return KIND_SETS.find(g => g.key === k) || KIND_SETS[1];
+// 활동 기록 항목 — 나눠 놓지 않고 한 줄로 고른다
+const LOG_KINDS = ['통화','제품첫구매','제품재구매','미팅참석','후기제공','후기나눔',
+                   '자료제공','음원프로모션','문고리','만남'];
+
+// 기록표에 붙는 색 — 자동으로 남는 것만 따로 보이게 한다
+function kindColor(kind){
+  if(kind === '완료') return '--s2';     // 다음 섬김을 마쳤을 때 저절로 남는 기록
+  if(kind === '성장') return '--s3';     // 단계가 올랐을 때
+  return '--accent';
 }
-const LOG_KINDS = KIND_SETS.flatMap(g => g.items);
 
 // 섬김카드의 계절 질문 — 자연스럽게 가족·인맥 이야기를 여는 대화거리
 // 대화거리 — 팀에서 함께 쓰는 문구. 바꾸시려면 이 목록만 고쳐 다시 올리면 됩니다.
@@ -1941,7 +1927,7 @@ function openDetail(id){
     ? `<div class="timeline">` + logs.map(l => `
         <div class="log ${l.kind === '시스템' ? 'sys' : ''}">
           <div class="lh">
-            <span class="kchip" style="background:var(${kindSet(l.kind).c})">${esc(l.kind)}</span>
+            <span class="kchip" style="background:var(${kindColor(l.kind)})">${esc(l.kind)}</span>
             <span class="lt">${shortDay(l.at)}</span>
             <button class="del" data-dellog="${l.id}">삭제</button>
           </div>
@@ -2001,8 +1987,7 @@ function openDetail(id){
 
         <div class="section-title" style="margin-top:0">활동 기록</div>
         <div class="logadd">
-          <select id="logKind">${KIND_SETS.map(g =>
-            `<optgroup label="${g.name}">${g.items.map(k => `<option>${k}</option>`).join('')}</optgroup>`).join('')}</select>
+          <select id="logKind">${LOG_KINDS.map(k => `<option>${k}</option>`).join('')}</select>
           <input id="logText" placeholder="무슨 이야기를 나눴는지, 무엇을 챙겨드렸는지" autocomplete="off">
           <button class="btn primary" id="logAdd">기록</button>
         </div>
