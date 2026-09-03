@@ -1536,7 +1536,7 @@ function render(){
   stamp();
 }
 
-/* ---------- 대시보드 ---------- */
+/* ---------- 홈 ---------- */
 function viewDash(){
   const total = people().length;
   if(!total) return TEAM ? emptyTeam() : emptyAll();
@@ -1886,7 +1886,7 @@ function viewList(){
 }
 
 /* ---------- 할 일 ---------- */
-// 대시보드용 — 한 줄로 짧게
+// 홈 화면용 — 한 줄로 짧게
 function todoMini(p){
   const d = fmtDue(p.nextDate);
   const st = stageOf(p.stage);
@@ -2227,7 +2227,7 @@ function openDetail(id){
     p.nextDate   = t ? (dt || todayStr()) : '';   // 내용을 지우면 날짜도 함께 비운다
     p.nextTime   = t ? tm : '';
     save(); render(); openDetail(id);
-    toast(p.nextAction ? '대시보드 섬김활동에 올렸습니다' : '다음 섬김을 비웠습니다');
+    toast(p.nextAction ? '홈 섬김활동에 올렸습니다' : '다음 섬김을 비웠습니다');
   };
   document.querySelectorAll('#modal a.tel').forEach(a => a.onclick = tapPhone);
 
