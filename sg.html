@@ -1016,6 +1016,20 @@ select.sel{font-size:15px}
   .gx-rate .k,.gx-rate .d{font-size:11.5px}
 }
 
+/* ===== 리더성장 — 로그인 · 팀 현황 ===== */
+.gx-form{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gx-form input,.gx-form select{border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:var(--panel-2);width:100%;min-width:0}
+.gx-form .btn{grid-column:1/-1;justify-content:center}
+@media(max-width:560px){.gx-form{grid-template-columns:1fr}}
+.gx-err{color:var(--danger);font-size:13.5px;font-weight:700;margin-top:8px;min-height:1em}
+.gx-lead{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.gx-lead b{font-size:16px}
+.gx-lead span{font-size:13px;font-weight:700;color:var(--muted);flex:1}
+.gx-tb tr.top td{background:color-mix(in srgb,var(--ok) 10%,transparent)}
+.gx-tb tr.low td{background:color-mix(in srgb,var(--danger) 8%,transparent)}
+.gx-tb tr.stale td{color:var(--faint)}
+.gx-tag.miss{background:color-mix(in srgb,var(--danger) 10%,var(--panel));color:var(--danger)}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1058,7 +1072,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1937';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-2020';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3812,6 +3826,10 @@ document.addEventListener('keydown', e => {
 
 render();
 </script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>window.FB_CONFIG = {"apiKey":"AIzaSyDT2snkVUWznnrRfCv50aLbLL8VRDKyR40","authDomain":"seomgim-growth.firebaseapp.com","projectId":"seomgim-growth","storageBucket":"seomgim-growth.firebasestorage.app","messagingSenderId":"479785468927","appId":"1:479785468927:web:4381a352eb691f6194ddca"};</script>
 <script>
 /* ============================================================
    성장노트 — 섬김노트에 얹는 모듈
@@ -3900,16 +3918,7 @@ let G = (() => {
   }catch(e){}
   return blank();
 })();
-function gsave(){ try{ localStorage.setItem(GKEY, JSON.stringify(G)); }catch(e){ say('저장되지 않았습니다'); } }
-
-let PUB = null;                                  // 리더가 올려둔 team.json
-(function loadPub(){
-  if(location.protocol === 'file:') return;
-  fetch('team.json?v=' + Date.now(), {cache:'no-store'})
-    .then(r => r.ok ? r.json() : null)
-    .then(j => { if(j && j.rank){ PUB = j; if(window.VIEW && GROWTH.has(VIEW)) render(); } })
-    .catch(() => {});
-})();
+function gsave(){ try{ localStorage.setItem(GKEY, JSON.stringify(G)); }catch(e){ say('저장되지 않았습니다'); } try{ pushReport(); }catch(e){} }
 
 let SEL = TS;                                   // 보고 있는 날
 let MON = {y:T0.getFullYear(), m:T0.getMonth()}; // 보고 있는 달
@@ -4084,8 +4093,8 @@ function vVision(){
   return `
   <div class="card gx-idbox">
     <label><span>성명</span><input type="text" data-gme="name" value="${E(G.name)}" placeholder="이름"></label>
-    <label><span>상위 PT</span>${pick('upPt', G.org.pts.map(p => p.name))}</label>
-    <label><span>상위 보석핀</span>${pick('upJewel', G.org.jewels)}</label>
+    <label><span>상위 PT</span>${pick('upPt', ORG.pts.map(p => p.name))}</label>
+    <label><span>상위 보석핀</span>${pick('upJewel', ORG.jewels)}</label>
   </div>
   <div class="gx-hero">
     <div class="gx-why">
@@ -4398,7 +4407,6 @@ function vStats(){
     </div>
     ${advice(sc,psc,R)}
   </div>
-  ${pubBox()}
   <div class="section-title">일자별 성장 기록</div>
   <div class="card gx-pad">${statusList(R)}</div>
   <div class="section-title">스폰서 보고</div>
@@ -4451,198 +4459,321 @@ function advice(sc,psc,R){
   return out.map(([w,k,p]) => `<div class="gx-adv ${w}"><div class="k">${k}</div><p>${p}</p></div>`).join('');
 }
 
-/* ── 리더가 올린 팀 현황 (팀원도 본다) ── */
-function pubBox(){
-  if(!PUB || !PUB.rank || !PUB.rank.length) return '';
-  const me = (G.name || '').trim();
-  const mine = me ? PUB.rank.findIndex(r => r.name === me) : -1;
-  const g = PUB.goal || {};
-  const done = PUB.rank.filter(r => r.hit === 4);
-  return `<div class="section-title">우리 팀 현황
-    <small class="gx-sub">${E(PUB.title || PUB.month || '')} · ${E(PUB.updated || '')} 기준</small></div>
-  <div class="card gx-pad">
-    ${mine >= 0 ? `<div class="gx-mine">
-      <span class="k">내 자리</span>
-      <b>${mine+1}<small>위</small></b>
-      <span class="d">${PUB.rank.length}명 중 · ${PUB.rank[mine].score}점${PUB.rank[mine].hit === 4 ? ' · 🏅 프로모션 달성' : ''}</span>
-    </div>` : `<div class="gx-empty">비전 · 목표에서 성명을 적으면 내 자리가 표시됩니다.</div>`}
-    ${g.score ? `<div class="gx-note">기준 · 실행률 ${g.score}점 / 전화 ${g.calls}명 / 미팅 ${g.meeting}회 / 제품전달 ${g.consumer}명
-      · 전 조건 달성 <b>${done.length}명</b></div>` : ''}
-    ${(PUB.legs || []).length ? `<div class="gx-lb" style="margin-top:10px">레그별 평균</div>
-      <div class="gx-tags">${PUB.legs.map(l =>
-        `<span class="gx-tag">${E(l.name)} <small>${l.avg}점 · ${l.n}명</small></span>`).join('')}</div>` : ''}
-    <div class="gx-lb" style="margin-top:14px">실행률 순위</div>
-    <table class="gx-tb"><thead><tr><th>순위</th><th>이름</th><th>상위 PT</th><th>실행률</th><th></th></tr></thead>
-      <tbody>${PUB.rank.map((r,i) => `<tr${me && r.name === me ? ' class="gx-me"' : ''}>
-        <td>${i+1}</td><td><b>${E(r.name)}</b></td><td>${E(r.pt||'-')}</td>
-        <td><b>${r.score}</b></td><td>${r.hit === 4 ? '🏅' : ''}</td></tr>`).join('')}</tbody></table>
-  </div>`;
-}
-function buildPub(){
-  const {title, mine, list} = legs();
-  const g = tPromo();
-  return JSON.stringify({
-    month: tKey(),
-    title: g.title || `${TMON.m+1}월 실행 프로모션`,
-    updated: `${T0.getFullYear()}. ${pad(T0.getMonth()+1)}. ${pad(T0.getDate())}`,
-    goal: {score:g.score, calls:g.calls, meeting:g.meeting, consumer:g.consumer},
-    legs: list.map(x => ({name:x.name, n:x.rows.length, avg:tAvg(x.rows.map(v => v.score))})),
-    rank: mine.slice().sort((a,b) => b.score-a.score)
-      .map(r => ({name:r.name, pt:r.pt || '', score:r.score, hit:tHitN(r)}))
-  }, null, 1);
-}
-function download(name, text){
+
+/* ============================================================
+   팀 서버 (Firebase) — 팀원은 숫자만 올리고, 리더는 로그인해서 본다
+   고객 이름·전화·기록 내용은 올라가지 않는다. 이름과 항목별 숫자뿐이다.
+   ============================================================ */
+const ORG_KEY = 'growth.note.v1.org';
+let FBAPP = null, AUTH = null, FS = null, ME = null, LEADER = null, LEADER_LOADED = false;
+let ORG = (() => { try{ return Object.assign({jewels:[], pts:[], promo:{}}, JSON.parse(localStorage.getItem(ORG_KEY) || '{}')); }
+  catch(e){ return {jewels:[], pts:[], promo:{}}; } })();
+let TEAM = {month:'', rows:[], prevRows:[], leaders:[], loading:false, loaded:false, err:''};
+const SV = () => firebase.firestore.FieldValue.serverTimestamp();
+const curView = () => (typeof VIEW !== 'undefined' ? VIEW : '');
+const redrawIf = v => { if(curView() === v && typeof render === 'function') render(); };
+
+function fbReady(){
+  if(FBAPP) return true;
+  if(!window.firebase || !window.FB_CONFIG) return false;
   try{
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], {type:'application/json'}));
-    a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    say('내려받았습니다 — 깃허브 site 폴더에 올리세요');
-  }catch(e){ say('내려받지 못했습니다 — 아래 글을 복사해 쓰세요'); }
+    FBAPP = firebase.initializeApp(window.FB_CONFIG);
+    AUTH = firebase.auth(); FS = firebase.firestore();
+    AUTH.onAuthStateChanged(async u => {
+      ME = u; LEADER = null; LEADER_LOADED = false;
+      if(!u){ AUTH.signInAnonymously().catch(() => {}); return; }
+      if(!u.isAnonymous){
+        try{ const d = await FS.collection('leaders').doc(u.uid).get(); LEADER = d.exists ? Object.assign({uid:u.uid}, d.data()) : null; }
+        catch(e){ LEADER = null; }
+      }
+      LEADER_LOADED = true;
+      TEAM.loaded = false;
+      pushReport();
+      redrawIf('gteam');
+    });
+    FS.collection('org').doc('config').get().then(d => {
+      if(!d.exists) return;
+      ORG = Object.assign({jewels:[], pts:[], promo:{}}, d.data());
+      try{ localStorage.setItem(ORG_KEY, JSON.stringify(ORG)); }catch(e){}
+      redrawIf('gvision');
+    }).catch(() => {});
+  }catch(e){ FBAPP = null; return false; }
+  return true;
 }
 
-/* ── 리더성장 ── */
+/* ---- 팀원: 이 달 요약을 올린다 ---- */
+function monthCounts(y,m){
+  const R = mrange(y,m), counts = {};
+  CORES.forEach(c => { counts[c.id] = sumR(c, R.f, R.t); });
+  let days = 0;
+  for(let d = pd(R.f); ymd(d) <= R.t; d = addD(d,1)){
+    const ds = ymd(d);
+    if(dayScore(ds) > 0 || (crmIndex()[ds] || []).length) days++;
+  }
+  return {score:score(R.f,R.t), counts, days};
+}
+let PUSH_T = null; const PUSH_DONE = {};
+function pushReport(){
+  if(!fbReady() || !ME || !(G.name || '').trim()) return;
+  clearTimeout(PUSH_T);
+  PUSH_T = setTimeout(async () => {
+    const months = [[T0.getFullYear(), T0.getMonth()]];
+    if(T0.getDate() <= 7) months.push(T0.getMonth() === 0 ? [T0.getFullYear()-1, 11] : [T0.getFullYear(), T0.getMonth()-1]);
+    for(const [y,m] of months){
+      const mc = monthCounts(y,m), key = mk(y,m);
+      const doc = {uid:ME.uid, name:G.name.trim(), pt:G.upPt || '', jewel:G.upJewel || '', nowPin:G.vision.nowPin || '',
+        score:mc.score, counts:mc.counts, days:mc.days, streak:streak(), month:key,
+        app:(typeof APP_VER === 'string' ? APP_VER : '')};
+      const sig = JSON.stringify(doc);
+      if(PUSH_DONE[key] === sig) continue;
+      try{
+        await FS.collection('reports').doc(key).collection('members').doc(ME.uid).set(Object.assign({updated:SV()}, doc));
+        PUSH_DONE[key] = sig;
+      }catch(e){}
+    }
+  }, 2500);
+}
+
+/* ---- 리더 ---- */
+const emailOk = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+async function leaderRegister(f){
+  if(!f.name) throw new Error('이름을 적어 주세요');
+  if(!f.role) throw new Error('역할을 골라 주세요');
+  if(f.role !== 'all' && !f.target) throw new Error('본인 이름을 목록에서 골라 주세요');
+  if(!emailOk(f.email)) throw new Error('이메일 형식을 확인해 주세요');
+  if((f.pw || '').length < 6) throw new Error('비밀번호는 6자 이상이어야 합니다');
+  const cred = firebase.auth.EmailAuthProvider.credential(f.email, f.pw);
+  let user;
+  if(ME && ME.isAnonymous){ user = (await ME.linkWithCredential(cred)).user; }      // 같은 uid 유지 → 내 보고도 그대로
+  else { user = (await AUTH.createUserWithEmailAndPassword(f.email, f.pw)).user; }
+  await FS.collection('leaders').doc(user.uid).set({name:f.name, role:f.role, target:f.target || '', email:f.email, approved:false, created:SV()});
+  LEADER = {uid:user.uid, name:f.name, role:f.role, target:f.target || '', email:f.email, approved:false};
+  LEADER_LOADED = true;
+}
+async function leaderLogin(email, pw){
+  if(!emailOk(email)) throw new Error('이메일 형식을 확인해 주세요');
+  await AUTH.signInWithEmailAndPassword(email, pw);
+}
+async function leaderLogout(){ TEAM = {month:'', rows:[], prevRows:[], leaders:[], loading:false, loaded:false, err:''}; await AUTH.signOut(); }
+const isAdmin = () => !!(LEADER && LEADER.approved && LEADER.role === 'all');
 const tKey = () => mk(TMON.y, TMON.m);
-const tPrev = () => TMON.m === 0 ? mk(TMON.y-1,11) : mk(TMON.y, TMON.m-1);
-const tRows = k => Object.values(G.team.rows[k] || {});
-const tBucket = () => (G.team.rows[tKey()] = G.team.rows[tKey()] || {});
+const tPrev = () => TMON.m === 0 ? mk(TMON.y-1, 11) : mk(TMON.y, TMON.m-1);
+
+async function loadTeam(){
+  if(!FS || !LEADER || !LEADER.approved || TEAM.loading) return;
+  TEAM.loading = true; TEAM.err = '';
+  try{
+    const [a, b] = await Promise.all([
+      FS.collection('reports').doc(tKey()).collection('members').get(),
+      FS.collection('reports').doc(tPrev()).collection('members').get()]);
+    TEAM.rows = a.docs.map(d => d.data()); TEAM.prevRows = b.docs.map(d => d.data());
+    if(isAdmin()){ const p = await FS.collection('leaders').get(); TEAM.leaders = p.docs.map(d => Object.assign({uid:d.id}, d.data())); }
+    TEAM.month = tKey(); TEAM.loaded = true;
+  }catch(e){ TEAM.err = '자료를 불러오지 못했습니다. ' + (e && e.message ? e.message : ''); }
+  TEAM.loading = false;
+  redrawIf('gteam');
+}
+const fmtErr = e => {
+  const c = (e && e.code) || '';
+  if(c.includes('wrong-password') || c.includes('invalid-credential') || c.includes('invalid-login')) return '이메일이나 비밀번호가 맞지 않습니다';
+  if(c.includes('user-not-found')) return '등록되지 않은 이메일입니다';
+  if(c.includes('email-already-in-use') || c.includes('credential-already-in-use')) return '이미 등록된 이메일입니다. 로그인해 주세요';
+  if(c.includes('weak-password')) return '비밀번호는 6자 이상이어야 합니다';
+  if(c.includes('network')) return '인터넷 연결을 확인해 주세요';
+  return (e && e.message) || '실패했습니다';
+};
+
+/* 집계 도우미 */
 const tCnt = (r,id) => (r.counts && r.counts[id]) || 0;
 const tAvg = a => a.length ? Math.round(a.reduce((s,v) => s+v,0)/a.length) : 0;
-function tPromo(){
-  const k = tKey();
-  if(!G.team.promo[k]) G.team.promo[k] = {title:'', score:80, calls:100, meeting:8, consumer:18};
-  return G.team.promo[k];
+const promo = () => Object.assign({title:'', score:80, calls:100, meeting:8, consumer:18}, ORG.promo || {});
+function tHitN(r){
+  const g = promo();
+  return [r.score >= g.score, tCnt(r,'calls') >= g.calls, tCnt(r,'meeting') >= g.meeting, tCnt(r,'consumer') >= g.consumer].filter(Boolean).length;
 }
-const TM_COLS = [['score','실행률'],['calls','전화'],['meeting','미팅'],['consumer','제품전달'],['newcons','신규소비자'],['newpartner','신규가입']];
-function tHit(r){
-  const g = tPromo();
-  return [r.score >= g.score, tCnt(r,'calls') >= g.calls, tCnt(r,'meeting') >= g.meeting, tCnt(r,'consumer') >= g.consumer];
+const tMs = r => (r.updated && typeof r.updated.toMillis === 'function') ? r.updated.toMillis() : 0;
+const tStale = r => (Date.now() - tMs(r)) > 7*864e5;
+const tWhen = r => { const t = tMs(r); if(!t) return '-'; const d = new Date(t); return `${d.getMonth()+1}.${d.getDate()}`; };
+function scoped(rows){
+  if(!LEADER) return [];
+  if(LEADER.role === 'pt') return rows.filter(r => r.pt === LEADER.target);
+  if(LEADER.role === 'jewel') return rows.filter(r => r.jewel === LEADER.target);
+  return rows;
 }
-const tHitN = r => tHit(r).filter(Boolean).length;
 function legs(){
-  const A = G.admin, role = A.type || 'all', me = A.name || G.name;
-  const all = tRows(tKey()), prev = tRows(tPrev());
-  let mine, pv, field, title;
-  if(role === 'jewel'){ mine = all.filter(x => x.jewel === me); pv = prev.filter(x => x.jewel === me); field = 'pt'; title = 'PT 레그'; }
-  else if(role === 'pt'){ mine = all.filter(x => x.pt === me); pv = prev.filter(x => x.pt === me); field = 'name'; title = '직속 레그'; }
-  else { mine = all; pv = prev; field = 'jewel'; title = '보석핀 라인'; }
+  const mine = scoped(TEAM.rows), pv = scoped(TEAM.prevRows);
+  const field = LEADER.role === 'pt' ? 'name' : LEADER.role === 'jewel' ? 'pt' : 'jewel';
+  const title = LEADER.role === 'pt' ? '직속 팀원' : LEADER.role === 'jewel' ? 'PT 레그' : '보석핀 라인';
   const map = new Map();
   const touch = n => { if(!map.has(n)) map.set(n, {name:n, rows:[], prev:[]}); return map.get(n); };
   mine.forEach(x => touch(x[field] || '미지정').rows.push(x));
   pv.forEach(x => touch(x[field] || '미지정').prev.push(x));
-  return {title, mine, prev:pv,
-    list:[...map.values()].sort((a,b) => tAvg(b.rows.map(x => x.score)) - tAvg(a.rows.map(x => x.score)))};
+  return {title, mine, prev:pv, list:[...map.values()].sort((a,b) => tAvg(b.rows.map(x => x.score)) - tAvg(a.rows.map(x => x.score)))};
 }
+const TM_COLS = [['calls','전화'],['meeting','미팅'],['consumer','소비자'],['learner','학습'],['newjoin','가입']];
+
+/* ---- 리더성장 화면 ---- */
 function vTeam(){
+  if(!fbReady()) return `<div class="card gx-pad gx-empty">팀 서버가 아직 연결되지 않았습니다. 설정이 끝나면 여기서 리더 등록과 로그인을 할 수 있습니다.</div>`;
+  if(!LEADER_LOADED) return `<div class="card gx-pad gx-empty">확인 중…</div>`;
+  if(!ME || ME.isAnonymous || !LEADER) return authForms();
+  if(!LEADER.approved) return `
+    <div class="card gx-pad">
+      <div class="gx-lb">${E(LEADER.name)} 님 · ${roleName(LEADER)}</div>
+      <p class="gx-note">총리더의 승인을 기다리고 있습니다. 승인되면 팀 현황이 여기에 보입니다.</p>
+      <div class="gx-btns"><button class="btn sm" data-glogout>로그아웃</button></div>
+    </div>`;
+  if(!TEAM.loaded || TEAM.month !== tKey()){ if(!TEAM.loading) loadTeam();
+    return `<div class="card gx-pad gx-empty">${TEAM.err || '팀 자료를 불러오는 중…'}</div>
+      ${TEAM.err ? '<div class="gx-btns" style="margin-top:10px"><button class="btn sm" data-greload>다시 시도</button><button class="btn sm" data-glogout>로그아웃</button></div>' : ''}`; }
+  return teamBoard();
+}
+const roleName = L => L.role === 'all' ? '총리더' : (L.role === 'jewel' ? '보석핀' : 'PT') + (L.target ? ' · ' + L.target : '');
+function authForms(){
+  const ptOpts = ORG.pts.map(p => `<option>${E(p.name)}</option>`).join('');
+  const jwOpts = ORG.jewels.map(n => `<option>${E(n)}</option>`).join('');
+  return `
+  <div class="section-title">리더 로그인</div>
+  <div class="card gx-pad">
+    <div class="gx-form">
+      <input type="email" id="gxLiEmail" placeholder="이메일" autocomplete="username" inputmode="email">
+      <input type="password" id="gxLiPw" placeholder="비밀번호" autocomplete="current-password">
+      <button class="btn primary" data-glogin>로그인</button>
+    </div>
+    <div class="gx-err" id="gxLiErr"></div>
+    <p class="gx-note">PT · 보석핀 리더만 씁니다. 팀원은 로그인 없이 비전·목표에 성명과 상위 PT를 적으면 됩니다.</p>
+  </div>
+  <div class="section-title">리더 등록 <small class="gx-sub">처음 한 번 · 총리더 승인 후 사용</small></div>
+  <div class="card gx-pad">
+    <div class="gx-form">
+      <input type="text" id="gxRgName" placeholder="이름">
+      <select id="gxRgRole"><option value="">역할 —</option><option value="pt">PT (플래티늄)</option><option value="jewel">보석핀</option><option value="all">총리더</option></select>
+      <select id="gxRgTarget" class="hide"><option value="">목록에서 본인 이름 —</option></select>
+      <input type="email" id="gxRgEmail" placeholder="이메일" autocomplete="email" inputmode="email">
+      <input type="password" id="gxRgPw" placeholder="비밀번호 (6자 이상)" autocomplete="new-password">
+      <button class="btn primary" data-gregister>등록 신청</button>
+    </div>
+    <div class="gx-err" id="gxRgErr"></div>
+    <p class="gx-note">PT는 직속 팀원만, 보석핀은 자기 아래 PT 레그 전체를 봅니다. 등록 후 총리더가 승인해야 보입니다.</p>
+    <template id="gxPtOpts">${ptOpts}</template><template id="gxJwOpts">${jwOpts}</template>
+  </div>`;
+}
+function teamBoard(){
   const {title, mine, prev, list} = legs();
   const now = (TMON.y === T0.getFullYear() && TMON.m === T0.getMonth());
   const a = tAvg(mine.map(x => x.score)), b = tAvg(prev.map(x => x.score));
-  const g = tPromo();
-  const done = mine.filter(x => tHitN(x) === 4).sort((x,y) => y.score-x.score);
-  const near = mine.filter(x => tHitN(x) === 3);
+  const g = promo();
+  const sorted = mine.slice().sort((x,y) => y.score - x.score);
+  const done = sorted.filter(x => tHitN(x) === 4);
+  const stale = now ? mine.filter(tStale) : [];
   const names = new Set(mine.map(x => x.name));
-  const miss = prev.filter(x => !names.has(x.name));
-  const rows = Object.values(tBucket()).sort((x,y) => y.score-x.score);
-  return `<div class="section-title">${TMON.y}년 ${TMON.m+1}월 팀 현황
-    <span class="gx-mnav"><button class="btn sm ghost" data-gtmon="-1">‹</button>
-      <button class="btn sm ghost" data-gtmon="1" ${now?'disabled':''}>›</button>
-      <button class="btn sm" data-gtprev>지난달 명단</button></span></div>
+  const gone = prev.filter(x => !names.has(x.name));
+  const topN = Math.max(1, Math.round(sorted.length * .2));
+  const admin = isAdmin();
+  const pending = TEAM.leaders.filter(l => !l.approved);
+  const approved = TEAM.leaders.filter(l => l.approved);
+  return `
+  <div class="gx-lead"><b>${E(LEADER.name)}</b><span>${roleName(LEADER)}</span>
+    <button class="btn sm ghost" data-greload>새로고침</button><button class="btn sm ghost" data-glogout>로그아웃</button></div>
+  <div class="gx-datebar">
+    <button class="btn sm ghost" data-gtmon="-1">‹</button>
+    <b>${TMON.y}년 ${TMON.m+1}월 · ${title}</b>
+    <button class="btn sm ghost" data-gtmon="1" ${now ? 'disabled' : ''}>›</button>
+  </div>
   <div class="card gx-tiles gx-t4">
-    <div><span class="k">레그 · 인원</span><b>${list.length}<small> · ${mine.length}명</small></b><span class="d">${title}</span></div>
+    <div><span class="k">참여자</span><b>${mine.length}<small>명</small></b><span class="d">${list.length}개 ${title}</span></div>
+    <div><span class="k">이번 주 미보고</span><b>${stale.length}<small>명</small></b><span class="d">7일 넘게 소식 없음</span></div>
     <div><span class="k">평균 실행률</span><b>${a}<small>점</small></b><span class="d">전월 ${b}점 · ${delta(a-b,'점')}</span></div>
-    <div><span class="k">신규 소비자 · 가입</span><b>${mine.reduce((s,x)=>s+tCnt(x,'newcons'),0)}<small> · ${mine.reduce((s,x)=>s+tCnt(x,'newpartner'),0)}명</small></b><span class="d">사람이 자란 결과</span></div>
     <div><span class="k">프로모션 달성</span><b>${done.length}<small>명</small></b><span class="d">전 조건 통과</span></div>
   </div>
 
-  <div class="section-title">조직 등록</div>
-  <div class="card gx-pad">
-    <div class="gx-lb">보석핀</div>
-    <div class="gx-add"><input type="text" id="gxJw" placeholder="보석핀 성함"><button class="btn sm" data-gjw>추가</button></div>
-    <div class="gx-tags">${G.org.jewels.map((n,i) => `<span class="gx-tag">${E(n)}<button data-gjwdel="${i}">×</button></span>`).join('') || '<span class="gx-empty">없음</span>'}</div>
-    <div class="gx-lb" style="margin-top:14px">플래티늄 (PT)</div>
-    <div class="gx-add"><input type="text" id="gxPt" placeholder="PT 성함">
-      <select id="gxPtJw"><option value="">상위 보석핀 —</option>${G.org.jewels.map(n => `<option>${E(n)}</option>`).join('')}</select>
-      <button class="btn sm" data-gpt>추가</button></div>
-    <div class="gx-tags">${G.org.pts.map((p,i) => `<span class="gx-tag">${E(p.name)} <small>${E(p.jewel||'미지정')}</small><button data-gptdel="${i}">×</button></span>`).join('') || '<span class="gx-empty">없음</span>'}</div>
-    <div class="gx-lb" style="margin-top:14px">내 자리 · 관리자 등록</div>
-    <div class="gx-add">
-      <select id="gxAType"><option value="">— 선택 —</option>
-        <option value="jewel" ${G.admin.type==='jewel'?'selected':''}>보석핀</option>
-        <option value="pt" ${G.admin.type==='pt'?'selected':''}>플래티늄(PT)</option>
-        <option value="all" ${G.admin.type==='all'?'selected':''}>조직 전체 보기</option></select>
-      <select id="gxAName"><option value="">— 선택 —</option>${
-        (G.admin.type === 'jewel' ? G.org.jewels : G.admin.type === 'pt' ? G.org.pts.map(p => p.name) : [])
-          .map(n => `<option ${G.admin.name===n?'selected':''}>${E(n)}</option>`).join('')}</select>
-      <button class="btn sm primary" data-gadmin>등록</button></div>
-  </div>
-
-  <div class="section-title">팀원 실적 입력 <small class="gx-sub">팀원은 제출할 것이 없습니다</small></div>
-  <div class="card gx-pad">
-    <div class="gx-add"><input type="text" id="gxTmName" placeholder="팀원 이름">
-      <select id="gxTmPt"><option value="">상위 PT —</option>${G.org.pts.map(p => `<option>${E(p.name)}</option>`).join('')}</select>
-      <button class="btn sm primary" data-gtmadd>추가</button></div>
-    <div class="gx-scroll"><table class="gx-tb gx-wide">
-      <thead><tr><th>이름</th><th>상위 PT</th><th>핀</th>${TM_COLS.map(c => `<th>${c[1]}</th>`).join('')}<th></th></tr></thead>
-      <tbody>${rows.length ? rows.map(r => `<tr data-gtm="${E(r.name)}">
-        <td><b>${E(r.name)}</b></td><td>${E(r.pt||'-')}</td>
-        <td><input type="text" data-gf="nowPin" value="${E(r.nowPin||'')}" style="width:60px"></td>
-        ${TM_COLS.map(([k]) => `<td><input type="text" inputmode="numeric" data-gf="${k}"
-          value="${k==='score'?r.score:tCnt(r,k)}" style="width:52px;text-align:right"></td>`).join('')}
-        <td><button class="btn sm ghost" data-gtmdel="${E(r.name)}">삭제</button></td></tr>`).join('')
-        : '<tr><td colspan="10" class="gx-empty">팀원을 추가해 주세요.</td></tr>'}</tbody>
-    </table></div>
-  </div>
-
-  <div class="section-title">내 레그 · ${title}</div>
+  <div class="section-title">${title}별 현황</div>
   <div class="card gx-pad">${list.length ? list.map(x => {
     const sc = tAvg(x.rows.map(v => v.score)), pv = tAvg(x.prev.map(v => v.score));
-    const sum = id => x.rows.reduce((s,v) => s+tCnt(v,id), 0);
-    const dist = {S:0,A:0,B:0,C:0,D:0};
-    x.rows.forEach(v => dist[grade(v.score).k]++);
-    const COL = {S:'var(--accent)',A:'var(--ok)',B:'var(--s4)',C:'var(--faint)',D:'var(--danger)'};
+    const sum = id => x.rows.reduce((s,v) => s + tCnt(v,id), 0);
     return `<div class="gx-leg">
-      <div class="h"><b>${E(x.name)}</b><small>${x.rows.length}명</small>
-        <span class="sc">${sc}<small>점</small> ${delta(sc-pv,'점')}</span></div>
-      <div class="bars">${Object.keys(dist).filter(k => dist[k]).map(k =>
-        `<i style="width:${dist[k]/x.rows.length*100}%;background:${COL[k]}"></i>`).join('') || '<i style="width:100%;background:var(--panel-2)"></i>'}</div>
-      <div class="mini">전화 <b>${sum('calls')}</b> · 미팅 <b>${sum('meeting')}</b> · 제품전달 <b>${sum('consumer')}</b>
-        · 신규소비자 <b>${sum('newcons')}</b> · 신규가입 <b>${sum('newpartner')}</b>
-        · 달성 <b>${x.rows.filter(v => tHitN(v)===4).length}명</b></div>
-      <div class="gx-tags">${x.rows.slice().sort((p,q) => q.score-p.score).map(v =>
-        `<span class="gx-tag">${E(v.name)} <small>${v.score}점</small></span>`).join('')}</div>
-    </div>`;
-  }).join('') : '<div class="gx-empty">팀원을 추가하면 레그가 나뉩니다.</div>'}</div>
+      <div class="h"><b>${E(x.name)}</b><small>${x.rows.length}명</small><span class="sc">${sc}<small>점</small> ${delta(sc-pv,'점')}</span></div>
+      <div class="mini">전화 <b>${sum('calls')}</b> · 미팅 <b>${sum('meeting')}</b> · 소비자 <b>${sum('consumer')}</b> · 학습 <b>${sum('learner')}</b> · 가입 <b>${sum('newjoin')}</b> · 달성 <b>${x.rows.filter(v => tHitN(v) === 4).length}명</b></div>
+    </div>`; }).join('') : '<div class="gx-empty">아직 올라온 자료가 없습니다. 팀원이 비전·목표에 성명과 상위 PT를 적으면 자동으로 올라옵니다.</div>'}</div>
 
-  <div class="section-title">프로모션</div>
+  <div class="section-title">활동자 순위 <small class="gx-sub">상위 ${topN}명 · 하위 ${topN}명 표시</small></div>
+  <div class="card gx-pad gx-scroll"><table class="gx-tb gx-wide">
+    <thead><tr><th>순위</th><th>이름</th><th>상위 PT</th><th>실행률</th>${TM_COLS.map(c => `<th>${c[1]}</th>`).join('')}<th>활동일</th><th>보고</th>${admin ? '<th></th>' : ''}</tr></thead>
+    <tbody>${sorted.length ? sorted.map((r,i) => {
+      const cls = i < topN ? 'top' : i >= sorted.length - topN ? 'low' : '';
+      return `<tr class="${cls} ${tStale(r) && now ? 'stale' : ''}"><td>${i+1}</td><td><b>${E(r.name)}</b>${tHitN(r) === 4 ? ' 🏅' : ''}</td><td>${E(r.pt || '-')}</td>
+        <td><b>${r.score}</b></td>${TM_COLS.map(([k]) => `<td>${tCnt(r,k)}</td>`).join('')}<td>${r.days || 0}</td><td>${tWhen(r)}</td>
+        ${admin ? `<td><button class="btn sm ghost" data-gdelrow="${E(r.uid)}" title="자료 삭제">×</button></td>` : ''}</tr>`;
+    }).join('') : `<tr><td colspan="12" class="gx-empty">자료가 없습니다.</td></tr>`}</tbody></table></div>
+  ${stale.length ? `<div class="gx-lb" style="margin-top:12px">이번 주 미보고</div><div class="gx-tags">${stale.map(x => `<span class="gx-tag miss">${E(x.name)}</span>`).join('')}</div>` : ''}
+  ${gone.length ? `<div class="gx-lb" style="margin-top:12px">지난달에는 있었는데 이 달 자료가 없는 분</div><div class="gx-tags">${gone.map(x => `<span class="gx-tag miss">${E(x.name)}</span>`).join('')}</div>` : ''}
+
+  <div class="section-title">프로모션 <small class="gx-sub">${admin ? '총리더가 정합니다' : '총리더가 정한 기준'}</small></div>
   <div class="card gx-pad">
     <div class="gx-goals4">
-      ${[['score','실행률(점)'],['calls','전화(명)'],['meeting','미팅(회)'],['consumer','제품전달(명)']].map(([k,l]) =>
-        `<label><span>${l}</span><input type="text" inputmode="numeric" data-gpg="${k}" value="${g[k]}"></label>`).join('')}
+      ${[['score','실행률(점)'],['calls','전화(명)'],['meeting','미팅(회)'],['consumer','소비자(명)']].map(([k,l]) =>
+        `<label><span>${l}</span><input type="text" inputmode="numeric" data-gpg="${k}" value="${g[k]}" ${admin ? '' : 'disabled'}></label>`).join('')}
     </div>
     <label class="gx-lb" style="margin-top:12px">프로모션 이름</label>
-    <input type="text" data-gpg="title" value="${E(g.title||'')}" placeholder="예: 9월 전원 실행 챌린지">
+    <input type="text" data-gpg="title" value="${E(g.title || '')}" placeholder="예: 9월 전원 실행 챌린지" ${admin ? '' : 'disabled'}>
+    ${admin ? '<div class="gx-btns" style="margin-top:10px"><button class="btn sm primary" data-gpgsave>기준 저장</button></div>' : ''}
     <div class="gx-lb" style="margin-top:14px">전 조건 달성 · 시상 대상</div>
     <div class="gx-tags">${done.length ? done.map(x => `<span class="gx-tag">🏅 ${E(x.name)} <small>${x.score}점</small></span>`).join('') : '<span class="gx-empty">아직 없습니다</span>'}</div>
     <div class="gx-lb" style="margin-top:14px">한 조건만 남은 분</div>
-    <div class="gx-tags">${near.length ? near.map(x => `<span class="gx-tag">${E(x.name)}</span>`).join('') : '<span class="gx-empty">없습니다</span>'}</div>
-    <div class="gx-lb" style="margin-top:14px">이번 달 미제출</div>
-    <div class="gx-tags">${miss.length ? miss.map(x => `<span class="gx-tag miss">${E(x.name)}</span>`).join('') : '<span class="gx-empty">없습니다</span>'}</div>
+    <div class="gx-tags">${sorted.filter(x => tHitN(x) === 3).map(x => `<span class="gx-tag">${E(x.name)}</span>`).join('') || '<span class="gx-empty">없습니다</span>'}</div>
     <div class="gx-btns" style="margin-top:14px">
       <button class="btn sm primary" data-gnotice="0">현황 공지문</button>
       <button class="btn sm primary" data-gnotice="1">시상 공지문</button></div>
     <pre class="gx-out" id="gxNotice">버튼을 누르면 여기에 만들어지고 클립보드에도 복사됩니다.</pre>
   </div>
 
-  <div class="section-title">팀 전체에 알리기 <small class="gx-sub">team.json 을 깃허브 site 폴더에 올리면 팀원 모두가 봅니다</small></div>
+  ${admin ? `
+  <div class="section-title">리더 승인 <small class="gx-sub">대기 ${pending.length}명 · 승인됨 ${approved.length}명</small></div>
   <div class="card gx-pad">
-    <div class="gx-btns">
-      <button class="btn sm primary" data-gpub="file">team.json 내려받기</button>
-      <button class="btn sm" data-gpub="copy">내용 복사</button></div>
-    <p class="gx-note">팀원의 성장통계 화면에 <b>우리 팀 현황</b>이 뜨고, 자기 순위와 프로모션 달성 여부를 봅니다.
-      이름과 실행률·상위 PT가 팀 전체에 공개되니 미리 알려 주세요.</p>
-    <pre class="gx-out" id="gxPub">내려받아 깃허브에 올리면 끝입니다.</pre>
-  </div>`;
+    ${pending.length ? pending.map(l => `<div class="gx-leg"><div class="h"><b>${E(l.name)}</b><small>${roleName(l)} · ${E(l.email || '')}</small>
+      <span class="sc"><button class="btn sm primary" data-gapprove="${E(l.uid)}">승인</button> <button class="btn sm ghost" data-greject="${E(l.uid)}">거절</button></span></div></div>`).join('')
+      : '<div class="gx-empty">승인 기다리는 리더가 없습니다.</div>'}
+    ${approved.length ? `<div class="gx-lb" style="margin-top:12px">승인된 리더</div><div class="gx-tags">${approved.map(l =>
+      `<span class="gx-tag">${E(l.name)} <small>${roleName(l)}</small>${l.uid !== LEADER.uid ? `<button data-greject="${E(l.uid)}" title="권한 해제">×</button>` : ''}</span>`).join('')}</div>` : ''}
+  </div>
+
+  <div class="section-title">조직 등록 <small class="gx-sub">팀원의 비전·목표 선택 목록이 됩니다</small></div>
+  <div class="card gx-pad">
+    <div class="gx-lb">보석핀</div>
+    <div class="gx-add"><input type="text" id="gxJw" placeholder="보석핀 성함"><button class="btn sm" data-gjw>추가</button></div>
+    <div class="gx-tags">${ORG.jewels.map((n,i) => `<span class="gx-tag">${E(n)}<button data-gjwdel="${i}">×</button></span>`).join('') || '<span class="gx-empty">없음</span>'}</div>
+    <div class="gx-lb" style="margin-top:14px">플래티늄 (PT)</div>
+    <div class="gx-add"><input type="text" id="gxPt" placeholder="PT 성함">
+      <select id="gxPtJw"><option value="">상위 보석핀 —</option>${ORG.jewels.map(n => `<option>${E(n)}</option>`).join('')}</select>
+      <button class="btn sm" data-gpt>추가</button></div>
+    <div class="gx-tags">${ORG.pts.map((p,i) => `<span class="gx-tag">${E(p.name)} <small>${E(p.jewel || '미지정')}</small><button data-gptdel="${i}">×</button></span>`).join('') || '<span class="gx-empty">없음</span>'}</div>
+  </div>` : ''}`;
+}
+function teamNotice(award){
+  const g = promo(), {title, mine, prev, list} = legs();
+  const sorted = mine.slice().sort((a,b) => b.score - a.score);
+  const done = sorted.filter(x => tHitN(x) === 4);
+  const names = new Set(mine.map(x => x.name));
+  const gone = prev.filter(x => !names.has(x.name)).map(x => x.name);
+  const L = [`[${g.title || `${TMON.m+1}월 실행 프로모션`}] ${award ? '최종 시상' : `${T0.getMonth()+1}/${T0.getDate()} 현황`}`,
+    `기준 · 실행률 ${g.score}점 / 전화 ${g.calls}명 / 미팅 ${g.meeting}회 / 소비자 ${g.consumer}명`,
+    `참여 ${mine.length}명 · 평균 ${tAvg(mine.map(x => x.score))}점`, ''];
+  if(award){
+    L.push(`◆ 전 조건 달성 ${done.length}명`);
+    done.forEach((x,i) => L.push(` ${i+1}. ${x.name} (${x.pt || '-'}) ${x.score}점`));
+  }else{
+    L.push(`◆ ${title}별 평균`);
+    list.forEach(x => L.push(` · ${x.name} ${tAvg(x.rows.map(v => v.score))}점 (${x.rows.length}명)`));
+    L.push('', '◆ 실행률 TOP 5');
+    sorted.slice(0,5).forEach((x,i) => L.push(` ${i+1}. ${x.name} ${x.score}점`));
+    L.push('', `◆ 달성 ${done.length}명 · 한 조건만 남은 분 ${sorted.filter(x => tHitN(x) === 3).length}명`);
+    if(gone.length) L.push(`◆ 이 달 자료 없음 ${gone.length}명 — ${gone.slice(0,12).join(' ')}${gone.length > 12 ? ' 외' : ''}`);
+  }
+  return L.join('\n');
+}
+async function saveOrg(){
+  try{ await FS.collection('org').doc('config').set(ORG); try{ localStorage.setItem(ORG_KEY, JSON.stringify(ORG)); }catch(e){} say('저장했습니다'); }
+  catch(e){ say('저장하지 못했습니다 — ' + fmtErr(e)); }
 }
 
 /* ---------- 리포트 ---------- */
@@ -4673,28 +4804,6 @@ function monthReport(){
     ...cores().map(c => { const p = pace(c,y,m); return `· ${c.name} ${p.done}/${p.goal}${c.unit} (${Math.round(p.pct)}%)`; }),
     `· 최장 연속 ${longest(R.f,R.t)}일`
   ].filter(Boolean).join('\n');
-}
-function teamNotice(award){
-  const g = tPromo(), {title, mine, prev, list} = legs();
-  const done = mine.filter(x => tHitN(x) === 4).sort((a,b) => b.score-a.score);
-  const top = mine.slice().sort((a,b) => b.score-a.score).slice(0,5);
-  const names = new Set(mine.map(x => x.name));
-  const miss = prev.filter(x => !names.has(x.name)).map(x => x.name);
-  const L = [`[${g.title || `${TMON.m+1}월 실행 프로모션`}] ${award ? '최종 시상' : `${T0.getMonth()+1}/${T0.getDate()} 현황`}`,
-    `기준 · 실행률 ${g.score}점 / 전화 ${g.calls}명 / 미팅 ${g.meeting}회 / 제품전달 ${g.consumer}명`,
-    `팀 ${mine.length}명 · 평균 ${tAvg(mine.map(x => x.score))}점`, ''];
-  if(award){
-    L.push(`◆ 전 조건 달성 ${done.length}명`);
-    done.forEach((x,i) => L.push(` ${i+1}. ${x.name} (${x.pt||'-'}) ${x.score}점`));
-  }else{
-    L.push(`◆ ${title}별 평균`);
-    list.forEach(x => L.push(` · ${x.name} ${tAvg(x.rows.map(v => v.score))}점 (${x.rows.length}명)`));
-    L.push('', '◆ 실행률 TOP 5');
-    top.forEach((x,i) => L.push(` ${i+1}. ${x.name} ${x.score}점`));
-    L.push('', `◆ 달성 ${done.length}명 · 한 조건만 남은 분 ${mine.filter(x => tHitN(x)===3).length}명`);
-    if(miss.length) L.push(`◆ 미제출 ${miss.length}명 — ${miss.slice(0,12).join(' ')}${miss.length>12?' 외':''}`);
-  }
-  return L.join('\n');
 }
 async function copyOut(id, text){
   const el = document.getElementById(id);
@@ -4753,6 +4862,12 @@ function drawArrow(){
 /* ============================================================
    바깥에서 부르는 것
    ============================================================ */
+try{ fbReady(); }catch(e){}
+if(typeof save === 'function'){
+  const _save = save;
+  save = function(){ const r = _save.apply(this, arguments); try{ CRM_IDX = null; pushReport(); }catch(e){} return r; };
+}
+
 window.GROWTH = {
   views: VIEWS,
   has: v => !!VIEWS[v],
@@ -4792,7 +4907,7 @@ window.GROWTH = {
     on('select[data-gme]', el => {
       G[el.dataset.gme] = el.value;
       if(el.dataset.gme === 'upPt'){
-        const p = G.org.pts.find(x => x.name === el.value);
+        const p = ORG.pts.find(x => x.name === el.value);
         if(p && p.jewel) G.upJewel = p.jewel;
       }
       gsave(); again();
@@ -4849,73 +4964,67 @@ window.GROWTH = {
     });
 
     /* 리더성장 */
+    const showErr = (id, msg) => { const el = document.getElementById(id); if(el) el.textContent = msg || ''; };
+    const rgRole = document.getElementById('gxRgRole');
+    if(rgRole) rgRole.onchange = () => {
+      const t = document.getElementById('gxRgTarget');
+      const src = rgRole.value === 'pt' ? 'gxPtOpts' : rgRole.value === 'jewel' ? 'gxJwOpts' : '';
+      t.classList.toggle('hide', !src);
+      t.innerHTML = '<option value="">목록에서 본인 이름 —</option>' + (src ? document.getElementById(src).innerHTML : '');
+      if(src && !document.getElementById(src).innerHTML.trim()) t.innerHTML = '<option value="">총리더가 조직 등록을 먼저 해야 합니다</option>';
+    };
+    on('[data-glogin]', async el => {
+      el.disabled = true; showErr('gxLiErr', '');
+      try{ await leaderLogin(document.getElementById('gxLiEmail').value.trim(), document.getElementById('gxLiPw').value); }
+      catch(e){ showErr('gxLiErr', fmtErr(e)); el.disabled = false; }
+    });
+    on('[data-gregister]', async el => {
+      el.disabled = true; showErr('gxRgErr', '');
+      const f = {name:document.getElementById('gxRgName').value.trim(), role:document.getElementById('gxRgRole').value,
+        target:document.getElementById('gxRgTarget').value, email:document.getElementById('gxRgEmail').value.trim(), pw:document.getElementById('gxRgPw').value};
+      try{ await leaderRegister(f); say('등록을 신청했습니다. 총리더 승인 후 볼 수 있습니다'); again(); }
+      catch(e){ showErr('gxRgErr', fmtErr(e)); el.disabled = false; }
+    });
+    on('[data-glogout]', async () => { await leaderLogout(); again(); });
+    on('[data-greload]', () => { TEAM.loaded = false; again(); });
     on('[data-gtmon]', el => {
       let {y,m} = TMON; m += Number(el.dataset.gtmon);
       if(m < 0){ m = 11; y--; } if(m > 11){ m = 0; y++; }
       if(y*12+m > T0.getFullYear()*12+T0.getMonth()) return;
-      TMON = {y,m}; again();
+      TMON = {y,m}; TEAM.loaded = false; again();
     });
-    on('[data-gtprev]', () => {
-      const prev = G.team.rows[tPrev()] || {}, b = tBucket();
-      let n = 0;
-      Object.values(prev).forEach(r => {
-        if(b[r.name]) return;
-        b[r.name] = {name:r.name, pt:r.pt, jewel:r.jewel, nowPin:r.nowPin, score:0, counts:{}}; n++;
-      });
-      gsave(); again(); say(`${n}명을 가져왔습니다`);
-    });
-    on('[data-gjw]', () => {
-      const v = document.getElementById('gxJw').value.trim();
-      if(v && !G.org.jewels.includes(v)) G.org.jewels.push(v);
-      gsave(); again();
-    });
-    on('[data-gjwdel]', el => { G.org.jewels.splice(Number(el.dataset.gjwdel),1); gsave(); again(); });
-    on('[data-gpt]', () => {
-      const v = document.getElementById('gxPt').value.trim();
-      if(v && !G.org.pts.some(p => p.name === v)) G.org.pts.push({name:v, jewel:document.getElementById('gxPtJw').value});
-      gsave(); again();
-    });
-    on('[data-gptdel]', el => { G.org.pts.splice(Number(el.dataset.gptdel),1); gsave(); again(); });
-    const at = document.getElementById('gxAType');
-    if(at) at.onchange = () => { G.admin.type = at.value; G.admin.name = ''; gsave(); again(); };
-    on('[data-gadmin]', () => {
-      const n = document.getElementById('gxAName');
-      G.admin.name = n ? n.value : '';
-      if(G.admin.type && G.admin.type !== 'all' && !G.admin.name){ say('이름을 골라 주세요'); return; }
-      gsave(); again(); say('관리자로 등록했습니다');
-    });
-    on('[data-gtmadd]', () => {
-      const n = document.getElementById('gxTmName').value.trim();
-      if(!n){ say('이름을 적어 주세요'); return; }
-      const b = tBucket(), pt = document.getElementById('gxTmPt').value;
-      const jw = (G.org.pts.find(p => p.name === pt) || {}).jewel || '';
-      b[n] = b[n] || {name:n, pt, jewel:jw, nowPin:'', score:0, counts:{}};
-      gsave(); again();
-    });
-    on('[data-gtmdel]', el => {
-      if(!confirm(`${el.dataset.gtmdel} 님을 이 달 명단에서 뺄까요?`)) return;
-      delete tBucket()[el.dataset.gtmdel]; gsave(); again();
-    });
-    root.querySelectorAll('[data-gtm] input').forEach(inp => inp.onchange = () => {
-      const name = inp.closest('[data-gtm]').dataset.gtm, f = inp.dataset.gf, r = tBucket()[name];
-      if(!r) return;
-      r.counts = r.counts || {};
-      if(f === 'nowPin') r.nowPin = inp.value.trim();
-      else if(f === 'score') r.score = Math.max(0, Math.min(100, parseInt(inp.value,10) || 0));
-      else r.counts[f] = Math.max(0, parseInt(inp.value,10) || 0);
-      gsave(); again();
-    });
-    on('[data-gpg]', el => {
-      const k = el.dataset.gpg, g = tPromo();
-      g[k] = k === 'title' ? el.value : Math.max(0, parseInt(el.value,10) || 0);
-      gsave(); if(k !== 'title') again();
-    }, 'onchange');
     on('[data-gnotice]', el => copyOut('gxNotice', teamNotice(el.dataset.gnotice === '1')));
-    on('[data-gpub]', el => {
-      const t = buildPub();
-      if(el.dataset.gpub === 'file'){ document.getElementById('gxPub').textContent = t; download('team.json', t); }
-      else copyOut('gxPub', t);
+    on('[data-gpgsave]', async () => {
+      const g = promo();
+      root.querySelectorAll('[data-gpg]').forEach(el => { const k = el.dataset.gpg; g[k] = k === 'title' ? el.value.trim() : Math.max(0, parseInt(el.value,10) || 0); });
+      ORG.promo = g; await saveOrg(); again();
     });
+    on('[data-gapprove]', async el => {
+      try{ await FS.collection('leaders').doc(el.dataset.gapprove).update({approved:true, approvedAt:SV()}); say('승인했습니다'); TEAM.loaded = false; again(); }
+      catch(e){ say('실패 — ' + fmtErr(e)); }
+    });
+    on('[data-greject]', async el => {
+      if(!confirm('이 리더의 권한을 해제할까요?')) return;
+      try{ await FS.collection('leaders').doc(el.dataset.greject).update({approved:false}); TEAM.loaded = false; again(); }
+      catch(e){ say('실패 — ' + fmtErr(e)); }
+    });
+    on('[data-gdelrow]', async el => {
+      if(!confirm('이 자료를 지울까요? (같은 사람이 새로 올리면 다시 생깁니다)')) return;
+      try{ await FS.collection('reports').doc(tKey()).collection('members').doc(el.dataset.gdelrow).delete(); TEAM.loaded = false; again(); }
+      catch(e){ say('실패 — ' + fmtErr(e)); }
+    });
+    on('[data-gjw]', async () => {
+      const v = document.getElementById('gxJw').value.trim();
+      if(v && !ORG.jewels.includes(v)) ORG.jewels.push(v);
+      await saveOrg(); again();
+    });
+    on('[data-gjwdel]', async el => { ORG.jewels.splice(Number(el.dataset.gjwdel),1); await saveOrg(); again(); });
+    on('[data-gpt]', async () => {
+      const v = document.getElementById('gxPt').value.trim();
+      if(v && !ORG.pts.some(p => p.name === v)) ORG.pts.push({name:v, jewel:document.getElementById('gxPtJw').value});
+      await saveOrg(); again();
+    });
+    on('[data-gptdel]', async el => { ORG.pts.splice(Number(el.dataset.gptdel),1); await saveOrg(); again(); });
 
     /* 성장활동 */
     on('[data-gtype]', el => { GSEL = el.dataset.gtype; again(); });
