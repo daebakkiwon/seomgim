@@ -758,7 +758,7 @@ select.sel{font-size:15px}
 .gx-sub3 span{font-family:'Gowun Batang',serif;font-size:14px;font-weight:700;color:var(--text);text-align:center}
 
 /* 목표 */
-.gx-goal{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.gx-goal{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-bottom:2px solid color-mix(in srgb,var(--text) 28%,var(--line))}
 .gx-goal .gx-no{font-style:normal;display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:6px;padding:0 5px;
   background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:800;margin-right:2px}
 .gx-goal.extra{background:var(--s2b);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:9px}
@@ -766,7 +766,7 @@ select.sel{font-size:15px}
 .gx-goal.extra .tr i{background:var(--s2)}
 .gx-goal.extra .gx-chip{background:var(--panel);color:var(--s2)}
 .gx-goal:last-child{border-bottom:0}
-.gx-goal .n{font-size:15.5px;font-weight:700}
+.gx-goal .n{font-size:15.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .gx-goal .s{font-size:13.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px}
 .gx-goal .s input{width:64px;text-align:right;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
 .gx-goal .tr{grid-column:1/-1;height:6px;border-radius:4px;background:var(--panel-2);overflow:hidden;position:relative}
@@ -801,7 +801,7 @@ select.sel{font-size:15px}
 .gx-gS{color:var(--accent)}.gx-gA{color:var(--ok)}.gx-gB{color:var(--s4)}.gx-gD{color:var(--danger)}
 
 /* 코어 입력 */
-.gx-core{padding:14px 0;border-bottom:1px solid var(--line)}
+.gx-core{padding:14px 0;border-bottom:2px solid color-mix(in srgb,var(--text) 28%,var(--line))}
 .gx-core:first-child{padding-top:0}
 .gx-core:last-child{border-bottom:0;padding-bottom:0}
 .gx-ch{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
@@ -956,7 +956,7 @@ select.sel{font-size:15px}
 .gx-auto{font-size:13px;font-weight:600;color:var(--muted);margin-top:-2px}
 .gx-auto b{color:var(--s2)}
 .gx-autocard{background:var(--s2b);border-color:var(--s2)}
-.gx-autocard .gx-core{border-bottom-color:color-mix(in srgb,var(--s2) 30%,transparent)}
+.gx-autocard .gx-core{border-bottom-color:color-mix(in srgb,var(--s2) 70%,var(--text))}
 .gx-autot{color:var(--s2)}
 .gx-row2{display:flex;gap:7px}
 .gx-row2 input{flex:1;min-width:0}
@@ -1124,7 +1124,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-2147';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0626';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3906,7 +3906,7 @@ const CORES = [
   {id:'meeting', no:2, name:'미팅', spec:'주 2회 이상 · 미팅 제목',
    kind:'list', cadence:'weekly', target:2, unit:'회', w:3, tier:1,
    ph:'미팅 제목 (예: 화요 OM)', base:d => Math.round(d/7*2)},
-  {id:'health', no:3, name:'건강 · 운동', spec:'뉴트리 + 운동',
+  {id:'health', no:3, name:'운동', spec:'뉴트리 + 운동',
    kind:'list', cadence:'daily', target:1, unit:'회', w:2, tier:2,
    ph:'운동 내용 (예: 헬스 40분)', base:d => Math.round(d*0.7)},
   {id:'calls', no:4, name:'5통 전화', spec:'1일 5명 · 섬김활동의 통화 기록에서 자동',
@@ -3927,7 +3927,7 @@ const CAD = {daily:'매일', weekly:'주간', monthly:'월 누적'};
 const PIN_PH = ['PT','FSPH','EM','DIA','EDC'];
 const LV_HINT = {
   3:'음원 · 미팅 · 5통 전화 — 사업이 실제로 굴러가게 하는 최소 단위입니다.',
-  5:'3코어에 건강·운동과 소비자 만들기를 얹었습니다.'
+  5:'3코어에 운동과 소비자 만들기를 얹었습니다.'
 };
 
 /* ---------- 날짜 ---------- */
