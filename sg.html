@@ -947,7 +947,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1621';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1712';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3757,7 +3757,7 @@ const say = t => (typeof toast === 'function' ? toast(t) : null);
 
 /* ---------- 자료 ---------- */
 function blank(){
-  return {name:'', upPt:'', upJewel:'', level:3,
+  return {name:'', upPt:'', upJewel:'', level:5, levelChosen:false,
     vision:{why:'', nowPin:'', pins:{}, g1:'', subs:['','','']},
     plans:{}, log:{},
     org:{jewels:[], pts:[]}, admin:{type:'', name:''},
@@ -3775,7 +3775,7 @@ let G = (() => {
       g.org = Object.assign({jewels:[], pts:[]}, g.org || {});
       g.admin = Object.assign({type:'', name:''}, g.admin || {});
       g.team = Object.assign({rows:{}, promo:{}}, g.team || {});
-      if(!TIER[g.level]) g.level = 3;
+      if(!TIER[g.level] || !g.levelChosen) g.level = 5;
       return g;
     }
   }catch(e){}
@@ -3921,7 +3921,7 @@ function dateBar(){
 }
 function levelBar(){
   return `<div class="gx-lv">
-    ${[3,5].map(n => `<button class="gx-lvb ${G.level===n?'on':''}" data-glv="${n}">${n}코어</button>`).join('')}
+    ${[5,3].map(n => `<button class="gx-lvb ${G.level===n?'on':''}" data-glv="${n}">${n}코어</button>`).join('')}
     <span class="gx-hint">${LV_HINT[G.level]}</span>
   </div>`;
 }
@@ -4571,7 +4571,7 @@ window.GROWTH = {
 
     on('[data-gnav]', el => { const n = ymd(addD(pd(SEL), Number(el.dataset.gnav))); if(n <= TS){ SEL = n; again(); } });
     on('[data-gday]', el => { SEL = el.dataset.gday; again(); });
-    on('[data-glv]', el => { G.level = Number(el.dataset.glv); gsave(); again(); });
+    on('[data-glv]', el => { G.level = Number(el.dataset.glv); G.levelChosen = true; gsave(); again(); });
     on('[data-gmon]', el => {
       let {y,m} = MON; m += Number(el.dataset.gmon);
       if(m < 0){ m = 11; y--; } if(m > 11){ m = 0; y++; }
