@@ -898,9 +898,9 @@ select.sel{font-size:15px}
 .gx-tb tr.gx-me td{background:var(--accent-soft);font-weight:700}
 
 /* 성장노트 메뉴는 푸른빛으로 구분 */
-.tab[data-view^="g"]{color:var(--s2);font-weight:700}
-.tab[data-view^="g"]:hover{color:var(--s2)}
-.tab[data-view^="g"].on{color:var(--s2);border-bottom-color:var(--s2)}
+.tab.gtab{color:var(--s2);font-weight:700}
+.tab.gtab:hover{color:var(--s2)}
+.tab.gtab.on{color:var(--s2);border-bottom-color:var(--s2)}
 
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
@@ -926,11 +926,11 @@ select.sel{font-size:15px}
       <button class="tab" data-view="acts">섬김활동 <span class="cnt" id="cntActs"></span></button>
       <button class="tab" data-view="groups">명단분류</button>
       <span class="tabsep"></span>
-      <button class="tab" data-view="gvision">비전 · 목표</button>
-      <button class="tab" data-view="gself">자기섬김</button>
-      <button class="tab" data-view="ggrow">성장활동</button>
-      <button class="tab" data-view="gstats">성장통계</button>
-      <button class="tab" data-view="gteam">리더성장</button>
+      <button class="tab gtab" data-view="gvision">비전 · 목표</button>
+      <button class="tab gtab" data-view="gself">자기섬김</button>
+      <button class="tab gtab" data-view="ggrow">성장활동</button>
+      <button class="tab gtab" data-view="gstats">성장통계</button>
+      <button class="tab gtab" data-view="gteam">리더성장</button>
     </nav>
   </div>
 </header>
@@ -944,7 +944,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1600';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1603';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
