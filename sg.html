@@ -1169,6 +1169,24 @@ select.sel{font-size:15px}
 @media(max-width:640px){
   .tablewrap.simple tbody td.c-nm,.tablewrap.simple tbody td.c-ad,.tablewrap.simple tbody td.c-ph{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 }
+/* 명단분류 표 칸 너비 — 이름 6글자, 전화번호 전부, 주소는 남는 칸 */
+.tablewrap.simple th:nth-child(1){width:104px !important}
+.tablewrap.simple th:nth-child(2){width:138px !important}
+.tablewrap.simple th:nth-child(3){width:auto !important}
+.tablewrap.simple td.c-ph,.tablewrap.simple td.c-ph .tel{white-space:nowrap;overflow:visible}
+@media(max-width:640px){
+  .tablewrap.simple th:nth-child(1){width:96px !important}
+  .tablewrap.simple th:nth-child(2){width:126px !important}
+  .tablewrap.simple tbody td.c-ph{padding-left:4px;padding-right:4px}
+}
+.tablewrap.simple th:nth-child(1){width:118px !important}
+.tablewrap.simple td.c-nm{font-size:15.5px}
+@media(max-width:640px){
+  .tablewrap.simple th:nth-child(1){width:118px !important}
+  .tablewrap.simple th:nth-child(2){width:124px !important}
+  .tablewrap.simple tbody td.c-nm{font-size:15px;padding-left:8px}
+  .tablewrap.simple .sdot{margin-right:4px}
+}
 
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
@@ -1212,7 +1230,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0810';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0817';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
