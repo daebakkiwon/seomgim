@@ -1024,7 +1024,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1921';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1930';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3882,7 +3882,7 @@ let MON = {y:T0.getFullYear(), m:T0.getMonth()}; // 보고 있는 달
 let TMON = {y:T0.getFullYear(), m:T0.getMonth()};
 
 /* ---------- 집계 ---------- */
-const cores = () => CORES.filter(c => c.tier <= TIER[G.level]);
+const cores = () => CORES.slice();                 // 코어 선택 없이 7개 모두 쓴다
 const rec = d => G.log[d] || null;
 const iname = v => (typeof v === 'string' ? v : (v && v.n) || '').trim();
 const imemo = v => (typeof v === 'string' ? '' : (v && v.m) || '').trim();
@@ -4207,7 +4207,6 @@ function vSelf(){
   const manual = cores().filter(c => c.kind !== 'crm');
   const auto = cores().filter(c => c.kind === 'crm');
   return `
-  ${levelBar()}
   ${dateBar()}
   <div class="gx-board">
     <div class="card gx-ring">
@@ -4341,8 +4340,6 @@ function advice(sc,psc,R){
   if(G.vision.why) out.push(['','왜 하는가', `“${E(G.vision.why)}” — 이 문장이 흔들릴 때 숫자는 언제나 먼저 흔들립니다.`]);
   if(behind) out.push(['warn','목표 페이스',
     `<b>${E(behind.c.name)}</b>는 이 속도면 월말 ${behind.P.proj}${behind.c.unit}로 목표 ${behind.P.goal}${behind.c.unit}에 못 미칩니다. 남은 ${behind.P.left}일 동안 하루 <b>${behind.P.need}${behind.c.unit}</b>씩 필요합니다.`]);
-  if(sc >= 85 && G.level === 3) out.push(['','승급 신호', `3코어를 ${sc}점으로 소화하고 있습니다. 다음 달은 <b>5코어</b>로 올리세요.`]);
-  else if(sc < 55 && G.level === 5) out.push(['warn','범위 축소 권장', `5코어 ${sc}점입니다. 다음 달은 <b>3코어</b>로 좁혀 85점을 먼저 만드세요.`]);
   if(weak && weak.r < .7) out.push(['warn','가장 약한 코어',
     `<b>${weak.c.no}. ${E(weak.c.name)}</b> ${Math.round(weak.r*100)}%. 다른 걸 늘리기 전에 이것 하나만 다음 주 목표로 잡으세요.`]);
   if(psc > 0){
@@ -4554,7 +4551,7 @@ function weekReport(){
   const wf = ymd(ws), wt = ymd(we) > TS ? TS : ymd(we);
   const sc = score(wf,wt), psc = score(ymd(addD(ws,-7)), ymd(addD(ws,-1)));
   const p = plan(T0.getFullYear(), T0.getMonth());
-  return [`[성장노트 주간 보고] ${G.name || '이름'} · ${G.level}코어`,
+  return [`[성장노트 주간 보고] ${G.name || '이름'}`,
     `${ws.getMonth()+1}/${ws.getDate()} ~ ${we.getMonth()+1}/${we.getDate()}`,
     [G.upPt && `상위 PT ${G.upPt}`, G.upJewel && `상위 보석핀 ${G.upJewel}`].filter(Boolean).join(' · '),
     p.vow ? `이 달의 다짐 : ${p.vow}` : '',
@@ -4567,7 +4564,7 @@ function monthReport(){
   const {y,m} = MON, R = mrange(y,m);
   const P = mrange(m === 0 ? y-1 : y, m === 0 ? 11 : m-1);
   const sc = score(R.f,R.t), psc = score(P.f,P.t);
-  return [`[성장노트 월간 보고] ${G.name || '이름'} · ${G.level}코어`,
+  return [`[성장노트 월간 보고] ${G.name || '이름'}`,
     `${y}년 ${m+1}월${R.ended ? '' : ` (${Number(R.t.slice(8))}일까지)`}`,
     [G.upPt && `상위 PT ${G.upPt}`, G.upJewel && `상위 보석핀 ${G.upJewel}`].filter(Boolean).join(' · '),
     (G.vision.nowPin || G.vision.pins[FY]) ? `핀 : 현재 ${G.vision.nowPin||'-'} → FY${FY} 목표 ${G.vision.pins[FY]||'-'}` : '',
