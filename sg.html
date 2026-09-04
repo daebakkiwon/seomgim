@@ -1083,6 +1083,17 @@ select.sel{font-size:15px}
   .gx-rep-head .sc b{font-size:30px}
 }
 
+/* ===== 고객구분 기준 ===== */
+.chkrow{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:13.5px;font-weight:700;color:var(--muted)}
+.chkrow input{width:18px;height:18px;accent-color:var(--accent)}
+.chkrow small{font-weight:600;color:var(--faint)}
+.crit{padding:10px 0;border-bottom:1px solid var(--line)}
+.crit:last-child{border-bottom:0}
+.crit-h{margin-bottom:5px}
+.crit-h .badge{font-size:13.5px;padding:4px 11px}
+.crit-r{font-size:14.5px;font-weight:600;line-height:1.55}
+.crit-k{font-size:13px;font-weight:600;color:var(--danger);margin-top:3px;line-height:1.5}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1124,7 +1135,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0626';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0653';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1146,12 +1157,12 @@ const STORAGE_OK = (() => {
 })();
 
 const STAGES = [
-  { id:'prospect', name:'예상고객',  desc:'아직 만나기 전 · 인연을 맺어갈 분',       c:'--s1', b:'--s1b' },
-  { id:'consumer', name:'소비자',     desc:'제품을 한 번 경험해 보신 분',           c:'--s2', b:'--s2b' },
-  { id:"learner",  name:"학습소비자", desc:"제품과 사업을 배워가고 있는 분",      c:"--s6", b:"--s6b" },
-  { id:'loyal',    name:'애용자',     desc:'꾸준히 사용하며 신뢰를 주신 분',             c:'--s3', b:'--s3b' },
-  { id:'partner',  name:'사업자',     desc:'함께 사업을 시작한 파트너',                   c:'--s4', b:'--s4b' },
-  { id:'core',     name:'코어사업자', desc:'스스로 팀을 세워가는 핵심 파트너',            c:'--s5', b:'--s5b' },
+  { id:'prospect', name:'예상고객',   desc:'입력한 모든 분 · 아직 제품을 사기 전',                 c:'--s1', b:'--s1b' },
+  { id:'consumer', name:'소비자',     desc:'제품을 한 번이라도 사신 분 · 계속 유지',              c:'--s2', b:'--s2b' },
+  { id:'active',   name:'이달소비자', desc:'이번 달에 제품을 사신 분',                             c:'--s6', b:'--s6b' },
+  { id:'learner',  name:'학습소비자', desc:'자료제공 3회 · 미팅참석 2회 · 음원프로모션 1회 이상',   c:'--s3', b:'--s3b' },
+  { id:'loyal',    name:'애용자',     desc:'재구매 누적 10회 · 두 달 연속 구매',                   c:'--s4', b:'--s4b' },
+  { id:'partner',  name:'사업자',     desc:'미팅 10회 이상 · 매달 재구매 · 섬김성장노트 사용',      c:'--s5', b:'--s5b' },
 ];
 const stageOf = id => STAGES.find(s => s.id === id) || STAGES[0];
 const stageIdx = id => Math.max(0, STAGES.findIndex(s => s.id === id));
@@ -1702,6 +1713,7 @@ function render(){
   teamBar();
 
   const v = document.getElementById('view');
+  if(window.STAGE_AUTO && STAGE_AUTO.applyAll()) save();   // 기록에 따라 단계를 맞춘다
   const isG = !!(window.GROWTH && GROWTH.has(VIEW));
   const tb = document.getElementById('teamBar');
   if(tb) tb.classList.toggle('hide', isG);          // 팀분류 줄은 섬김노트 화면에서만
@@ -1770,6 +1782,8 @@ function viewDash(){
 
     ${schedCard()}
     ${quoteCard()}
+    <div class="slots" style="margin-top:8px"><button type="button" class="sbtn" data-criteria
+      style="background:var(--s6b);border-color:var(--s6);color:var(--s6)">📋 고객구분 기준</button></div>
 
     ${checks.length ? `<div class="card" style="padding:13px 16px;font-size:14px;color:var(--muted)">
         ${checks.map(t => `<div class="chkline">${t}</div>`).join('')}
@@ -2597,6 +2611,7 @@ function openForm(id){
           <div class="f">
             <label>회원번호</label>
             <input id="f_memberNo" value="${esc(p?.memberNo || '')}" placeholder="암웨이 회원번호" autocomplete="off">
+            <label class="chkrow"><input type="checkbox" id="f_noteUser" ${p?.noteUser ? 'checked' : ''}> 섬김성장노트 사용 중 <small>(사업자 기준)</small></label>
           </div>
           <div class="f">
             <label>명단분류</label>
@@ -2842,6 +2857,7 @@ function openForm(id){
       phone: fmtPhone(val('phone')), address: val('address'),
       source: val('source') === '__new' ? '' : val('source'),
       memberNo: val('memberNo'), needs: val('needs'), route: val('route'),
+      noteUser: document.getElementById('f_noteUser').checked,
       team: val('team') === '__new' ? '' : val('team'),
       family: val('family'), network: val('network'), memo: val('memo'),
       tags: val('tags').split(',').map(t => t.trim()).filter(Boolean),
@@ -3880,6 +3896,107 @@ document.addEventListener('keydown', e => {
 });
 
 render();
+</script>
+<script>
+/* ============================================================
+   고객구분 자동 상향·하향 — 섬김활동 기록으로 단계를 정한다
+   수동으로 바꾼 단계는 기준이 바뀔 때까지 그대로 둔다.
+   ============================================================ */
+(function(){
+"use strict";
+const BUY   = ['제품첫구매','제품재구매','제품 구매','재구매'];
+const REBUY = ['제품재구매','재구매'];
+const LEARN = {'자료제공':3, '미팅참석':2, '음원프로모션':1};
+const ymOf = d => { const x = new Date(d); return x.getFullYear()*12 + x.getMonth(); };
+
+const CRITERIA = [
+  {id:'prospect', name:'예상고객',  rule:'입력한 모든 분. 아직 제품을 사지 않은 예상고객입니다.', keep:''},
+  {id:'consumer', name:'소비자',    rule:'제품첫구매 또는 제품재구매 기록이 한 번이라도 있는 분.', keep:'한 번 소비자는 계속 소비자로 남습니다.'},
+  {id:'active',   name:'이달소비자', rule:'소비자 중 이번 달에 제품을 산 분.', keep:'이번 달 구매가 없으면 소비자로 내려갑니다.'},
+  {id:'learner',  name:'학습소비자', rule:'이달소비자 중 누적 자료제공 3회 · 미팅참석 2회 · 음원프로모션 1회 이상인 분.', keep:'두 달 연속 구매도 없고 자료제공·미팅참석·음원프로모션도 없으면 내려갑니다.'},
+  {id:'loyal',    name:'애용자',    rule:'학습소비자 중 누적 제품재구매 10회 이상이고 두 달 연속 산 분.', keep:'두 달 연속 구매가 끊기면 내려갑니다.'},
+  {id:'partner',  name:'사업자',    rule:'미팅참석 누적 10회 이상, 매달 제품재구매, 섬김성장노트를 쓰는 분 (고객 정보 수정에서 체크).', keep:'매달 구매가 끊기면 내려갑니다.'}
+];
+
+function calc(p){
+  const now = ymOf(new Date());
+  const buyM = new Set(), learnM = new Set();
+  let buys = 0, rebuy = 0, meet = 0;
+  const learn = {'자료제공':0, '미팅참석':0, '음원프로모션':0};
+  (p.logs || []).forEach(l => {
+    if(!l || !l.at || !l.kind) return;
+    const m = ymOf(l.at);
+    if(BUY.includes(l.kind)){ buys++; buyM.add(m); if(REBUY.includes(l.kind)) rebuy++; }
+    if(l.kind in learn){ learn[l.kind]++; learnM.add(m); }
+    if(l.kind === '미팅참석') meet++;
+  });
+  const b0 = buyM.has(now), b1 = buyM.has(now-1), b2 = buyM.has(now-2);
+  const consec = (b0 && b1) || (b1 && b2);                 // 이번 달은 아직 진행 중이라 지난 두 달도 인정
+  const learnOK = Object.keys(LEARN).every(k => learn[k] >= LEARN[k]);
+  const recent = b0 || b1 || learnM.has(now) || learnM.has(now-1);
+  if(buys === 0) return 'prospect';
+  if(meet >= 10 && consec && p.noteUser) return 'partner';
+  if(learnOK && rebuy >= 10 && consec) return 'loyal';
+  if(learnOK && recent) return 'learner';
+  if(b0) return 'active';
+  return 'consumer';
+}
+
+function applyAll(){
+  if(typeof DB === 'undefined' || !DB || !Array.isArray(DB.people)) return false;
+  let changed = false;
+  DB.people.forEach(p => {
+    if(p.stage === 'core'){ p.stage = 'partner'; changed = true; }          // 코어사업자는 없어졌다
+    if(!STAGES.some(s => s.id === p.stage)){ p.stage = 'prospect'; changed = true; }
+    const a = calc(p);
+    const setStage = (why) => {
+      if(p.stage === a) return;
+      const up = stageIdx(a) > stageIdx(p.stage);
+      p.logs = p.logs || [];
+      p.logs.push({ id:uid(), at:new Date().toISOString(), kind:'성장',
+        text:`${stageOf(p.stage).name} → ${stageOf(a).name} (${why} 자동 ${up ? '상향' : '하향'})` });
+      p.stage = a;
+    };
+    if(p.stageAuto === undefined){                       // 처음 한 번: 기준이 더 높으면 올리고, 손으로 올려둔 단계는 지키지 않고 내리지 않는다
+      if(stageIdx(a) > stageIdx(p.stage)) setStage('기준에 따라');
+      p.stageAuto = a; changed = true; return;
+    }
+    if(a === p.stageAuto) return;
+    const down = stageIdx(a) < stageIdx(p.stageAuto);   // 기준에서 내려간 사건이면 손으로 올린 단계도 내린다
+    if(down || stageIdx(a) > stageIdx(p.stage)) setStage('기준에 따라');
+    p.stageAuto = a; changed = true;
+  });
+  return changed;
+}
+
+function showCriteria(){
+  document.getElementById('modal').innerHTML = `
+  <div class="overlay" data-close>
+    <div class="modal">
+      <div class="mhead"><h2>고객구분 기준</h2><button class="x" data-close>×</button></div>
+      <div class="mbody">
+        <div style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:14px">
+          섬김활동 기록(제품첫구매 · 제품재구매 · 자료제공 · 미팅참석 · 음원프로모션)을 보고
+          <b style="color:var(--text)">자동으로 올리고 내립니다.</b> 손으로 바꾼 단계는 기준이 달라질 때까지 그대로 둡니다.
+        </div>
+        ${CRITERIA.map((c, i) => { const st = stageOf(c.id); return `
+        <div class="crit">
+          <div class="crit-h"><span class="badge" style="background:var(${st.b});color:var(${st.c})">${i+1}. ${c.name}</span></div>
+          <div class="crit-r">${c.rule}</div>
+          ${c.keep ? `<div class="crit-k">↓ ${c.keep}</div>` : ''}
+        </div>`; }).join('')}
+      </div>
+      <div class="mfoot"><button class="btn" data-close>닫기</button></div>
+    </div>
+  </div>`;
+}
+
+document.addEventListener('click', e => {
+  if(e.target.closest('[data-criteria]')) showCriteria();
+});
+window.STAGE_AUTO = { calc, applyAll, showCriteria, CRITERIA };
+})();
+
 </script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
