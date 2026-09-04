@@ -895,7 +895,7 @@ select.sel{font-size:15px}
 .gx-leg .h .sc{margin-left:auto;font-family:'Gowun Batang',serif;font-size:19px;font-weight:700}
 .gx-leg .bars{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--panel);margin:8px 0 7px}
 .gx-leg .bars i{display:block;height:100%}
-.gx-leg .mini{font-size:14px;font-weight:600;color:var(--text)}
+.gx-leg .sum{font-size:14px;font-weight:600;color:var(--text)}
 .gx-goals4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 @media(max-width:620px){.gx-goals4{grid-template-columns:repeat(2,1fr)}}
 .gx-goals4 label{display:flex;flex-direction:column;gap:4px;font-size:13.5px;font-weight:700;color:var(--text)}
@@ -1030,6 +1030,24 @@ select.sel{font-size:15px}
 .gx-tb tr.stale td{color:var(--faint)}
 .gx-tag.miss{background:color-mix(in srgb,var(--danger) 10%,var(--panel));color:var(--danger)}
 
+.gx-tb tr.gx-sum td{font-weight:700;border-top:2px solid var(--line);background:var(--panel)}
+@media(max-width:640px){.gx-types[style]{grid-template-columns:repeat(4,1fr) !important}}
+
+/* 섬김노트의 '표를 카드로' 모바일 규칙에서 성장노트 표는 제외 — 표 그대로 보인다 */
+@media(max-width:640px){
+  .gx-tb{display:table;min-width:0;width:100%}
+  .gx-tb thead{display:table-header-group}
+  .gx-tb tbody{display:table-row-group}
+  .gx-tb tbody tr{display:table-row;background:transparent;border:0;border-radius:0;padding:0;margin:0;box-shadow:none}
+  .gx-tb tbody td{display:table-cell;border-bottom:1px solid var(--line);padding:8px 5px;font-size:13px;vertical-align:middle}
+  .gx-tb tbody td::before{content:none}
+  .gx-tb tbody td:first-child{padding:8px 5px;border-bottom:1px solid var(--line);margin:0}
+  .gx-tb th{padding:8px 5px;font-size:11.5px;white-space:nowrap}
+  .gx-tb tr.top td{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+  .gx-tb tr.low td{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+  .gx-tb tr.gx-sum td{background:var(--panel-2)}
+}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1072,7 +1090,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-2020';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-2102';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4503,14 +4521,14 @@ function fbReady(){
 
 /* ---- 팀원: 이 달 요약을 올린다 ---- */
 function monthCounts(y,m){
-  const R = mrange(y,m), counts = {};
-  CORES.forEach(c => { counts[c.id] = sumR(c, R.f, R.t); });
+  const R = mrange(y,m), counts = {}, rates = {};
+  CORES.forEach(c => { counts[c.id] = sumR(c, R.f, R.t); rates[c.id] = Math.round(rate(c, R.f, R.t)*100); });
   let days = 0;
   for(let d = pd(R.f); ymd(d) <= R.t; d = addD(d,1)){
     const ds = ymd(d);
     if(dayScore(ds) > 0 || (crmIndex()[ds] || []).length) days++;
   }
-  return {score:score(R.f,R.t), counts, days};
+  return {score:score(R.f,R.t), counts, rates, days};
 }
 let PUSH_T = null; const PUSH_DONE = {};
 function pushReport(){
@@ -4522,7 +4540,7 @@ function pushReport(){
     for(const [y,m] of months){
       const mc = monthCounts(y,m), key = mk(y,m);
       const doc = {uid:ME.uid, name:G.name.trim(), pt:G.upPt || '', jewel:G.upJewel || '', nowPin:G.vision.nowPin || '',
-        score:mc.score, counts:mc.counts, days:mc.days, streak:streak(), month:key,
+        score:mc.score, counts:mc.counts, rates:mc.rates, days:mc.days, streak:streak(), month:key,
         app:(typeof APP_VER === 'string' ? APP_VER : '')};
       const sig = JSON.stringify(doc);
       if(PUSH_DONE[key] === sig) continue;
@@ -4571,7 +4589,7 @@ async function loadTeam(){
     TEAM.month = tKey(); TEAM.loaded = true;
   }catch(e){ TEAM.err = '자료를 불러오지 못했습니다. ' + (e && e.message ? e.message : ''); }
   TEAM.loading = false;
-  redrawIf('gteam');
+  redrawIf('gteam'); redrawIf('gstats');
 }
 const fmtErr = e => {
   const c = (e && e.code) || '';
@@ -4686,6 +4704,7 @@ function teamBoard(){
     <div><span class="k">평균 실행률</span><b>${a}<small>점</small></b><span class="d">전월 ${b}점 · ${delta(a-b,'점')}</span></div>
     <div><span class="k">프로모션 달성</span><b>${done.length}<small>명</small></b><span class="d">전 조건 통과</span></div>
   </div>
+  ${teamStatsSections(mine)}
 
   <div class="section-title">${title}별 현황</div>
   <div class="card gx-pad">${list.length ? list.map(x => {
@@ -4693,7 +4712,7 @@ function teamBoard(){
     const sum = id => x.rows.reduce((s,v) => s + tCnt(v,id), 0);
     return `<div class="gx-leg">
       <div class="h"><b>${E(x.name)}</b><small>${x.rows.length}명</small><span class="sc">${sc}<small>점</small> ${delta(sc-pv,'점')}</span></div>
-      <div class="mini">전화 <b>${sum('calls')}</b> · 미팅 <b>${sum('meeting')}</b> · 소비자 <b>${sum('consumer')}</b> · 학습 <b>${sum('learner')}</b> · 가입 <b>${sum('newjoin')}</b> · 달성 <b>${x.rows.filter(v => tHitN(v) === 4).length}명</b></div>
+      <div class="sum">전화 <b>${sum('calls')}</b> · 미팅 <b>${sum('meeting')}</b> · 소비자 <b>${sum('consumer')}</b> · 학습 <b>${sum('learner')}</b> · 가입 <b>${sum('newjoin')}</b> · 달성 <b>${x.rows.filter(v => tHitN(v) === 4).length}명</b></div>
     </div>`; }).join('') : '<div class="gx-empty">아직 올라온 자료가 없습니다. 팀원이 비전·목표에 성명과 상위 PT를 적으면 자동으로 올라옵니다.</div>'}</div>
 
   <div class="section-title">활동자 순위 <small class="gx-sub">상위 ${topN}명 · 하위 ${topN}명 표시</small></div>
@@ -4776,6 +4795,62 @@ async function saveOrg(){
   catch(e){ say('저장하지 못했습니다 — ' + fmtErr(e)); }
 }
 
+
+/* ---- 성장통계 안의 팀 통계 (리더만) ---- */
+let TSCOPE = 'all', TITEM = 'calls';
+const tRate = (r, c) => (r.rates && typeof r.rates[c.id] === 'number') ? r.rates[c.id]
+  : Math.min(100, Math.round(tCnt(r, c.id) / Math.max(1, c.base(dim(TMON.y, TMON.m))) * 100));
+function groupTable(label, field, rows){
+  const map = new Map();
+  rows.forEach(r => { const k = r[field] || '미지정'; if(!map.has(k)) map.set(k, []); map.get(k).push(r); });
+  const list = [...map.entries()].map(([k, rs]) => ({k, n:rs.length, avg:tAvg(rs.map(x => x.score)), done:rs.filter(x => tHitN(x) === 4).length}))
+    .sort((a,b) => b.avg - a.avg);
+  const N = rows.length, avgAll = tAvg(rows.map(x => x.score)), doneAll = rows.filter(x => tHitN(x) === 4).length;
+  const pct = (d,n) => n ? Math.round(d/n*100) : 0;
+  return `<div class="gx-scroll"><table class="gx-tb"><thead><tr><th>${label}</th><th>참가인원</th><th>평균 실행률</th><th>달성</th><th>달성율</th></tr></thead>
+  <tbody>${list.map(g => `<tr><td><b>${E(g.k)}</b></td><td>${g.n}명</td><td><b>${g.avg}</b>점</td><td>${g.done}명</td><td><b>${pct(g.done,g.n)}%</b></td></tr>`).join('')
+    || '<tr><td colspan="5" class="gx-empty">자료가 없습니다</td></tr>'}
+  <tr class="gx-sum"><td>전체</td><td>${N}명</td><td><b>${avgAll}</b>점</td><td>${doneAll}명</td><td><b>${pct(doneAll,N)}%</b></td></tr></tbody></table></div>`;
+}
+function allTable(rows){
+  const N = rows.length, avg = tAvg(rows.map(x => x.score)), done = rows.filter(x => tHitN(x) === 4).length;
+  const bands = [['S·A 80점 이상', rows.filter(x => x.score >= 80).length], ['B 65~79점', rows.filter(x => x.score >= 65 && x.score < 80).length],
+    ['C 50~64점', rows.filter(x => x.score >= 50 && x.score < 65).length], ['D 50점 미만', rows.filter(x => x.score < 50).length]];
+  return `<div class="gx-tiles gx-t4" style="padding:4px 0 10px">
+    <div><span class="k">참가인원</span><b>${N}<small>명</small></b></div>
+    <div><span class="k">평균 실행률</span><b>${avg}<small>점</small></b></div>
+    <div><span class="k">프로모션 달성</span><b>${done}<small>명</small></b></div>
+    <div><span class="k">달성율</span><b>${N ? Math.round(done/N*100) : 0}<small>%</small></b></div></div>
+  <div class="gx-tags">${bands.map(([l,n]) => `<span class="gx-tag">${l} <small>${n}명</small></span>`).join('')}</div>`;
+}
+function itemTable(rows){
+  const c = CORES.find(x => x.id === TITEM) || CORES[0];
+  const list = rows.map(r => ({r, cnt:tCnt(r, c.id), rt:tRate(r, c)})).sort((a,b) => b.rt - a.rt || b.cnt - a.cnt);
+  const hit = list.filter(x => x.rt >= 100).length, avg = tAvg(list.map(x => x.rt));
+  return `<div class="gx-note" style="margin:6px 0 8px">참가 <b>${rows.length}명</b> · 평균 실행율 <b>${avg}%</b> · 목표 달성 <b>${hit}명</b></div>
+  <div class="gx-scroll"><table class="gx-tb"><thead><tr><th>순위</th><th>이름</th><th>상위 PT</th><th>이 달 실적</th><th>실행율</th></tr></thead>
+  <tbody>${list.map((x,i) => `<tr class="${x.rt >= 100 ? 'top' : x.rt < 50 ? 'low' : ''}"><td>${i+1}</td><td><b>${E(x.r.name)}</b></td><td>${E(x.r.pt || '-')}</td>
+    <td>${x.cnt}${c.unit}</td><td><b>${x.rt}%</b></td></tr>`).join('') || '<tr><td colspan="5" class="gx-empty">자료가 없습니다</td></tr>'}</tbody></table></div>`;
+}
+function teamStatsSections(rows){
+  const scopes = LEADER.role === 'all' ? [['all','전체'],['jewel','보석핀별'],['pt','PT별']]
+    : LEADER.role === 'jewel' ? [['all','전체'],['pt','PT별']] : [['all','전체']];
+  if(!scopes.some(s => s[0] === TSCOPE)) TSCOPE = 'all';
+  const body = TSCOPE === 'jewel' ? groupTable('보석핀', 'jewel', rows) : TSCOPE === 'pt' ? groupTable('PT', 'pt', rows) : allTable(rows);
+  return `
+  <div class="section-title">참가인원 · 달성율</div>
+  <div class="card gx-pad">
+    <div class="chips" style="margin-bottom:10px">${scopes.map(([k,l]) => `<button class="chip ${TSCOPE === k ? 'on' : ''}" data-gtscope="${k}">${l}</button>`).join('')}</div>
+    ${body}
+    <p class="gx-note">달성 = 프로모션 4개 조건(실행률·전화·미팅·소비자)을 모두 채운 사람 · 위 화살표로 달을 바꿔 볼 수 있습니다.</p>
+  </div>
+  <div class="section-title">항목별 실행율 <small class="gx-sub">전체 인원</small></div>
+  <div class="card gx-pad">
+    <div class="gx-types" style="grid-template-columns:repeat(7,1fr)">${CORES.map(c =>
+      `<button class="gx-type ${c.id === TITEM ? 'on' : ''} ${c.kind === 'crm' ? 'auto' : ''}" data-gtitem="${c.id}"><span>${c.no}</span>${E(c.name.split(' /')[0].split(' ·')[0].replace(' 만들기',''))}</button>`).join('')}</div>
+    ${itemTable(rows)}
+  </div>`;
+}
 /* ---------- 리포트 ---------- */
 function weekReport(){
   const ws = weekStart(pd(SEL)), we = addD(ws,6);
@@ -4867,6 +4942,9 @@ if(typeof save === 'function'){
   const _save = save;
   save = function(){ const r = _save.apply(this, arguments); try{ CRM_IDX = null; pushReport(); }catch(e){} return r; };
 }
+
+// 화면 점검용 — 서버 자료 없이 리더 화면을 그려 본다 (규칙상 실제 자료는 읽을 수 없다)
+window.__gxMock = (leader, rows, prevRows) => { LEADER = leader; LEADER_LOADED = true; ME = {uid:leader.uid || 'mock', isAnonymous:false}; TEAM = {month:tKey(), rows:rows || [], prevRows:prevRows || [], leaders:[], loading:false, loaded:true, err:''}; };
 
 window.GROWTH = {
   views: VIEWS,
@@ -5025,6 +5103,9 @@ window.GROWTH = {
       await saveOrg(); again();
     });
     on('[data-gptdel]', async el => { ORG.pts.splice(Number(el.dataset.gptdel),1); await saveOrg(); again(); });
+
+    on('[data-gtscope]', el => { TSCOPE = el.dataset.gtscope; again(); });
+    on('[data-gtitem]', el => { TITEM = el.dataset.gtitem; again(); });
 
     /* 성장활동 */
     on('[data-gtype]', el => { GSEL = el.dataset.gtype; again(); });
