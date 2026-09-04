@@ -1048,6 +1048,41 @@ select.sel{font-size:15px}
   .gx-tb tr.gx-sum td{background:var(--panel-2)}
 }
 
+/* ===== 상담자료 ===== */
+.gx-rep-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent-soft),var(--panel-2))}
+.gx-rep-head .who b{display:block;font-family:'Gowun Batang',serif;font-size:20px}
+.gx-rep-head .who span{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-top:2px}
+.gx-rep-head .who small{display:block;font-size:12.5px;font-weight:700;color:var(--accent);margin-top:6px}
+.gx-rep-head .sc{text-align:right;flex:0 0 auto}
+.gx-rep-head .sc b{font-family:'Gowun Batang',serif;font-size:36px;line-height:1}
+.gx-rep-head .sc small{font-size:13px;color:var(--muted);margin-left:2px}
+.gx-rep-head .sc em{display:block;font-style:normal;font-size:13px;font-weight:800;margin-top:2px}
+.gx-rep-head .sc span{display:block;font-size:12.5px;font-weight:700;margin-top:4px}
+.gx-rep-head .sc span i{font-style:normal;color:var(--muted);font-weight:600}
+.gx-rep-meta{display:flex;flex-wrap:wrap;gap:6px 14px;padding:10px 4px 4px;font-size:13px;font-weight:600;color:var(--muted)}
+.gx-rep-meta b{color:var(--text)}
+.gx-rep-items{margin-top:8px;border-top:1px solid var(--line)}
+.gx-rep-items .r{display:grid;grid-template-columns:minmax(96px,1.2fr) 1.4fr auto 52px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.gx-rep-items .n{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gx-rep-items .n i{font-style:normal;display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:800;margin-right:6px}
+.gx-rep-items .r.auto .n i{background:var(--s2b);color:var(--s2)}
+.gx-rep-items .tr{height:8px;border-radius:4px;background:var(--panel-2);overflow:hidden;display:block}
+.gx-rep-items .tr u{display:block;height:100%;background:var(--accent);border-radius:4px}
+.gx-rep-items .r.auto .tr u{background:var(--s2)}
+.gx-rep-items .v{font-size:12.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.gx-rep-items b{text-align:right;font-size:14px}
+.gx-rep-items b.ok{color:var(--ok)}.gx-rep-items b.no{color:var(--danger)}
+.gx-rep-notes{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.gx-rep-notes > div{display:flex;gap:10px;align-items:baseline;font-size:13.5px}
+.gx-rep-notes span{flex:0 0 auto;font-weight:700;color:var(--muted)}
+.gx-rep-notes b{font-weight:700}
+@media(max-width:640px){
+  .gx-rep-items .r{grid-template-columns:minmax(84px,1fr) 1fr auto 44px;gap:6px;font-size:12.5px}
+  .gx-rep-items .v{font-size:11.5px}
+  .gx-rep-head .sc b{font-size:30px}
+}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1075,7 +1110,6 @@ select.sel{font-size:15px}
       <button class="tab gtab" data-view="gvision">비전 · 목표</button>
       <button class="tab gtab" data-view="gself">자기섬김</button>
       <button class="tab gtab" data-view="ggrow">성장활동</button>
-      <button class="tab gtab" data-view="gstats">성장통계</button>
       <button class="tab gtab" data-view="gteam">리더성장</button>
     </nav>
   </div>
@@ -1090,7 +1124,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-2124';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-2134';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3859,7 +3893,7 @@ render();
 const GKEY = 'growth.note.v1';
 const VIEWS = {
   gvision:'비전 · 목표', gself:'자기섬김', ggrow:'성장활동',
-  gstats:'성장통계', gteam:'리더성장'
+  gteam:'리더성장'
 };
 
 /* ---------- 코어 ---------- */
@@ -4386,108 +4420,11 @@ function vGrow(){
   </div>
   <div class="section-title">일자별 내역 <small class="gx-sub">${list.length}건 · 최근 순</small>
     <span class="gx-mnav"><button class="btn sm" data-ghcopy>내역 복사</button></span></div>
-  <div class="card gx-pad ${auto ? 'gx-autocard' : ''}">${rows || '<div class="gx-empty">이 달에는 아직 기록이 없습니다.</div>'}</div>`;
+  <div class="card gx-pad ${auto ? 'gx-autocard' : ''}">${rows || '<div class="gx-empty">이 달에는 아직 기록이 없습니다.</div>'}</div>
+  ${repCard()}`;
 }
 
 /* ── 성장통계 ── */
-function vStats(){
-  const {y,m} = MON, R = mrange(y,m);
-  const P = mrange(m === 0 ? y-1 : y, m === 0 ? 11 : m-1);
-  const sc = score(R.f,R.t), psc = score(P.f,P.t);
-  const now = (y === T0.getFullYear() && m === T0.getMonth());
-
-  let cal = WD.map(w => `<span class="h">${w}</span>`).join('');
-  const lead = (new Date(y,m,1).getDay()+6)%7;
-  for(let i = 0; i < lead; i++) cal += '<span class="c blank"></span>';
-  for(let d = 1; d <= dim(y,m); d++){
-    const s = `${y}-${pad(m+1)}-${pad(d)}`, fut = s > TS;
-    const v = fut ? 0 : dayScore(s);
-    cal += `<span class="c${s===TS?' today':''}" title="${m+1}월 ${d}일 · ${v}점"
-      style="background:${fut?'transparent':`color-mix(in srgb, var(--accent) ${v}%, var(--panel-2))`};
-      ${!fut && v>=62?'color:var(--panel)':''}">${d}</span>`;
-  }
-  const rows = [
-    ['실행률', sc, psc, '점'],
-    ['최장 연속일', longest(R.f,R.t), longest(P.f,P.t), '일'],
-    ['실행 볼륨', vol(R), vol(P), '']
-  ];
-  return `<div class="section-title">${y}년 ${m+1}월 성장 리포트
-    <span class="gx-mnav"><button class="btn sm ghost" data-gmon="-1">‹</button>
-      <button class="btn sm ghost" data-gmon="1" ${now?'disabled':''}>›</button></span></div>
-  <div class="card gx-pad">
-    <div class="gx-2col">
-      <div><div class="gx-lb">실행 캘린더 · 일일 실행률</div><div class="gx-cal">${cal}</div></div>
-      <div><div class="gx-lb">코어별 월 달성률</div>
-        ${cores().map(c => {
-          const p = Math.round(rate(c,R.f,R.t)*100);
-          const a = sumR(c,R.f,R.t), b = sumR(c,P.f,P.t);
-          return `<div class="gx-pb ${p<50?'low':p<80?'mid':''}">
-            <div class="t">${c.no}. ${E(c.name)}</div>
-            <div class="n">${p}% <small>· ${a}${c.unit} (전월 ${b}${c.unit})</small></div>
-            <div class="tr"><i style="width:${p}%"></i></div></div>`;
-        }).join('')}</div>
-    </div>
-    <div style="border-top:1px solid var(--line); margin-top:14px; padding-top:14px">
-      <div class="gx-lb">성장 3지표 · 전월 대비</div>
-      <table class="gx-tb"><thead><tr><th>지표</th><th>${m+1}월</th><th>${P.m+1}월</th><th>변화</th></tr></thead>
-      <tbody>${rows.map(([n,a,b,u]) =>
-        `<tr><td>${n}</td><td><b>${a}${u}</b></td><td class="mu">${b}${u}</td><td>${delta(a-b,u)}</td></tr>`).join('')}</tbody></table>
-    </div>
-    ${advice(sc,psc,R)}
-  </div>
-  <div class="section-title">일자별 성장 기록</div>
-  <div class="card gx-pad">${statusList(R)}</div>
-  <div class="section-title">스폰서 보고</div>
-  <div class="card gx-pad">
-    <div class="gx-btns"><button class="btn sm primary" data-grep="week">주간 리포트 복사</button>
-      <button class="btn sm primary" data-grep="month">월간 리포트 복사</button>
-      <button class="btn sm" data-grep="dump">성장노트 자료 내보내기</button></div>
-    <pre class="gx-out" id="gxOut">버튼을 누르면 여기에 만들어지고 클립보드에도 복사됩니다.</pre>
-  </div>`;
-}
-const vol = R => ['calls','meeting','consumer'].filter(id => cores().some(c => c.id === id))
-  .reduce((s,id) => s + sumR(CORES.find(c => c.id === id), R.f, R.t), 0);
-function statusList(R){
-  let out = '', any = false;
-  for(let d = pd(R.t); ymd(d) >= R.f; d = addD(d,-1)){
-    const ds = ymd(d), r = rec(ds);
-    if(!r) continue;
-    any = true;
-    const bits = [];
-    if(r.audio && r.audio.title) bits.push(`음원 「${E(r.audio.title)}」 — ${E(r.audio.msg||'')}`);
-    (r.meeting||[]).forEach(v => bits.push(`미팅 · ${E(iname(v))}`));
-    (r.health||[]).forEach(v => bits.push(`운동 · ${E(iname(v))}`));
-    const items = [];
-    ['calls','consumer'].forEach(id => (r[id]||[]).filter(iname).forEach(v =>
-      items.push(`<span class="gx-item"><b>${E(iname(v))}</b> ${E(imemo(v))}</span>`)));
-    out += `<div class="gx-day-log"><div class="h"><b>${d.getMonth()+1}.${d.getDate()} ${WD[(d.getDay()+6)%7]}요일</b>
-      <span>${dayScore(ds)}점</span></div>
-      ${bits.length ? `<div class="gx-tags">${bits.map(b => `<span class="gx-tag">${b}</span>`).join('')}</div>` : ''}
-      ${items.length ? `<div class="gx-items">${items.join('')}</div>` : ''}</div>`;
-  }
-  return any ? out : '<div class="gx-empty">이 달에 기록된 내용이 없습니다.</div>';
-}
-function advice(sc,psc,R){
-  const out = [];
-  const weak = cores().map(c => ({c, r:rate(c,R.f,R.t)})).sort((a,b) => a.r-b.r)[0];
-  const behind = cores().map(c => ({c, P:pace(c,R.y,R.m)}))
-    .filter(x => x.P.running && x.P.proj < x.P.goal)
-    .sort((a,b) => (a.P.proj/a.P.goal)-(b.P.proj/b.P.goal))[0];
-  if(G.vision.why) out.push(['','왜 하는가', `“${E(G.vision.why)}” — 이 문장이 흔들릴 때 숫자는 언제나 먼저 흔들립니다.`]);
-  if(behind) out.push(['warn','목표 페이스',
-    `<b>${E(behind.c.name)}</b>는 이 속도면 월말 ${behind.P.proj}${behind.c.unit}로 목표 ${behind.P.goal}${behind.c.unit}에 못 미칩니다. 남은 ${behind.P.left}일 동안 하루 <b>${behind.P.need}${behind.c.unit}</b>씩 필요합니다.`]);
-  if(weak && weak.r < .7) out.push(['warn','가장 약한 코어',
-    `<b>${weak.c.no}. ${E(weak.c.name)}</b> ${Math.round(weak.r*100)}%. 다른 걸 늘리기 전에 이것 하나만 다음 주 목표로 잡으세요.`]);
-  if(psc > 0){
-    const d = sc-psc;
-    out.push(['','성장 판정', d >= 5 ? `전월 대비 <b>+${d}점</b>. 상승 추세입니다.`
-      : d <= -5 ? `전월 대비 <b>${d}점</b>. 하락은 대개 미팅 결석에서 시작됩니다.`
-      : `전월 대비 ${d>=0?'+':''}${d}점으로 평행선입니다. 이제 <b>실행 볼륨</b>을 20% 올려 보세요.`]);
-  }
-  return out.map(([w,k,p]) => `<div class="gx-adv ${w}"><div class="k">${k}</div><p>${p}</p></div>`).join('');
-}
-
-
 /* ============================================================
    팀 서버 (Firebase) — 팀원은 숫자만 올리고, 리더는 로그인해서 본다
    고객 이름·전화·기록 내용은 올라가지 않는다. 이름과 항목별 숫자뿐이다.
@@ -4599,7 +4536,7 @@ async function loadTeam(){
     TEAM.month = tKey(); TEAM.loaded = true;
   }catch(e){ TEAM.err = '자료를 불러오지 못했습니다. ' + (e && e.message ? e.message : ''); }
   TEAM.loading = false;
-  redrawIf('gteam'); redrawIf('gstats');
+  redrawIf('gteam');
 }
 const fmtErr = e => {
   const c = (e && e.code) || '';
@@ -4862,33 +4799,93 @@ function teamStatsSections(rows){
   </div>`;
 }
 /* ---------- 리포트 ---------- */
-function weekReport(){
-  const ws = weekStart(pd(SEL)), we = addD(ws,6);
-  const wf = ymd(ws), wt = ymd(we) > TS ? TS : ymd(we);
-  const sc = score(wf,wt), psc = score(ymd(addD(ws,-7)), ymd(addD(ws,-1)));
-  const p = plan(T0.getFullYear(), T0.getMonth());
-  return [`[성장노트 주간 보고] ${G.name || '이름'}`,
-    `${ws.getMonth()+1}/${ws.getDate()} ~ ${we.getMonth()+1}/${we.getDate()}`,
-    [G.upPt && `상위 PT ${G.upPt}`, G.upJewel && `상위 보석핀 ${G.upJewel}`].filter(Boolean).join(' · '),
-    p.vow ? `이 달의 다짐 : ${p.vow}` : '',
-    `주간 실행률 ${sc}점 (${grade(sc).k}·${grade(sc).t}) · 지난주 대비 ${sc-psc>=0?'+':''}${sc-psc}점`,
-    `연속 실행 ${streak()}일`,
-    ...cores().map(c => `· ${c.name} ${sumR(c,wf,wt)}${c.unit} (${Math.round(rate(c,wf,wt)*100)}%)`)
-  ].filter(Boolean).join('\n');
+
+/* ---------- 상담자료 — 스폰서·리더와 상담할 때 보여주는 요약 ---------- */
+let RSEL = 'month';
+function repRange(){
+  if(RSEL === 'week'){
+    const ws = weekStart(pd(SEL)), we = addD(ws,6);
+    return {f:ymd(ws), t: ymd(we) > TS ? TS : ymd(we), label:`${ws.getMonth()+1}/${ws.getDate()} ~ ${we.getMonth()+1}/${we.getDate()} 주간`,
+      months:[[ws.getFullYear(), ws.getMonth()], [we.getFullYear(), we.getMonth()]].filter((x,i,a) => i === 0 || x[1] !== a[0][1])};
+  }
+  if(RSEL === 'q'){
+    const a = new Date(GMON.y, GMON.m-2, 1), b = new Date(GMON.y, GMON.m-1, 1), R = mrange(GMON.y, GMON.m);
+    return {f:ymd(a), t:R.t, label:`${a.getMonth()+1}월 ~ ${GMON.m+1}월 · 3개월`,
+      months:[[a.getFullYear(), a.getMonth()], [b.getFullYear(), b.getMonth()], [GMON.y, GMON.m]]};
+  }
+  const R = mrange(GMON.y, GMON.m);
+  return {f:R.f, t:R.t, label:`${GMON.y}년 ${GMON.m+1}월${R.ended ? '' : ` (${Number(R.t.slice(8))}일까지)`}`, months:[[GMON.y, GMON.m]]};
 }
-function monthReport(){
-  const {y,m} = MON, R = mrange(y,m);
-  const P = mrange(m === 0 ? y-1 : y, m === 0 ? 11 : m-1);
-  const sc = score(R.f,R.t), psc = score(P.f,P.t);
-  return [`[성장노트 월간 보고] ${G.name || '이름'}`,
-    `${y}년 ${m+1}월${R.ended ? '' : ` (${Number(R.t.slice(8))}일까지)`}`,
-    [G.upPt && `상위 PT ${G.upPt}`, G.upJewel && `상위 보석핀 ${G.upJewel}`].filter(Boolean).join(' · '),
-    (G.vision.nowPin || G.vision.pins[FY]) ? `핀 : 현재 ${G.vision.nowPin||'-'} → FY${FY} 목표 ${G.vision.pins[FY]||'-'}` : '',
-    `월 실행률 ${sc}점 — ${grade(sc).k}등급 ${grade(sc).t} · 전월 ${psc}점 대비 ${sc-psc>=0?'+':''}${sc-psc}점`,
-    '― 목표 대비',
-    ...cores().map(c => { const p = pace(c,y,m); return `· ${c.name} ${p.done}/${p.goal}${c.unit} (${Math.round(p.pct)}%)`; }),
-    `· 최장 연속 ${longest(R.f,R.t)}일`
-  ].filter(Boolean).join('\n');
+function repData(){
+  const R = repRange();
+  const sc = score(R.f, R.t);
+  const days = Math.round((pd(R.t)-pd(R.f))/864e5)+1;
+  const psc = score(ymd(addD(pd(R.f), -days)), ymd(addD(pd(R.f), -1)));
+  const items = CORES.map(c => {
+    const done = sumR(c, R.f, R.t);
+    let goal = 0;
+    R.months.forEach(([y,m]) => {
+      const M = mrange(y,m), a = M.f > R.f ? M.f : R.f, b = M.t < R.t ? M.t : R.t;
+      if(a > b) return;
+      const dd = Math.round((pd(b)-pd(a))/864e5)+1;
+      goal += goalOf(c,y,m) * dd / dim(y,m);
+    });
+    goal = Math.max(1, Math.round(goal));
+    return {c, done, goal, pct:Math.round(done/goal*100)};
+  });
+  const bySc = items.slice().sort((a,b) => b.pct-a.pct);
+  const monthly = R.months.map(([y,m]) => { const M = mrange(y,m); return {m, sc:score(M.f, M.t)}; });
+  return {R, sc, psc, items, best:bySc[0], worst:bySc[bySc.length-1], monthly, streak:streak(), longest:longest(R.f,R.t)};
+}
+function repText(){
+  const D = repData(), g = grade(D.sc), d = D.sc - D.psc;
+  const bar = '━━━━━━━━━━━━━━━';
+  const L = [`📋 상담자료 · ${D.R.label}`,
+    `👤 ${G.name || '이름'}${G.upPt ? ' · 상위 PT ' + G.upPt : ''}${G.upJewel ? ' · 보석핀 ' + G.upJewel : ''}`];
+  if(G.vision.nowPin || G.vision.pins[FY]) L.push(`📍 핀 · 현재 ${G.vision.nowPin || '-'} → FY${FY} 목표 ${G.vision.pins[FY] || '-'}`);
+  L.push(bar, `📊 실행률 ${D.sc}점 · ${g.k} ${g.t}`,
+    `　직전 기간 ${D.psc}점 → ${d >= 0 ? '▲ +' + d : '▼ ' + d}점`,
+    `🔥 연속 실행 ${D.streak}일 · 기간 내 최장 ${D.longest}일`);
+  if(D.monthly.length > 1) L.push('📈 ' + D.monthly.map(x => `${x.m+1}월 ${x.sc}점`).join(' → '));
+  L.push(bar, '✅ 항목별 실적 (실적 / 목표)');
+  D.items.forEach(x => L.push(`　${x.c.no}. ${x.c.name}　${x.done} / ${x.goal}${x.c.unit} · ${x.pct}%`));
+  L.push(bar, `💪 잘한 것 · ${D.best.c.name} ${D.best.pct}%`, `🔧 보완할 것 · ${D.worst.c.name} ${D.worst.pct}%`);
+  if(G.vision.g1) L.push(`🎯 FY${FY} 핵심 목표 · ${G.vision.g1}`);
+  if(G.vision.why) L.push(`💬 하는 이유 · ${G.vision.why}`);
+  return L.join('\n');
+}
+function repCard(){
+  const D = repData(), g = grade(D.sc), d = D.sc - D.psc;
+  return `
+  <div class="section-title">상담자료 <small class="gx-sub">스폰서·리더와 상담할 때</small></div>
+  <div class="card gx-pad gx-rep">
+    <div class="chips" style="margin-bottom:12px">${[['week','이번 주'],['month','월간'],['q','최근 3개월']].map(([k,l]) =>
+      `<button class="chip ${RSEL === k ? 'on' : ''}" data-grsel="${k}">${l}</button>`).join('')}</div>
+    <div class="gx-rep-head">
+      <div class="who"><b>${E(G.name || '이름을 적어 주세요')}</b>
+        <span>${[G.upPt && '상위 PT ' + G.upPt, G.upJewel && '보석핀 ' + G.upJewel].filter(Boolean).map(E).join(' · ') || '비전·목표에서 상위 PT를 고르세요'}</span>
+        <small>${E(D.R.label)}</small></div>
+      <div class="sc"><b>${D.sc}</b><small>점</small><em class="gx-g${g.k}">${g.k} · ${g.t}</em>
+        <span>${delta(d,'점')} <i>직전 ${D.psc}점</i></span></div>
+    </div>
+    <div class="gx-rep-meta">
+      <span>🔥 연속 <b>${D.streak}</b>일</span><span>최장 <b>${D.longest}</b>일</span>
+      ${D.monthly.length > 1 ? `<span>📈 ${D.monthly.map(x => `${x.m+1}월 <b>${x.sc}</b>`).join(' → ')}</span>` : ''}
+      ${(G.vision.nowPin || G.vision.pins[FY]) ? `<span>📍 ${E(G.vision.nowPin || '-')} → FY${FY} <b>${E(G.vision.pins[FY] || '-')}</b></span>` : ''}
+    </div>
+    <div class="gx-rep-items">${D.items.map(x => `<div class="r ${x.c.kind === 'crm' ? 'auto' : ''}">
+      <span class="n"><i>${x.c.no}</i>${E(x.c.name)}</span>
+      <span class="tr"><u style="width:${Math.min(x.pct,100)}%"></u></span>
+      <span class="v">${x.done} / ${x.goal}${x.c.unit}</span><b class="${x.pct >= 100 ? 'ok' : x.pct < 50 ? 'no' : ''}">${x.pct}%</b></div>`).join('')}</div>
+    <div class="gx-rep-notes">
+      <div><span>💪 잘한 것</span><b>${E(D.best.c.name)} ${D.best.pct}%</b></div>
+      <div><span>🔧 보완할 것</span><b>${E(D.worst.c.name)} ${D.worst.pct}%</b></div>
+      ${G.vision.g1 ? `<div><span>🎯 FY${FY} 핵심 목표</span><b>${E(G.vision.g1)}</b></div>` : ''}
+      ${G.vision.why ? `<div><span>💬 하는 이유</span><b>${E(G.vision.why)}</b></div>` : ''}
+    </div>
+    <div class="gx-btns" style="margin-top:12px"><button class="btn sm primary" data-grepcopy>📋 상담자료 복사</button></div>
+    <pre class="gx-out hide" id="gxRep"></pre>
+  </div>`;
 }
 async function copyOut(id, text){
   const el = document.getElementById(id);
@@ -4969,7 +4966,6 @@ window.GROWTH = {
     if(v === 'gvision') return vVision();
     if(v === 'gself') return vSelf();
     if(v === 'ggrow') return vGrow();
-    if(v === 'gstats') return vStats();
     if(v === 'gteam') return vTeam();
     return '';
   },
@@ -5051,11 +5047,6 @@ window.GROWTH = {
       arr.splice(Number(el.dataset.i), 1); put(SEL, id, arr); again();
     });
 
-    on('[data-grep]', el => {
-      const k = el.dataset.grep;
-      if(k === 'dump') copyOut('gxOut', JSON.stringify(G));
-      else copyOut('gxOut', k === 'week' ? weekReport() : monthReport());
-    });
 
     /* 리더성장 */
     const showErr = (id, msg) => { const el = document.getElementById(id); if(el) el.textContent = msg || ''; };
@@ -5132,6 +5123,8 @@ window.GROWTH = {
       GMON = {y,m}; again();
     });
     on('[data-ghcopy]', () => copyOut(null, gHistText()));
+    on('[data-grsel]', el => { RSEL = el.dataset.grsel; again(); });
+    on('[data-grepcopy]', () => { const el = document.getElementById('gxRep'); el.classList.remove('hide'); copyOut('gxRep', repText()); });
 
     if(v === 'gvision') setTimeout(drawArrow, 0);
   }
