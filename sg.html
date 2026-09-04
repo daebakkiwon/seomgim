@@ -1124,7 +1124,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-2134';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-2147';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1702,7 +1702,10 @@ function render(){
   teamBar();
 
   const v = document.getElementById('view');
-  if(window.GROWTH && GROWTH.has(VIEW)){
+  const isG = !!(window.GROWTH && GROWTH.has(VIEW));
+  const tb = document.getElementById('teamBar');
+  if(tb) tb.classList.toggle('hide', isG);          // 팀분류 줄은 섬김노트 화면에서만
+  if(isG){
     v.innerHTML = GROWTH.html(VIEW);
     GROWTH.bind(VIEW, render);
     stamp();
