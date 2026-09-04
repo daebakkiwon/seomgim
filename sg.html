@@ -1188,6 +1188,14 @@ select.sel{font-size:15px}
   .tablewrap.simple .sdot{margin-right:4px}
 }
 
+.ql-info-h{justify-content:space-between;align-items:center;margin-top:14px}
+.ql-fold{background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:7px 14px;font-size:14px;font-weight:800}
+.ql-fold i{font-style:normal;margin-left:4px}
+.ql-f{display:flex;flex-direction:column;gap:4px;margin-bottom:9px}
+.ql-f span{font-size:12.5px;font-weight:700;color:var(--muted)}
+.ql-f textarea{border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:8px 10px;font-size:15px;line-height:1.5;resize:vertical;min-height:44px}
+.ql-f textarea:focus{border-color:var(--accent);background:var(--panel);outline:none}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1230,7 +1238,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0817';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0826';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4158,6 +4166,13 @@ function open(opts){
           <div class="ql-done" id="qlDone"></div>
           <div class="ql-sec" style="margin-top:12px"><span>최근 기록</span></div>
           <div class="ql-recent" id="qlRecent"></div>
+          <div class="ql-sec ql-info-h"><button type="button" class="ql-fold" id="qlInfoToggle">📝 특이사항 적기 <i>▾</i></button>
+            <button type="button" class="btn sm ghost" id="qlEdit">전체 수정</button></div>
+          <div id="qlInfo" class="hide">
+            ${[['needs','불편한 점 · 니즈','건강, 피부, 살림, 경제 등 지금 겪는 불편이나 바라는 것'],['route','고객동선','자주 가는 곳, 만나기 좋은 때'],['family','가족관계','남편 김재호 45세 — 피로'],['network','주변인맥','친정 어머니, 이웃, 친구'],['memo','메모 · 특이사항','꼭 기억할 점']].map(([k,l,ph]) =>
+              `<label class="ql-f"><span>${l}</span><textarea data-qlinfo="${k}" rows="2" placeholder="${ph}"></textarea></label>`).join('')}
+            <div class="hint" style="font-size:12.5px;color:var(--faint)">칸에서 나가면 바로 저장됩니다. 있던 내용은 그대로 두고 뒤에 이어 적으세요.</div>
+          </div>
         </div>
       </div>
       <div class="mfoot">
@@ -4185,7 +4200,7 @@ function open(opts){
       <button type="button" class="btn sm ghost" id="qlOpen">열기</button><button type="button" class="btn sm ghost" id="qlChange">바꾸기</button>`;
     document.getElementById('qlSearch').classList.add('hide');
     document.getElementById('qlBody').classList.remove('hide');
-    fillPlan(); fillRecent();
+    fillPlan(); fillRecent(); fillInfo();
     document.getElementById('qlOpen').onclick = () => openDetail(SELP.id);
     document.getElementById('qlChange').onclick = () => { SELP = null; document.getElementById('qlWho').innerHTML = ''; document.getElementById('qlBody').classList.add('hide'); document.getElementById('qlSearch').classList.remove('hide'); q.value = ''; list(); q.focus(); };
     document.getElementById('qlText').focus();
@@ -4218,6 +4233,20 @@ function open(opts){
     document.getElementById('qlPlanNow').textContent = has
       ? `지금 잡힌 일정 · ${fmtDue(p.nextDate).txt}${p.nextTime ? ' ' + fmtTimeK(p.nextTime) : ''}` : '잡힌 일정 없음';
   };
+  const fillInfo = () => {
+    document.querySelectorAll('[data-qlinfo]').forEach(t => { t.value = SELP[t.dataset.qlinfo] || ''; });
+  };
+  document.querySelectorAll('[data-qlinfo]').forEach(t => t.addEventListener('change', () => {
+    if(!SELP) return;
+    SELP[t.dataset.qlinfo] = t.value.trim();
+    save(); render(); toast('저장했습니다');
+  }));
+  document.getElementById('qlInfoToggle').onclick = () => {
+    const box = document.getElementById('qlInfo'), openNow = box.classList.toggle('hide');
+    document.querySelector('#qlInfoToggle i').textContent = openNow ? '▾' : '▴';
+    if(!openNow) box.querySelector('textarea').focus();
+  };
+  document.getElementById('qlEdit').onclick = () => { if(SELP) openForm(SELP.id); };
   const fillRecent = () => {
     const logs = (SELP.logs || []).slice().sort((a,b) => b.at.localeCompare(a.at)).slice(0, 5);
     document.getElementById('qlRecent').innerHTML = logs.length
@@ -4243,6 +4272,7 @@ function open(opts){
   list();
   if(opts.kind) document.getElementById('qlKind').value = opts.kind;
   if(opts.pid && byId(opts.pid)) pick(opts.pid);
+  if(opts.expandInfo){ document.getElementById('qlInfo').classList.remove('hide'); document.querySelector('#qlInfoToggle i').textContent = '▴'; document.getElementById('qlText').focus(); }
   else setTimeout(() => q.focus(), 50);
 }
 
@@ -4289,7 +4319,7 @@ function askCall(){
     <div class="b"><button type="button" class="btn primary" data-yes>통화 기록하기</button>
       <button type="button" class="btn" data-no>나중에</button></div>`;
   document.body.appendChild(el);
-  el.querySelector('[data-yes]').onclick = () => { clearPending(); el.remove(); open({pid:p.id, kind:'통화'}); };
+  el.querySelector('[data-yes]').onclick = () => { clearPending(); el.remove(); open({pid:p.id, kind:'통화', expandInfo:true}); };
   el.querySelector('[data-no]').onclick = () => { clearPending(); el.remove(); };
 }
 if(pending() && Date.now() - pending().at > 3000) setTimeout(askCall, 800);      // 앱이 새로 열린 경우
