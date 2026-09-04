@@ -947,7 +947,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1712';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1721';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4124,8 +4124,8 @@ function vSelf(){
       <div><span class="k">전월 대비</span><b>${delta(msc-mp,'점')}</b><span class="d">${P.m+1}월 ${mp}점</span></div>
     </div>
   </div>
-  <div class="section-title">나를 섬기는 실행 <small class="gx-sub">음원 · 미팅 · 건강</small></div>
-  <div class="card gx-pad">${cores().filter(c => c.id !== 'calls' && c.id !== 'consumer').map(coreBlock).join('')}</div>
+  <div class="section-title">오늘의 실행 <small class="gx-sub">${cores().map(c => c.name.split(' /')[0].split(' ·')[0]).join(' · ')}</small></div>
+  <div class="card gx-pad">${cores().map(coreBlock).join('')}</div>
   <div class="section-title">주간 실행 곡선 <small class="gx-sub">${ws.getMonth()+1}월 ${ws.getDate()}일 ~ ${we.getMonth()+1}월 ${we.getDate()}일</small></div>
   <div class="card gx-pad"><div class="gx-week">${week()}</div></div>`;
 }
