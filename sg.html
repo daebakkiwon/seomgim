@@ -1155,6 +1155,10 @@ select.sel{font-size:15px}
   .gx-pin3{gap:6px}
 }
 
+.gx-meta{gap:12px 26px}
+.gx-meta .bar{flex:1 1 100%;min-width:0}
+.gx-pin3 label small{font-weight:600;color:var(--faint)}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1197,7 +1201,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0732';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0756';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4557,18 +4561,17 @@ function vVision(){
       const ach = achieve(T0.getFullYear(), T0.getMonth(), false), dia = achieve(T0.getFullYear(), T0.getMonth(), true);
       const pvp = p.pvGoal && p.pvDone ? Math.round(p.pvDone / p.pvGoal * 100) : null;
       return `<div class="gx-goals3">
-      <div><span class="k">올해 목표</span><b>${E(G.vision.g1 || G.vision.pins[FY] || '-')}</b></div>
-      <div><span class="k">이번 달 목표</span><b>${E(p.pinGoal || '-')}</b></div>
-      <div><span class="k">이번 달 PV 목표</span><b>${p.pvGoal ? fmtN(p.pvGoal) + ' PV' : '-'}</b>${pvp !== null ? `<small>실적 ${fmtN(p.pvDone)} · ${pvp}%</small>` : ''}</div>
+      <div><span class="k">FY${yy(FY)} 목표</span><b>${E(G.vision.g1 || G.vision.pins[FY] || '-')}</b></div>
+      <div><span class="k">${T0.getMonth()+1}월 핀 목표</span><b>${E(p.pinGoal || '-')}</b></div>
+      <div><span class="k">${T0.getMonth()+1}월 PV 목표</span><b>${p.pvGoal ? fmtN(p.pvGoal) + '만 PV' : '-'}</b>${pvp !== null ? `<small>실적 ${fmtN(p.pvDone)}만 · ${pvp}%</small>` : ''}</div>
     </div>
     <div class="gx-rates">
       <div><span class="k">달성율 <small>내 목표 기준</small></span><b>${ach}<small>%</small></b><span class="tr"><i style="width:${ach}%"></i></span></div>
       <div><span class="k">DIA 달성율 <small>권장값 기준</small></span><b>${dia}<small>%</small></b><span class="tr"><i class="dia" style="width:${dia}%"></i></span></div>
     </div>`; })()}
     <div class="gx-meta">
-      <div><span class="k">FY${FY} 남은 날</span><span class="v">${Math.round((fyEnd-T0)/864e5)+1}<small>일</small></span></div>
+      <div><span class="k">${T0.getMonth()+1}월 연속 실행</span><span class="v">${streak()}<small>일</small></span></div>
       <div><span class="k">이번 달 남은 날</span><span class="v">${dim(T0.getFullYear(),T0.getMonth())-T0.getDate()+1}<small>일</small></span></div>
-      <div><span class="k">연속 실행</span><span class="v">${streak()}<small>일</small></span></div>
       <div class="bar"><span class="k">이번 달 실행률 <b>${sc}점 · ${grade(sc).t}</b></span>
         <span class="tr"><i style="width:${sc}%"></i></span></div>
     </div>
@@ -4640,8 +4643,8 @@ function goalsCard(){
   <div class="card gx-pad">
     ${(() => { const p = plan(y,m); return `<div class="gx-pin3">
       <label><span>핀 목표</span><input type="text" data-gplan="pinGoal" value="${E(p.pinGoal || '')}" placeholder="예: 9% · 12%"></label>
-      <label><span>PV 목표</span><input type="text" inputmode="numeric" data-gplan="pvGoal" value="${p.pvGoal || ''}" placeholder="예: 300"></label>
-      <label><span>PV 실적</span><input type="text" inputmode="numeric" data-gplan="pvDone" value="${p.pvDone || ''}" placeholder="이 달 실적"></label>
+      <label><span>PV 목표 <small>(만)</small></span><input type="text" inputmode="numeric" data-gplan="pvGoal" value="${p.pvGoal || ''}" placeholder="만 단위 · 예: 200"></label>
+      <label><span>PV 실적 <small>(만)</small></span><input type="text" inputmode="numeric" data-gplan="pvDone" value="${p.pvDone || ''}" placeholder="만 단위"></label>
     </div>`; })()}
     ${cores().map(c => {
     const P = pace(c,y,m);
