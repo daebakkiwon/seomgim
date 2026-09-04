@@ -916,6 +916,26 @@ select.sel{font-size:15px}
 /* 비전·목표 한 줄 입력칸은 가로로 꽉 차게 */
 #view input[data-gv="g1"],#view input[data-gvow]{width:100%}
 
+/* ===== 섬김활동 상세 — 다음 섬김 날짜·시간 한 줄, 활동 기록 두 줄 ===== */
+.dtrow.compact{gap:8px;margin-bottom:6px}
+.dtf2{flex:1;min-width:0;display:flex;align-items:center;gap:6px}
+.dtf2 span{font-size:13.5px;font-weight:700;color:var(--muted);flex:0 0 auto}
+.dtf2 input{flex:1;min-width:0;width:auto;border:1px solid var(--line);background:var(--panel-2);
+  border-radius:9px;padding:7px 8px;font-size:15px;outline:none}
+.dtf2 input:focus{border-color:var(--accent);background:var(--panel)}
+.dthint{font-size:12.5px;color:var(--faint);margin:0 0 10px}
+.logadd{flex-direction:column;gap:7px}
+.logadd .logrow{display:flex;gap:7px;width:100%}
+.logadd .logrow select,.logadd .logrow input{order:0;flex:1 1 0;min-width:0}
+.logadd .logrow input[type=date]{border:1px solid var(--line);background:var(--panel-2);border-radius:9px;
+  padding:9px 10px;font-size:15px;outline:none}
+.logadd .logrow .btn{order:0;flex:0 0 auto}
+@media(max-width:640px){
+  .dtf2 input{padding:8px 8px}
+  .logadd .logrow{flex-wrap:nowrap}
+  .logadd .logrow input,.logadd .logrow select{flex:1 1 0}
+}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -958,7 +978,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1813';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1835';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2200,16 +2220,11 @@ function openDetail(id){
           <input type="text" id="naText" value="${esc(p.nextAction || '')}"
                  placeholder="섬김 내용 — 예: 무릎에 좋은 제품 알아봐 드리기" autocomplete="off">
         </div>
-        <div class="dtrow">
-          <div class="dtf">
-            <label for="naDate">날짜</label>
-            <input type="date" id="naDate" value="${esc(p.nextDate || todayStr())}">
-          </div>
-          <div class="dtf">
-            <label for="naTime">시간 <span style="color:var(--faint);font-weight:600">(안 정했으면 비워두세요)</span></label>
-            <input type="time" id="naTime" value="${esc(p.nextTime || '')}">
-          </div>
+        <div class="dtrow compact">
+          <label class="dtf2"><span>날짜</span><input type="date" id="naDate" value="${esc(p.nextDate || todayStr())}"></label>
+          <label class="dtf2"><span>시간</span><input type="time" id="naTime" value="${esc(p.nextTime || '')}"></label>
         </div>
+        <div class="dthint">시간은 안 정했으면 비워두세요</div>
         <div class="btnrow">
           <button class="btn primary" id="naSave">저장</button>
           ${p.nextAction || p.nextDate ? `<button class="btn" data-done="${p.id}">완료</button>` : ''}
@@ -2219,9 +2234,14 @@ function openDetail(id){
 
         <div class="section-title" style="margin-top:0">활동 기록</div>
         <div class="logadd">
-          <select id="logKind">${LOG_KINDS.map(k => `<option>${k}</option>`).join('')}</select>
-          <input id="logText" placeholder="무슨 이야기를 나눴는지, 무엇을 챙겨드렸는지" autocomplete="off">
-          <button class="btn primary" id="logAdd">기록</button>
+          <div class="logrow">
+            <select id="logKind">${LOG_KINDS.map(k => `<option>${k}</option>`).join('')}</select>
+            <input type="date" id="logDate" value="${todayStr()}">
+          </div>
+          <div class="logrow">
+            <input id="logText" placeholder="무슨 이야기를 나눴는지, 무엇을 챙겨드렸는지" autocomplete="off">
+            <button class="btn primary" id="logAdd">기록</button>
+          </div>
         </div>
         ${logHtml}
       </div>
@@ -2281,7 +2301,9 @@ function addLog(id){
   const text = document.getElementById('logText').value.trim();
   if(!text){ toast('내용을 입력하세요'); return; }
   p.logs = p.logs || [];
-  p.logs.push({ id:uid(), at:new Date().toISOString(), kind:document.getElementById('logKind').value, text });
+  const ld = (document.getElementById('logDate') || {}).value;
+  const at = ld && ld !== todayStr() ? new Date(ld + 'T12:00:00').toISOString() : new Date().toISOString();
+  p.logs.push({ id:uid(), at, kind:document.getElementById('logKind').value, text });
   save(); openDetail(id); render();
   toast('기록했습니다');
 }
@@ -3886,7 +3908,8 @@ function rate(c, f, t){
   }
   const total = dim(pd(f).getFullYear(), pd(f).getMonth());
   const days = Math.round((pd(t)-pd(f))/864e5)+1;
-  return Math.min(sumR(c,f,t)/Math.max(1, Math.ceil(c.target*days/total)), 1);
+  const goal = goalOf(c, pd(f).getFullYear(), pd(f).getMonth());
+  return Math.min(sumR(c,f,t)/Math.max(1, Math.ceil(goal*days/total)), 1);
 }
 function score(f, t){
   let a = 0, b = 0;
@@ -4032,17 +4055,10 @@ function vVision(){
 
   ${goalsCard()}
 
-  <div class="section-title">이번 달 다짐과 핵심 행동</div>
-  <div class="card gx-pad">
-    <label class="gx-lb">이번 달 다짐 한 문장</label>
-    <input type="text" data-gvow value="${E(plan(MON.y,MON.m).vow)}" placeholder="예: 거절당해도 다음 사람에게 바로 전화한다">
-    <label class="gx-lb" style="margin-top:14px">이번 달에 반복할 핵심 행동 3가지</label>
-    ${[0,1,2].map(i => `<div class="gx-sub3"><span>${i+1}</span>
-      <input type="text" data-gact="${i}" value="${E(plan(MON.y,MON.m).actions[i]||'')}"></div>`).join('')}
-  </div>
-
   <div class="section-title">성장 곡선 <small class="gx-sub">최근 6개월</small></div>
-  <div class="card gx-pad"><div class="gx-curve">${curve()}</div></div>`;
+  <div class="card gx-pad"><div class="gx-curve">${curve()}</div>
+    <p class="gx-note" style="margin:12px 0 0">막대 위 숫자는 그 달의 <b>실행률 점수</b>(0~100)입니다.
+      코어별로 목표 대비 달성률을 구해 가중 평균한 값이며, 아직 쓰지 않은 달은 0으로 나옵니다.</p></div>`;
 }
 function pick(key, list){
   if(!list.length) return `<input type="text" data-gme="${key}" value="${E(G[key])}" placeholder="성함">`;
