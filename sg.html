@@ -1113,6 +1113,14 @@ select.sel{font-size:15px}
 .ql-done{display:flex;flex-direction:column;gap:4px;margin-top:10px}
 .ql-ok{font-size:13.5px;font-weight:600;color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--panel));border-radius:8px;padding:6px 10px}
 
+/* ===== 통화 후 기록 묻기 ===== */
+.callask{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:150;
+  background:var(--panel);border:1px solid var(--s2);border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.18);
+  display:flex;flex-direction:column;gap:10px;max-width:520px;margin:0 auto}
+.callask .t{font-size:16px;font-weight:700}
+.callask .b{display:flex;gap:8px}
+.callask .b .btn{flex:1;justify-content:center}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1155,7 +1163,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0701';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0705';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4030,7 +4038,8 @@ const recent = () => { try{ return JSON.parse(localStorage.getItem(RKEY) || '[]'
 const remember = id => { try{ const r = [id, ...recent().filter(x => x !== id)].slice(0, 6); localStorage.setItem(RKEY, JSON.stringify(r)); }catch(e){} };
 const stageBadge = p => { const st = stageOf(p.stage); return `<span class="badge" style="background:var(${st.b});color:var(${st.c})">${st.name}</span>`; };
 
-function open(){
+function open(opts){
+  opts = opts || {};
   SELP = null;
   document.getElementById('modal').innerHTML = `
   <div class="overlay" data-close>
@@ -4109,8 +4118,59 @@ function open(){
   document.getElementById('qlAdd').onclick = add;
   document.getElementById('qlNew').onclick = () => openForm();
   list();
-  setTimeout(() => q.focus(), 50);
+  if(opts.kind) document.getElementById('qlKind').value = opts.kind;
+  if(opts.pid && byId(opts.pid)) pick(opts.pid);
+  else setTimeout(() => q.focus(), 50);
 }
+
+/* ---------- 전화 걸기 → 돌아오면 통화 기록 묻기 ---------- */
+const PKEY = 'crm.pendingCall';
+const digits = s => String(s || '').replace(/\D/g, '');
+const tail8 = s => digits(s).slice(-8);
+let leftApp = false, promptTimer = null;
+function findByTel(href, el){
+  const t = tail8(href);
+  let p = null;
+  if(t) p = DB.people.find(x => tail8(x.phone) === t) || null;
+  if(!p && el){ const host = el.closest('[data-id]'); if(host) p = byId(host.dataset.id) || null; }
+  if(!p && typeof OPEN !== 'undefined' && OPEN) p = byId(OPEN) || null;
+  return p;
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[href^="tel:"]');
+  if(!a) return;
+  const p = findByTel(a.getAttribute('href'), a);
+  if(!p) return;
+  try{ localStorage.setItem(PKEY, JSON.stringify({pid:p.id, at:Date.now()})); }catch(e){}
+  leftApp = false;
+  clearTimeout(promptTimer);
+  promptTimer = setTimeout(() => { if(!leftApp) askCall(); }, 4000);     // 컴퓨터처럼 앱을 벗어나지 않는 경우
+}, true);
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden'){ if(pending()) leftApp = true; return; }
+  if(leftApp){ leftApp = false; clearTimeout(promptTimer); setTimeout(askCall, 400); }
+});
+window.addEventListener('pageshow', () => { if(pending() && Date.now() - pending().at > 3000) setTimeout(askCall, 600); });
+function pending(){
+  try{ const v = JSON.parse(localStorage.getItem(PKEY) || 'null'); if(v && Date.now() - v.at < 3*3600e3) return v; }catch(e){}
+  return null;
+}
+const clearPending = () => { try{ localStorage.removeItem(PKEY); }catch(e){} };
+function askCall(){
+  const v = pending(); if(!v) return;
+  const p = byId(v.pid); if(!p){ clearPending(); return; }
+  if(document.getElementById('callAsk')) return;
+  const el = document.createElement('div');
+  el.id = 'callAsk'; el.className = 'callask';
+  el.innerHTML = `<div class="t">📞 <b>${esc(p.name)}</b> 님과 통화하셨나요?</div>
+    <div class="b"><button type="button" class="btn primary" data-yes>통화 기록하기</button>
+      <button type="button" class="btn" data-no>나중에</button></div>`;
+  document.body.appendChild(el);
+  el.querySelector('[data-yes]').onclick = () => { clearPending(); el.remove(); open({pid:p.id, kind:'통화'}); };
+  el.querySelector('[data-no]').onclick = () => { clearPending(); el.remove(); };
+}
+if(pending() && Date.now() - pending().at > 3000) setTimeout(askCall, 800);      // 앱이 새로 열린 경우
+
 const fab = document.getElementById('fabLog');
 if(fab) fab.onclick = open;
 document.addEventListener('keydown', e => {
