@@ -1143,7 +1143,9 @@ select.sel{font-size:15px}
 .gx-rates .tr{height:7px;border-radius:4px;background:rgba(255,255,255,.14);overflow:hidden;display:block}
 .gx-rates .tr i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#B4778D,#EBBACB)}
 .gx-rates .tr i.dia{background:linear-gradient(90deg,#7FB3D9,#BFE0F5)}
-.gx-pin3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding-bottom:10px;margin-bottom:6px;border-bottom:2px solid color-mix(in srgb,var(--text) 28%,var(--line))}
+.gx-pin3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;margin:0 0 12px;border:2px solid var(--accent);border-radius:12px;background:var(--accent-soft)}
+.gx-pin3 label{color:var(--accent)}
+.gx-pin3 input{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--panel)}
 .gx-pin3 label{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:13px;font-weight:700;color:var(--muted)}
 .gx-pin3 input{border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:var(--panel-2);width:100%;min-width:0;
   font-family:'Gowun Batang',serif;font-weight:700;font-size:16px;color:var(--text)}
@@ -1201,7 +1203,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0756';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0800';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4572,8 +4574,6 @@ function vVision(){
     <div class="gx-meta">
       <div><span class="k">${T0.getMonth()+1}월 연속 실행</span><span class="v">${streak()}<small>일</small></span></div>
       <div><span class="k">이번 달 남은 날</span><span class="v">${dim(T0.getFullYear(),T0.getMonth())-T0.getDate()+1}<small>일</small></span></div>
-      <div class="bar"><span class="k">이번 달 실행률 <b>${sc}점 · ${grade(sc).t}</b></span>
-        <span class="tr"><i style="width:${sc}%"></i></span></div>
     </div>
   </div>
 
