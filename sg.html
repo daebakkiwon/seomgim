@@ -781,7 +781,7 @@ select.sel{font-size:15px}
 .gx-pace.no{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,var(--panel))}
 
 /* 점수판 */
-.gx-board{display:grid;grid-template-columns:minmax(210px,.8fr) 1fr;gap:12px;margin-bottom:14px}
+.gx-board{display:grid;grid-template-columns:minmax(210px,.8fr) 1fr;gap:12px;margin-bottom:14px;align-items:stretch}
 @media(max-width:700px){.gx-board{grid-template-columns:1fr}}
 .gx-ring{padding:16px;display:flex;align-items:center;gap:14px;position:relative}
 .gx-ring .c{position:absolute;left:16px;top:50%;transform:translateY(-50%);width:110px;text-align:center}
@@ -936,6 +936,52 @@ select.sel{font-size:15px}
   .logadd .logrow input,.logadd .logrow select{flex:1 1 0}
 }
 
+/* ===== 자기섬김 — 한 줄 요약 · 카운팅 박스 · 자동 저장 카드 ===== */
+.gx-strip{display:flex;align-items:center;gap:0;padding:0 6px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.gx-strip::-webkit-scrollbar{display:none}
+.gx-strip > span{flex:1 0 auto;display:flex;align-items:center;gap:6px;padding:10px 10px;font-size:13.5px;font-weight:600;color:var(--text)}
+.gx-strip > span + span{border-left:1px solid var(--line)}
+.gx-strip em{font-style:normal;font-size:12.5px;font-weight:700;color:var(--muted)}
+.gx-strip b{font-family:'Gowun Batang',serif;font-size:21px;line-height:1}
+.gx-strip b small{font-size:12px;color:var(--muted);font-family:inherit;font-weight:500}
+.gx-strip i{font-style:normal;font-weight:700;font-size:13px}
+.gx-strip > span > small{font-size:12px;color:var(--muted)}
+.gx-ch{flex-wrap:nowrap;margin-bottom:8px}
+.gx-ch b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.gx-ch .gx-chip{flex:0 0 auto}
+.gx-ch .st{flex:0 0 auto;border:1px solid var(--line);background:var(--panel-2);border-radius:9px;padding:4px 9px;font-size:13.5px}
+.gx-core.auto .gx-ch .st{border-color:var(--s2);background:var(--panel)}
+.gx-core.auto .gx-ch .no{color:var(--s2)}
+.gx-core.auto .gx-ch .mini u{background:var(--s2)}
+.gx-auto{font-size:13px;font-weight:600;color:var(--muted);margin-top:-2px}
+.gx-auto b{color:var(--s2)}
+.gx-autocard{background:var(--s2b);border-color:var(--s2)}
+.gx-autocard .gx-core{border-bottom-color:color-mix(in srgb,var(--s2) 30%,transparent)}
+.gx-autot{color:var(--s2)}
+.gx-row2{display:flex;gap:7px}
+.gx-row2 input{flex:1;min-width:0}
+@media(max-width:640px){
+  .gx-ch{gap:6px}
+  .gx-ch b{font-size:15px}
+  .gx-ch .st{font-size:12.5px;padding:3px 7px;gap:5px}
+  .gx-ch .mini{width:38px}
+  .gx-strip > span{padding:9px 8px;font-size:12.5px;gap:5px}
+  .gx-strip b{font-size:19px}
+  .gx-row2{flex-direction:column}
+}
+
+@media(max-width:640px){
+  .gx-gt{display:none}
+  .gx-strip > span{padding:9px 6px;font-size:12px;gap:4px}
+  .gx-strip em{font-size:11.5px}
+  .gx-strip b{font-size:17px}
+  .gx-strip i,.gx-strip .gx-d{font-size:12px}
+  .gx-ch .mini{display:none}
+  .gx-ch .st{font-size:12.5px;padding:3px 7px}
+  .gx-ch .gx-chip{font-size:11px;padding:2px 6px}
+  .gx-ch .no{font-size:13px}
+}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -978,7 +1024,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1835';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1921';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3753,12 +3799,12 @@ const CORES = [
   {id:'meeting', no:2, name:'미팅', spec:'주 2회 이상 · 미팅 제목',
    kind:'list', cadence:'weekly', target:2, unit:'회', w:3, tier:1,
    ph:'미팅 제목 (예: 화요 OM)', base:d => Math.round(d/7*2)},
-  {id:'calls', no:3, name:'5통 전화', spec:'1일 5명 · 섬김활동의 통화 기록에서 자동',
-   kind:'crm', kinds:['통화'], hint:'통화', cadence:'daily', target:5, unit:'명', w:3, tier:1,
-   base:d => Math.round(d*5*0.8)},
-  {id:'health', no:4, name:'건강 · 운동', spec:'뉴트리 + 운동',
+  {id:'health', no:3, name:'건강 · 운동', spec:'뉴트리 + 운동',
    kind:'list', cadence:'daily', target:1, unit:'회', w:2, tier:2,
    ph:'운동 내용 (예: 헬스 40분)', base:d => Math.round(d*0.7)},
+  {id:'calls', no:4, name:'5통 전화', spec:'1일 5명 · 섬김활동의 통화 기록에서 자동',
+   kind:'crm', kinds:['통화'], hint:'통화', cadence:'daily', target:5, unit:'명', w:3, tier:1,
+   base:d => Math.round(d*5*0.8)},
   {id:'consumer', no:5, name:'소비자 만들기', spec:'월 30명 · 제품첫구매·재구매 기록에서 자동',
    kind:'crm', kinds:['제품첫구매','제품재구매','제품 구매','재구매'], hint:'제품첫구매 · 제품재구매', cadence:'monthly',
    target:30, unit:'명', w:2, tier:2, distinct:true, base:() => 30},
@@ -3985,7 +4031,6 @@ function dateBar(){
 function levelBar(){
   return `<div class="gx-lv">
     ${[5,3].map(n => `<button class="gx-lvb ${G.level===n?'on':''}" data-glv="${n}">${n}코어</button>`).join('')}
-    <span class="gx-hint">${LV_HINT[G.level]}</span>
   </div>`;
 }
 
@@ -4108,26 +4153,23 @@ function coreBlock(c){
   else if(c.cadence === 'weekly'){
     const ws = weekStart(pd(SEL));
     const s = sumR(c, ymd(ws), ymd(addD(ws,6)));
-    pg = Math.min(s/c.target,1); lb = `이번 주 ${s} / ${c.target}${c.unit}`;
+    pg = Math.min(s/c.target,1); lb = `${s} / ${c.target}${c.unit}`;
   }else{
     const d = pd(SEL), R = mrange(d.getFullYear(), d.getMonth());
     const s = sumR(c,R.f,R.t), g = goalOf(c,d.getFullYear(),d.getMonth());
-    pg = g ? Math.min(s/g,1) : 0; lb = `이번 달 ${s} / ${g}${c.unit}`;
+    pg = g ? Math.min(s/g,1) : 0; lb = `${s} / ${g}${c.unit}`;
   }
   let body = '';
   if(c.kind === 'audio'){
     const v = r.audio || {title:'', msg:''};
-    body = `<label class="gx-lb">음원 제목</label>
-      <input type="text" data-gaud="title" value="${E(v.title||'')}" placeholder="들은 음원의 제목">
-      <label class="gx-lb" style="margin-top:8px">아침 메시지 한 문장</label>
-      <input type="text" data-gaud="msg" value="${E(v.msg||'')}" placeholder="오늘 아침 메시지에서 남은 한 문장">`;
+    body = `<div class="gx-row2">
+      <input type="text" data-gaud="title" value="${E(v.title||'')}" placeholder="음원 제목">
+      <input type="text" data-gaud="msg" value="${E(v.msg||'')}" placeholder="아침 메시지 한 문장"></div>`;
   }else if(c.kind === 'crm'){
     const items = crmOn(SEL, c);
-    body = items.length
-      ? `<div class="gx-items">${items.map(x =>
-          `<span class="gx-item"><small>${E(x.kind)}</small> <b>${E(x.name)}</b>${x.text ? ' ' + E(x.text) : ''}</span>`).join('')}</div>`
-      : `<div class="gx-empty">아직 없습니다.</div>`;
-    body += `<div class="gx-note" style="margin:8px 0 0">고객목록에서 그분을 열어 <b>${c.hint}</b>을 기록하면 여기 자동으로 들어옵니다.</div>`;
+    body = `<div class="gx-auto">섬김활동의 <b>${c.hint}</b> 기록에서 자동 저장</div>` +
+      (items.length ? `<div class="gx-items">${items.map(x =>
+          `<span class="gx-item"><small>${E(x.kind)}</small> <b>${E(x.name)}</b>${x.text ? ' ' + E(x.text) : ''}</span>`).join('')}</div>` : '');
   }else if(c.kind === 'pairs'){
     const v = r[c.id] || [];
     const n = Math.max(c.rows, v.length);
@@ -4147,9 +4189,9 @@ function coreBlock(c){
         `<span class="gx-tag">${E(iname(t))}<button data-gdel="${c.id}" data-i="${i}">×</button></span>`).join('')}</div>`
         : '<div class="gx-empty">아직 입력이 없습니다.</div>'}`;
   }
-  return `<div class="gx-core">
+  return `<div class="gx-core ${c.kind === 'crm' ? 'auto' : ''}">
     <div class="gx-ch"><span class="no">${c.no}</span><b>${E(c.name)}</b>
-      <span class="gx-chip">${CAD[c.cadence]}</span><small>${E(c.spec)}</small>
+      <span class="gx-chip">${CAD[c.cadence]}</span>
       <span class="st ${pg>=1?'done':''}">${lb}<i class="mini"><u style="width:${pg*100}%"></u></i></span></div>
     ${body}</div>`;
 }
@@ -4161,14 +4203,10 @@ function vSelf(){
   const R = mrange(T0.getFullYear(), T0.getMonth());
   const P = mrange(R.m === 0 ? R.y-1 : R.y, R.m === 0 ? 11 : R.m-1);
   const msc = score(R.f,R.t), mp = score(P.f,P.t), g = grade(msc);
-  const p = plan(T0.getFullYear(), T0.getMonth());
-  const acts = p.actions.filter(a => a && a.trim());
   const C = 2*Math.PI*45;
+  const manual = cores().filter(c => c.kind !== 'crm');
+  const auto = cores().filter(c => c.kind === 'crm');
   return `
-  ${p.vow || acts.length ? `<div class="gx-vow">
-    <div class="k">${T0.getMonth()+1}월의<br>다짐</div>
-    <div><div class="q">${p.vow ? '“'+E(p.vow)+'”' : ''}</div>
-      ${acts.length ? `<ol>${acts.map(a => `<li>${E(a)}</li>`).join('')}</ol>` : ''}</div></div>` : ''}
   ${levelBar()}
   ${dateBar()}
   <div class="gx-board">
@@ -4181,14 +4219,16 @@ function vSelf(){
       <div class="c"><b>${sc}</b><span>오늘 실행률</span></div>
       <div class="s"><span class="k">연속 실행</span><b>${streak()}<small>일</small></b></div>
     </div>
-    <div class="card gx-tiles">
-      <div><span class="k">이번 주</span><b>${wsc}<small>점</small></b><span class="d">지난주 ${psc}점 · ${delta(wsc-psc,'점')}</span></div>
-      <div><span class="k">이번 달</span><b>${msc}<small>점</small></b><span class="d gx-g${g.k}">${g.k} · ${g.t}</span></div>
-      <div><span class="k">전월 대비</span><b>${delta(msc-mp,'점')}</b><span class="d">${P.m+1}월 ${mp}점</span></div>
+    <div class="card gx-strip">
+      <span><em>이번 주</em><b>${wsc}<small>점</small></b>${delta(wsc-psc,'점')}</span>
+      <span><em>이번 달</em><b>${msc}<small>점</small></b><i class="gx-g${g.k}">${g.k}<span class="gx-gt"> · ${g.t}</span></i></span>
+      <span><em>전월 대비</em>${delta(msc-mp,'점')}<small class="gx-gt">${P.m+1}월 ${mp}점</small></span>
     </div>
   </div>
-  <div class="section-title">오늘의 실행 <small class="gx-sub">${cores().map(c => c.name.split(' /')[0].split(' ·')[0]).join(' · ')}</small></div>
-  <div class="card gx-pad">${cores().map(coreBlock).join('')}</div>
+  <div class="section-title">오늘의 실행 <small class="gx-sub">직접 입력</small></div>
+  <div class="card gx-pad">${manual.map(coreBlock).join('')}</div>
+  <div class="section-title gx-autot">섬김활동 기록에서 자동 저장</div>
+  <div class="card gx-pad gx-autocard">${auto.map(coreBlock).join('')}</div>
   <div class="section-title">주간 실행 곡선 <small class="gx-sub">${ws.getMonth()+1}월 ${ws.getDate()}일 ~ ${we.getMonth()+1}월 ${we.getDate()}일</small></div>
   <div class="card gx-pad"><div class="gx-week">${week()}</div></div>`;
 }
