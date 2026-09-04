@@ -1212,7 +1212,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0806';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0810';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4022,6 +4022,10 @@ function calc(p){
 function applyAll(){
   if(typeof DB === 'undefined' || !DB || !Array.isArray(DB.people)) return false;
   let changed = false;
+  if(!DB.nameCleaned && window.cleanContactName){            // 한 번만: 등록된 분들도 이름만 남긴다
+    DB.people.forEach(p => { const n = cleanContactName(p.name); if(n && n !== p.name){ p.name = n; } });
+    DB.nameCleaned = true; changed = true;
+  }
   DB.people.forEach(p => {
     if(p.stage === 'core'){ p.stage = 'partner'; changed = true; }          // 코어사업자는 없어졌다
     if(!STAGES.some(s => s.id === p.stage)){ p.stage = 'prospect'; changed = true; }
