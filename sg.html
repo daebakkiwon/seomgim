@@ -716,7 +716,9 @@ select.sel{font-size:15px}
   font-size:14.5px;font-weight:700;color:var(--text)}
 .gx-lvb.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .gx-hint{font-size:13.5px;font-weight:600;color:var(--muted);flex:1;min-width:180px}
-.gx-mnav{float:right;display:flex;gap:6px}
+.gx-mnav{float:right;display:flex;gap:6px;align-items:center}
+.gx-mnav .btn.ghost{font-size:26px;line-height:1;padding:2px 14px;min-height:40px;border:1px solid var(--line);border-radius:10px;color:var(--accent);font-weight:800}
+.gx-mnav .btn.ghost:disabled{opacity:.35}
 
 /* 이름 상자 */
 .gx-idbox{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:14px 16px;margin-bottom:12px}
@@ -756,15 +758,24 @@ select.sel{font-size:15px}
 .gx-sub3 span{font-family:'Gowun Batang',serif;font-size:14px;font-weight:700;color:var(--text);text-align:center}
 
 /* 목표 */
-.gx-goal{display:grid;grid-template-columns:1fr auto;gap:5px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.gx-goal{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.gx-goal .gx-no{font-style:normal;display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:6px;padding:0 5px;
+  background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:800;margin-right:2px}
+.gx-goal.extra{background:var(--s2b);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:9px}
+.gx-goal.extra .gx-no{background:var(--s2);color:#fff}
+.gx-goal.extra .tr i{background:var(--s2)}
+.gx-goal.extra .gx-chip{background:var(--panel);color:var(--s2)}
 .gx-goal:last-child{border-bottom:0}
 .gx-goal .n{font-size:15.5px;font-weight:700}
 .gx-goal .s{font-size:13.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:5px}
 .gx-goal .s input{width:64px;text-align:right;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2)}
-.gx-goal .tr{grid-column:1/-1;height:8px;border-radius:4px;background:var(--panel-2);overflow:hidden;position:relative}
+.gx-goal .tr{grid-column:1/-1;height:6px;border-radius:4px;background:var(--panel-2);overflow:hidden;position:relative}
 .gx-goal .tr i{display:block;height:100%;border-radius:4px;background:var(--accent)}
 .gx-goal .tr u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--faint);opacity:.6}
-.gx-goal .f{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:12px;font-size:13.5px;font-weight:600;color:var(--text)}
+.gx-goal .f{grid-column:1/-1;display:flex;flex-direction:row;justify-content:flex-start;text-align:left;flex-wrap:nowrap;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden}
+.gx-goal .f span{flex:0 0 auto}
+.gx-goal .f .gx-pace{margin-left:auto}
+@media(max-width:640px){.gx-goal .f{font-size:12px;gap:6px}.gx-goal .f .gx-pace{font-size:11.5px;padding:2px 6px}}
 .gx-pace{font-weight:700;padding:2px 8px;border-radius:5px;font-size:13px}
 .gx-pace.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--panel))}
 .gx-pace.no{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,var(--panel))}
@@ -947,7 +958,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1723';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1813';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -986,7 +997,7 @@ const NOGROUP = '미분류';
 
 // 활동 기록 항목 — 나눠 놓지 않고 한 줄로 고른다
 const LOG_KINDS = ['통화','제품첫구매','제품재구매','미팅참석','후기제공','후기나눔',
-                   '자료제공','음원프로모션','문고리','만남'];
+                   '자료제공','음원프로모션','문고리','만남','신규가입'];
 
 // 기록표에 붙는 색 — 자동으로 남는 것만 따로 보이게 한다
 function kindColor(kind){
@@ -3715,20 +3726,26 @@ const VIEWS = {
 
 /* ---------- 코어 ---------- */
 const CORES = [
-  {id:'audio', no:1, name:'음원 / 아침 메시지', spec:'음원 제목 + 아침 메시지 한 문장',
+  {id:'audio', no:1, name:'음원/메세지', spec:'음원 제목 + 아침 메시지 한 문장',
    kind:'audio', cadence:'daily', target:1, unit:'개', w:3, tier:1, base:d => Math.round(d*0.87)},
   {id:'meeting', no:2, name:'미팅', spec:'주 2회 이상 · 미팅 제목',
    kind:'list', cadence:'weekly', target:2, unit:'회', w:3, tier:1,
    ph:'미팅 제목 (예: 화요 OM)', base:d => Math.round(d/7*2)},
   {id:'calls', no:3, name:'5통 전화', spec:'1일 5명 · 섬김활동의 통화 기록에서 자동',
-   kind:'crm', kinds:['통화'], cadence:'daily', target:5, unit:'명', w:3, tier:1,
+   kind:'crm', kinds:['통화'], hint:'통화', cadence:'daily', target:5, unit:'명', w:3, tier:1,
    base:d => Math.round(d*5*0.8)},
   {id:'health', no:4, name:'건강 · 운동', spec:'뉴트리 + 운동',
    kind:'list', cadence:'daily', target:1, unit:'회', w:2, tier:2,
    ph:'운동 내용 (예: 헬스 40분)', base:d => Math.round(d*0.7)},
   {id:'consumer', no:5, name:'소비자 만들기', spec:'월 30명 · 제품첫구매·재구매 기록에서 자동',
-   kind:'crm', kinds:['제품첫구매','제품재구매','제품 구매','재구매'], cadence:'monthly',
-   target:30, unit:'명', w:2, tier:2, distinct:true, base:() => 30}
+   kind:'crm', kinds:['제품첫구매','제품재구매','제품 구매','재구매'], hint:'제품첫구매 · 제품재구매', cadence:'monthly',
+   target:30, unit:'명', w:2, tier:2, distinct:true, base:() => 30},
+  {id:'learner', no:6, name:'학습소비자 만들기', spec:'월 5명 · 미팅참석·음원프로모션·자료제공 기록에서 자동',
+   kind:'crm', kinds:['미팅참석','음원프로모션','자료제공'], hint:'미팅참석 · 음원프로모션 · 자료제공', cadence:'monthly',
+   target:5, unit:'명', w:1, tier:2, extra:true, distinct:true, base:() => 5},
+  {id:'newjoin', no:7, name:'신규가입', spec:'월 5명 · 신규가입 기록에서 자동',
+   kind:'crm', kinds:['신규가입'], hint:'신규가입', cadence:'monthly',
+   target:5, unit:'명', w:1, tier:2, extra:true, distinct:true, base:() => 5}
 ];
 const TIER = {3:1, 5:2};
 const CAD = {daily:'매일', weekly:'주간', monthly:'월 누적'};
@@ -4056,12 +4073,12 @@ function goalsCard(){
     const P = pace(c,y,m);
     const st = P.done >= P.goal ? ['ok','목표 달성'] : !P.running ? ['no','미달']
       : P.proj >= P.goal ? ['ok','순항'] : ['no','페이스 부족'];
-    return `<div class="gx-goal">
-      <div class="n">${c.no}. ${E(c.name)} <span class="gx-chip">${CAD[c.cadence]}</span></div>
+    return `<div class="gx-goal ${c.extra ? 'extra' : ''}">
+      <div class="n"><i class="gx-no">${c.no}</i> ${E(c.name)} <span class="gx-chip">${CAD[c.cadence]}</span></div>
       <div class="s">목표 <input type="text" inputmode="numeric" data-ggoal="${c.id}" value="${P.goal}">${c.unit}</div>
       <div class="tr"><i style="width:${P.pct}%"></i><u style="left:${P.exp}%"></u></div>
       <div class="f"><span>현재 <b>${P.done}</b>${c.unit} / ${P.goal}${c.unit}</span>
-        ${P.running ? `<span>이 페이스면 월말 <b>${P.proj}</b>${c.unit}</span><span>남은 ${P.left}일 · 하루 <b>${P.need}</b>${c.unit}</span>` : ''}
+        ${P.running ? `<span>남은 ${P.left}일 · 하루 <b>${P.need}</b>${c.unit}</span>` : ''}
         <span class="gx-pace ${st[0]}">${st[1]}</span></div>
     </div>`;
   }).join('')}</div>`;
@@ -4094,7 +4111,7 @@ function coreBlock(c){
       ? `<div class="gx-items">${items.map(x =>
           `<span class="gx-item"><small>${E(x.kind)}</small> <b>${E(x.name)}</b>${x.text ? ' ' + E(x.text) : ''}</span>`).join('')}</div>`
       : `<div class="gx-empty">아직 없습니다.</div>`;
-    body += `<div class="gx-note" style="margin:8px 0 0">고객목록에서 그분을 열어 <b>${c.kinds.slice(0, c.id === 'calls' ? 1 : 2).join(' · ')}</b>을 기록하면 여기 자동으로 들어옵니다.</div>`;
+    body += `<div class="gx-note" style="margin:8px 0 0">고객목록에서 그분을 열어 <b>${c.hint}</b>을 기록하면 여기 자동으로 들어옵니다.</div>`;
   }else if(c.kind === 'pairs'){
     const v = r[c.id] || [];
     const n = Math.max(c.rows, v.length);
@@ -4173,7 +4190,7 @@ function week(){
   return out;
 }
 function vGrow(){
-  const list = cores().filter(c => c.id === 'calls' || c.id === 'consumer');
+  const list = cores().filter(c => c.kind === 'crm');
   return `${dateBar()}
   <div class="section-title">사업을 키우는 실행 <small class="gx-sub">성장노트에만 쌓입니다</small></div>
   <div class="card gx-pad">${list.length ? list.map(coreBlock).join('')
