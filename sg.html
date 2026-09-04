@@ -947,7 +947,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1721';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1723';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3720,15 +3720,15 @@ const CORES = [
   {id:'meeting', no:2, name:'미팅', spec:'주 2회 이상 · 미팅 제목',
    kind:'list', cadence:'weekly', target:2, unit:'회', w:3, tier:1,
    ph:'미팅 제목 (예: 화요 OM)', base:d => Math.round(d/7*2)},
-  {id:'calls', no:3, name:'5통 전화', spec:'1일 5명 · 이름과 통화 내용',
-   kind:'pairs', rows:5, cadence:'daily', target:5, unit:'명', w:3, tier:1,
-   ph:'상대 이름', ph2:'통화 내용', base:d => Math.round(d*5*0.8)},
+  {id:'calls', no:3, name:'5통 전화', spec:'1일 5명 · 섬김활동의 통화 기록에서 자동',
+   kind:'crm', kinds:['통화'], cadence:'daily', target:5, unit:'명', w:3, tier:1,
+   base:d => Math.round(d*5*0.8)},
   {id:'health', no:4, name:'건강 · 운동', spec:'뉴트리 + 운동',
    kind:'list', cadence:'daily', target:1, unit:'회', w:2, tier:2,
    ph:'운동 내용 (예: 헬스 40분)', base:d => Math.round(d*0.7)},
-  {id:'consumer', no:5, name:'소비자 만들기', spec:'월 30명 · 제품을 전달한 분',
-   kind:'pairs', rows:3, cadence:'monthly', target:30, unit:'명', w:2, tier:2,
-   ph:'소비자 이름', ph2:'무엇을 전달했나', distinct:true, base:() => 30}
+  {id:'consumer', no:5, name:'소비자 만들기', spec:'월 30명 · 제품첫구매·재구매 기록에서 자동',
+   kind:'crm', kinds:['제품첫구매','제품재구매','제품 구매','재구매'], cadence:'monthly',
+   target:30, unit:'명', w:2, tier:2, distinct:true, base:() => 30}
 ];
 const TIER = {3:1, 5:2};
 const CAD = {daily:'매일', weekly:'주간', monthly:'월 누적'};
@@ -3810,7 +3810,28 @@ function put(date, id, val){
   if(!Object.keys(r).length) delete G.log[date];
   gsave();
 }
+/* 섬김노트(고객목록)의 활동 기록 — 읽기만 한다 */
+let CRM_IDX = null, CRM_STAMP = '';
+function crmIndex(){
+  const db = (typeof DB !== 'undefined' && DB && Array.isArray(DB.people)) ? DB : null;
+  const stamp = db ? (db.updatedAt || '') + ':' + db.people.length : '';
+  if(CRM_IDX && stamp === CRM_STAMP) return CRM_IDX;
+  const idx = {};
+  if(db) db.people.forEach(p => (p.logs || []).forEach(l => {
+    if(!l || !l.at) return;
+    const d = ymd(new Date(l.at));
+    (idx[d] = idx[d] || []).push({name:p.name, pid:p.id, kind:l.kind, text:l.text || ''});
+  }));
+  CRM_IDX = idx; CRM_STAMP = stamp;
+  return idx;
+}
+const crmOn = (date, c) => (crmIndex()[date] || []).filter(x => c.kinds.includes(x.kind));
+
 function dayN(date, c){
+  if(c.kind === 'crm'){
+    const items = crmOn(date, c);
+    return c.distinct ? new Set(items.map(x => x.pid)).size : items.length;
+  }
   const r = rec(date);
   if(!r || !r[c.id]) return 0;
   if(c.id === 'audio') return (r.audio.title||'').trim() && (r.audio.msg||'').trim() ? 1 : 0;
@@ -3819,8 +3840,10 @@ function dayN(date, c){
 function sumR(c, f, t){
   if(c.distinct){
     const set = new Set();
-    for(let d = pd(f); ymd(d) <= t; d = addD(d,1))
-      ((rec(ymd(d)) || {})[c.id] || []).forEach(v => { const n = iname(v); if(n) set.add(n); });
+    for(let d = pd(f); ymd(d) <= t; d = addD(d,1)){
+      if(c.kind === 'crm') crmOn(ymd(d), c).forEach(x => set.add(x.pid));
+      else ((rec(ymd(d)) || {})[c.id] || []).forEach(v => { const n = iname(v); if(n) set.add(n); });
+    }
     return set.size;
   }
   let s = 0;
@@ -4065,6 +4088,13 @@ function coreBlock(c){
       <input type="text" data-gaud="title" value="${E(v.title||'')}" placeholder="들은 음원의 제목">
       <label class="gx-lb" style="margin-top:8px">아침 메시지 한 문장</label>
       <input type="text" data-gaud="msg" value="${E(v.msg||'')}" placeholder="오늘 아침 메시지에서 남은 한 문장">`;
+  }else if(c.kind === 'crm'){
+    const items = crmOn(SEL, c);
+    body = items.length
+      ? `<div class="gx-items">${items.map(x =>
+          `<span class="gx-item"><small>${E(x.kind)}</small> <b>${E(x.name)}</b>${x.text ? ' ' + E(x.text) : ''}</span>`).join('')}</div>`
+      : `<div class="gx-empty">아직 없습니다.</div>`;
+    body += `<div class="gx-note" style="margin:8px 0 0">고객목록에서 그분을 열어 <b>${c.kinds.slice(0, c.id === 'calls' ? 1 : 2).join(' · ')}</b>을 기록하면 여기 자동으로 들어옵니다.</div>`;
   }else if(c.kind === 'pairs'){
     const v = r[c.id] || [];
     const n = Math.max(c.rows, v.length);
