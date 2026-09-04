@@ -902,6 +902,9 @@ select.sel{font-size:15px}
 .tab.gtab:hover{color:var(--s2)}
 .tab.gtab.on{color:var(--s2);border-bottom-color:var(--s2)}
 
+/* 비전·목표 한 줄 입력칸은 가로로 꽉 차게 */
+#view input[data-gv="g1"],#view input[data-gvow]{width:100%}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -944,7 +947,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260904-1603';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260904-1621';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4539,8 +4542,8 @@ function drawArrow(){
       out += `<rect x="${(lx-w/2).toFixed(1)}" y="${(p.y-66).toFixed(1)}" width="${w.toFixed(1)}" height="50" rx="25"
         fill="var(--accent)" fill-opacity=".07" stroke="var(--accent)" stroke-opacity=".5" stroke-width="2"></rect>`;
     }
-    out += `<text x="${lx}" y="${(p.y-(last?45:48)).toFixed(1)}" text-anchor="middle" font-size="13" font-weight="700" letter-spacing="1"
-        fill="var(--muted)">${i===0 ? yy(FY-1)+'.9 · 현재' : yy(fy)+'.9'}</text>
+    out += `<text x="${lx}" y="${(p.y-(last?45:48)).toFixed(1)}" text-anchor="middle" font-size="13.5" font-weight="700" letter-spacing="1"
+        fill="var(--text)">${i===0 ? yy(FY-1)+'.9 · 현재' : yy(fy)+'.9'}</text>
       <text x="${lx}" y="${(p.y-(last?23:25)).toFixed(1)}" text-anchor="middle" font-size="${size+1}" font-weight="700"
         fill="${raw ? (last?'var(--accent)':'var(--text)') : 'var(--muted)'}" style="font-family:'Gowun Batang',serif">${E(pin)}</text>`;
   });
