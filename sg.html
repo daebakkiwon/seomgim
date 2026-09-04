@@ -1094,6 +1094,25 @@ select.sel{font-size:15px}
 .crit-r{font-size:14.5px;font-weight:600;line-height:1.55}
 .crit-k{font-size:13px;font-weight:600;color:var(--danger);margin-top:3px;line-height:1.5}
 
+/* ===== 빠른 기록 ===== */
+.fab.fab-log{right:calc(24px + 66px);background:var(--s2);color:#fff;font-size:15px;font-weight:800;letter-spacing:-.3px;
+  box-shadow:0 6px 20px rgba(60,100,140,.35)}
+@media(min-width:900px){.fab.fab-log{display:inline-flex;align-items:center;justify-content:center}}
+@media(max-width:640px){.fab.fab-log{right:calc(16px + 70px);font-size:16px}}
+.ql-who{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.ql-who:empty{display:none}
+.ql-who .avatar{width:36px;height:36px;font-size:14px}
+.ql-who > div{flex:1;font-size:16px}
+.ql-list{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+.ql-lb{font-size:12.5px;font-weight:700;color:var(--faint);padding:2px 2px 0}
+.ql-p{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);
+  border-radius:10px;padding:9px 12px;font-size:15px}
+.ql-p:hover{border-color:var(--accent)}
+.ql-p b{flex:0 0 auto}
+.ql-p small{margin-left:auto;color:var(--faint);font-size:12.5px}
+.ql-done{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+.ql-ok{font-size:13.5px;font-weight:600;color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--panel));border-radius:8px;padding:6px 10px}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1130,12 +1149,13 @@ select.sel{font-size:15px}
   <div id="view"></div>
 </div>
 
+<button class="fab fab-log" id="fabLog" title="빠른 기록">기록</button>
 <button class="fab" id="fabNew">+</button>
 <div id="modal"></div>
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0653';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0701';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3995,6 +4015,110 @@ document.addEventListener('click', e => {
   if(e.target.closest('[data-criteria]')) showCriteria();
 });
 window.STAGE_AUTO = { calc, applyAll, showCriteria, CRITERIA };
+})();
+
+</script>
+<script>
+/* ============================================================
+   빠른 기록 — 어느 화면에서든 고객 활동 기록을 바로 남긴다
+   ============================================================ */
+(function(){
+"use strict";
+const RKEY = 'crm.quicklog.recent';
+let SELP = null;
+const recent = () => { try{ return JSON.parse(localStorage.getItem(RKEY) || '[]'); }catch(e){ return []; } };
+const remember = id => { try{ const r = [id, ...recent().filter(x => x !== id)].slice(0, 6); localStorage.setItem(RKEY, JSON.stringify(r)); }catch(e){} };
+const stageBadge = p => { const st = stageOf(p.stage); return `<span class="badge" style="background:var(${st.b});color:var(${st.c})">${st.name}</span>`; };
+
+function open(){
+  SELP = null;
+  document.getElementById('modal').innerHTML = `
+  <div class="overlay" data-close>
+    <div class="modal">
+      <div class="mhead"><h2>빠른 기록</h2><button class="x" data-close>×</button></div>
+      <div class="mbody">
+        <div class="ql-who" id="qlWho"></div>
+        <div class="f" id="qlSearch">
+          <input id="qlQ" placeholder="이름을 두세 글자만 쳐 보세요" autocomplete="off" autocapitalize="off">
+          <div class="ql-list" id="qlList"></div>
+        </div>
+        <div class="logadd" style="margin-top:12px">
+          <div class="logrow">
+            <select id="qlKind">${LOG_KINDS.map(k => `<option>${k}</option>`).join('')}</select>
+            <input type="date" id="qlDate" value="${todayStr()}">
+          </div>
+          <div class="logrow">
+            <input id="qlText" placeholder="무슨 이야기를 나눴는지, 무엇을 챙겨드렸는지" autocomplete="off">
+            <button class="btn primary" id="qlAdd">기록</button>
+          </div>
+        </div>
+        <div class="ql-done" id="qlDone"></div>
+        <div class="hint" style="margin-top:10px;font-size:13px;color:var(--faint);line-height:1.6">
+          저장하면 그분의 활동 기록에 남고, 5통 전화·소비자·학습소비자·신규가입에도 자동으로 잡힙니다.
+          같은 분에게 여러 건을 이어서 적을 수 있습니다.
+        </div>
+      </div>
+      <div class="mfoot">
+        <button class="btn ghost left" id="qlNew">＋ 새 고객</button>
+        <button class="btn" data-close>닫기</button>
+      </div>
+    </div>
+  </div>`;
+  const q = document.getElementById('qlQ');
+  const list = () => {
+    const t = q.value.trim().toLowerCase();
+    let rows;
+    if(t) rows = DB.people.filter(p => (p.name || '').toLowerCase().includes(t) || (p.phone || '').includes(t)).slice(0, 8);
+    else rows = recent().map(byId).filter(Boolean);
+    document.getElementById('qlList').innerHTML = rows.length
+      ? (t ? '' : '<div class="ql-lb">최근 기록한 분</div>') + rows.map(p =>
+          `<button type="button" class="ql-p" data-qlp="${p.id}"><b>${esc(p.name)}</b>${stageBadge(p)}${p.phone ? `<small>${esc(p.phone)}</small>` : ''}</button>`).join('')
+      : (t ? `<div class="ql-lb">'${esc(q.value.trim())}' 님이 없습니다. 아래 ＋ 새 고객으로 등록하세요.</div>` : '');
+    document.getElementById('qlList').querySelectorAll('[data-qlp]').forEach(b => b.onclick = () => pick(b.dataset.qlp));
+  };
+  const pick = id => {
+    SELP = byId(id); if(!SELP) return;
+    document.getElementById('qlWho').innerHTML = `<span class="avatar" style="background:${avatarColor(SELP.id)}">${esc(initials(SELP.name))}</span>
+      <div><b>${esc(SELP.name)}</b> ${stageBadge(SELP)}</div>
+      <button type="button" class="btn sm ghost" id="qlOpen">열기</button><button type="button" class="btn sm ghost" id="qlChange">바꾸기</button>`;
+    document.getElementById('qlSearch').classList.add('hide');
+    document.getElementById('qlOpen').onclick = () => openDetail(SELP.id);
+    document.getElementById('qlChange').onclick = () => { SELP = null; document.getElementById('qlWho').innerHTML = ''; document.getElementById('qlSearch').classList.remove('hide'); q.value = ''; list(); q.focus(); };
+    document.getElementById('qlText').focus();
+  };
+  const add = () => {
+    if(!SELP){ toast('먼저 누구인지 골라 주세요'); q.focus(); return; }
+    const text = document.getElementById('qlText').value.trim();
+    if(!text){ toast('내용을 입력하세요'); return; }
+    const ld = document.getElementById('qlDate').value;
+    const at = ld && ld !== todayStr() ? new Date(ld + 'T12:00:00').toISOString() : new Date().toISOString();
+    const kind = document.getElementById('qlKind').value;
+    SELP.logs = SELP.logs || [];
+    SELP.logs.push({ id:uid(), at, kind, text });
+    remember(SELP.id);
+    save(); render();
+    document.getElementById('qlText').value = '';
+    const d = document.getElementById('qlDone');
+    d.innerHTML = `<div class="ql-ok">✓ ${esc(SELP.name)} · ${esc(kind)} · ${esc(text)}</div>` + d.innerHTML;
+    toast('기록했습니다');
+    document.getElementById('qlText').focus();
+  };
+  q.addEventListener('input', list);
+  q.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); const f = document.querySelector('#qlList [data-qlp]'); if(f) f.click(); } });
+  document.getElementById('qlText').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); add(); } });
+  document.getElementById('qlAdd').onclick = add;
+  document.getElementById('qlNew').onclick = () => openForm();
+  list();
+  setTimeout(() => q.focus(), 50);
+}
+const fab = document.getElementById('fabLog');
+if(fab) fab.onclick = open;
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape') return;
+  const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
+  if(!typing && (e.key === 'l' || e.key === 'ㅣ')){ e.preventDefault(); open(); }
+});
+window.QUICK_LOG = { open };
 })();
 
 </script>
