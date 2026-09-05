@@ -1299,7 +1299,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-1625';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-1631';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2939,7 +2939,11 @@ function openForm(id){
   // 폰 연락처에서 가져오기
   const fill = c => {
     if(!c || (!c.name && !c.phone)){ toast('가져올 내용이 없습니다'); return; }
-    if(c.name)    document.getElementById('f_name').value = (window.cleanContactName ? cleanContactName(c.name) : c.name);
+    if(c.name){
+      const nm = window.cleanContactName ? cleanContactName(c.name) : c.name;
+      document.getElementById('f_name').value = nm;
+      if(nm !== String(c.name).trim()) setTimeout(() => toast(`이름만 남겼습니다: ${nm} — 필요하면 뒤에 설명을 붙이세요`), 900);
+    }
     if(c.phone)   document.getElementById('f_phone').value = c.phone;
     if(c.address) document.getElementById('f_address').value = c.address;
     toast(`${c.name || '연락처'} 정보를 가져왔습니다`);
@@ -3014,8 +3018,12 @@ function openForm(id){
   document.getElementById('custForm').addEventListener('submit', e => { e.preventDefault(); doSave(); });
 
   function doSave(){
-    const name = document.getElementById('f_name').value.trim();
+    let name = document.getElementById('f_name').value.trim();
     if(!name){ toast('이름은 꼭 입력해주세요'); nameEl.focus(); return; }
+    if(isNew && /[0-9]/.test(name) && window.cleanContactName){       // 번호가 섞여 들어온 이름은 이름만 남긴다
+      const cleaned = cleanContactName(name);
+      if(cleaned && cleaned !== name){ name = cleaned; document.getElementById('f_name').value = cleaned; }
+    }
     const val = k => document.getElementById('f_' + k).value.trim();
     const data = {
       name,
@@ -3654,7 +3662,7 @@ function commitImport(){
     const byName = (STAGES.find(x => x.name === (m.stageName || '').trim()) || {}).id;
     const rec = {
       id:uid(), createdAt:new Date().toISOString(), logs:[],
-      name:o.name || '(이름 없음)', phone:fmtPhone(o.phone), stage: byName || stage,
+      name:(window.cleanContactName ? cleanContactName(o.name) : o.name) || '(이름 없음)', phone:fmtPhone(o.phone), stage: byName || stage,
       team: tsel || m.team || TEAM || '',
       memberNo:m.memberNo || '', address:m.address || '', source:src,
       tags:(m.tags || '').split(/[,·]/).map(t => t.trim()).filter(Boolean),
