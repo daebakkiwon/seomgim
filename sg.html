@@ -1299,7 +1299,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-1631';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-1635';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2940,9 +2940,13 @@ function openForm(id){
   const fill = c => {
     if(!c || (!c.name && !c.phone)){ toast('가져올 내용이 없습니다'); return; }
     if(c.name){
-      const nm = window.cleanContactName ? cleanContactName(c.name) : c.name;
-      document.getElementById('f_name').value = nm;
-      if(nm !== String(c.name).trim()) setTimeout(() => toast(`이름만 남겼습니다: ${nm} — 필요하면 뒤에 설명을 붙이세요`), 900);
+      const sp = window.splitContactName ? splitContactName(c.name) : {name:c.name, rest:''};
+      document.getElementById('f_name').value = sp.name;
+      if(sp.rest){
+        const memo = document.getElementById('f_memo');
+        if(memo && !memo.value.trim()) memo.value = sp.rest;
+        setTimeout(() => toast(`이름만 남기고 '${sp.rest}'는 메모로 옮겼습니다`), 900);
+      }
     }
     if(c.phone)   document.getElementById('f_phone').value = c.phone;
     if(c.address) document.getElementById('f_address').value = c.address;
@@ -3020,9 +3024,10 @@ function openForm(id){
   function doSave(){
     let name = document.getElementById('f_name').value.trim();
     if(!name){ toast('이름은 꼭 입력해주세요'); nameEl.focus(); return; }
-    if(isNew && /[0-9]/.test(name) && window.cleanContactName){       // 번호가 섞여 들어온 이름은 이름만 남긴다
-      const cleaned = cleanContactName(name);
-      if(cleaned && cleaned !== name){ name = cleaned; document.getElementById('f_name').value = cleaned; }
+    let nameRest = '';
+    if(isNew && window.splitContactName){                              // 새 고객은 이름만 남기고 나머지는 메모로
+      const sp = splitContactName(name);
+      if(sp.name && sp.name !== name){ nameRest = sp.rest; name = sp.name; document.getElementById('f_name').value = sp.name; }
     }
     const val = k => document.getElementById('f_' + k).value.trim();
     const data = {
@@ -3032,7 +3037,8 @@ function openForm(id){
       memberNo: val('memberNo'), needs: val('needs'), route: val('route'),
       noteUser: document.getElementById('f_noteUser').checked,
       team: val('team') === '__new' ? '' : val('team'),
-      family: val('family'), network: val('network'), memo: val('memo'),
+      family: val('family'), network: val('network'),
+      memo: nameRest ? (val('memo') ? val('memo') + '\n' + nameRest : nameRest) : val('memo'),
       tags: val('tags').split(',').map(t => t.trim()).filter(Boolean),
       stage: picked,
     };
@@ -3667,7 +3673,7 @@ function commitImport(){
       memberNo:m.memberNo || '', address:m.address || '', source:src,
       tags:(m.tags || '').split(/[,·]/).map(t => t.trim()).filter(Boolean),
       needs:m.needs || '', route:m.route || '', family:m.family || '',
-      network:m.network || '', memo:o.memo || '',
+      network:m.network || '', memo:[o.memo || '', (window.splitContactName ? splitContactName(o.name).rest : '')].filter(Boolean).join('\n'),
       nextAction:m.nextAction || '', nextDate:m.nextDate || '',
     };
     sysLog(rec, '명단에서 한 번에 등록');
@@ -4192,13 +4198,15 @@ document.addEventListener('click', e => {
 window.STAGE_AUTO = { calc, calcAt:(p, asOf) => calc(p, asOf), applyAll, showCriteria, CRITERIA };
 
 /* 연락처 이름 정리 — "김영희 010-1234-5678 헬스장" → "김영희". 필요하면 수정 칸에서 뒤에 참고 내용을 붙인다 */
-window.cleanContactName = function(raw){
-  const s = String(raw || '').replace(/[0-9\-+()~·,.:/#]+/g, ' ').replace(/\s+/g, ' ').trim();
+window.splitContactName = function(raw){
+  const src = String(raw || '').trim();
+  const s = src.replace(/[0-9\-+()~·,.:/#]+/g, ' ').replace(/\s+/g, ' ').trim();
   const tok = s.split(' ').filter(Boolean);
-  if(!tok.length) return String(raw || '').trim();
-  if(/^[가-힣]{2,5}$/.test(tok[0])) return tok[0];
-  return s;
+  if(!tok.length) return {name:src, rest:''};
+  if(/^[가-힣]{2,5}$/.test(tok[0])) return {name:tok[0], rest:tok.slice(1).join(' ')};
+  return {name:s, rest:''};
 };
+window.cleanContactName = raw => splitContactName(raw).name;
 })();
 
 </script>
