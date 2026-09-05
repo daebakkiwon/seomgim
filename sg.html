@@ -1196,6 +1196,25 @@ select.sel{font-size:15px}
 .ql-f textarea{border:1px solid var(--line);background:var(--panel-2);border-radius:10px;padding:8px 10px;font-size:15px;line-height:1.5;resize:vertical;min-height:44px}
 .ql-f textarea:focus{border-color:var(--accent);background:var(--panel);outline:none}
 
+/* ===== 주간계획 ===== */
+.wk-chips .chip{display:flex;flex-direction:column;align-items:center;gap:1px;line-height:1.2;padding:7px 14px}
+.wk-chips .chip small{font-size:11px;font-weight:600;opacity:.8}
+.wk-add{display:flex;gap:7px;margin-bottom:10px}
+.wk-add input{flex:1;min-width:0;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--panel-2);font-size:15px}
+.wk-row{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:15px}
+.wk-row:last-of-type{border-bottom:0}
+.wk-row b{font-weight:700;cursor:pointer;flex:0 0 auto}
+.wk-row b[data-gwopen]:hover{color:var(--accent)}
+.wk-row small{flex:1;min-width:0;color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-row.ok b{color:var(--ok)}
+.wk-ok{margin-left:auto;font-size:12.5px;font-weight:800;color:var(--ok);white-space:nowrap}
+.wk-no{margin-left:auto;font-size:12.5px;font-weight:800;color:var(--danger)}
+.wk-todo{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--faint)}
+.wk-row.sch .wk-ok,.wk-row.sch .wk-todo{margin-left:0}
+.wk-x{background:none;border:0;color:var(--faint);font-size:20px;line-height:1;padding:0 4px;border-radius:6px}
+.wk-x:hover{color:var(--danger);background:var(--s5b)}
+.wk-extra{margin-top:10px;padding:9px 12px;border-radius:9px;background:color-mix(in srgb,var(--ok) 10%,var(--panel));color:var(--ok);font-size:13.5px;font-weight:700;line-height:1.5}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1223,6 +1242,7 @@ select.sel{font-size:15px}
       <button class="tab gtab" data-view="gvision">비전 · 목표</button>
       <button class="tab gtab" data-view="gself">자기섬김</button>
       <button class="tab gtab" data-view="ggrow">성장활동</button>
+      <button class="tab gtab" data-view="gweek">주간계획</button>
       <button class="tab gtab" data-view="gteam">리더성장</button>
     </nav>
   </div>
@@ -1238,7 +1258,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0826';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0859';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4349,7 +4369,7 @@ window.QUICK_LOG = { open };
 
 const GKEY = 'growth.note.v1';
 const VIEWS = {
-  gvision:'비전 · 목표', gself:'자기섬김', ggrow:'성장활동',
+  gvision:'비전 · 목표', gself:'자기섬김', ggrow:'성장활동', gweek:'주간계획',
   gteam:'리더성장'
 };
 
@@ -4407,7 +4427,7 @@ function blank(){
     vision:{why:'', nowPin:'', pins:{}, g1:'', subs:['','','']},
     plans:{}, log:{},
     org:{jewels:[], pts:[]}, admin:{type:'', name:''},
-    team:{rows:{}, promo:{}}, leader:false};
+    team:{rows:{}, promo:{}}, week:{}, leader:false};
 }
 function normG(o){
   const b = blank();
@@ -4418,6 +4438,7 @@ function normG(o){
   g.org = Object.assign({jewels:[], pts:[]}, g.org || {});
   g.admin = Object.assign({type:'', name:''}, g.admin || {});
   g.team = Object.assign({rows:{}, promo:{}}, g.team || {});
+  g.week = (g.week && typeof g.week === 'object') ? g.week : {};
   g.level = 5;
   return g;
 }
@@ -5281,6 +5302,91 @@ function teamStatsSections(rows){
 }
 /* ---------- 리포트 ---------- */
 
+
+/* ============================================================
+   주간계획 — 5통 계획 · 만남 계획 (지난주 / 이번주 / 다음주)
+   ============================================================ */
+let WSEL = T0.getDay() === 0 ? 'next' : 'this';        // 일요일이면 다음 주를 먼저 보여준다
+const WOFF = {prev:-1, this:0, next:1};
+const WLBL = {prev:'지난주', this:'이번주', next:'다음주'};
+const PLAN = {
+  calls:{name:'5통 계획', ic:'📞', kinds:['통화'], ph:'전화할 분 이름', done:'통화 완료'},
+  meets:{name:'만남 계획', ic:'🤝', kinds:['만남','미팅참석'], ph:'만날 분 이름', done:'만남 완료'}
+};
+function wkRange(sel){
+  const ws = addD(weekStart(T0), 7*WOFF[sel]), we = addD(ws, 6);
+  return {key:ymd(ws), f:ymd(ws), t:ymd(we), ws, we, label:`${ws.getMonth()+1}/${ws.getDate()} ~ ${we.getMonth()+1}/${we.getDate()}`};
+}
+const wkBucket = (key, type) => { const w = G.week[key] || (G.week[key] = {}); return w[type] || (w[type] = []); };
+const crmPeople = () => (typeof DB !== 'undefined' && DB && Array.isArray(DB.people)) ? DB.people : [];
+const findPerson = name => { const n = (name || '').trim(); if(!n) return null; return crmPeople().find(p => p.name === n) || crmPeople().find(p => (p.name || '').startsWith(n)) || null; };
+/* 그 주에 그분과 해당 기록이 있는지 */
+function doneLogs(type, R){
+  const out = new Map();                                   // pid → [날짜…]
+  crmPeople().forEach(p => (p.logs || []).forEach(l => {
+    if(!l || !l.at || !PLAN[type].kinds.includes(l.kind)) return;
+    const d = ymd(new Date(l.at));
+    if(d < R.f || d > R.t) return;
+    if(!out.has(p.id)) out.set(p.id, []);
+    out.get(p.id).push(d);
+  }));
+  return out;
+}
+function planSection(type){
+  const P = PLAN[type], R = wkRange(WSEL), key = R.key;
+  const planned = wkBucket(key, type);
+  const done = doneLogs(type, R);
+  const nameOf = pid => { const p = crmPeople().find(x => x.id === pid); return p ? p.name : ''; };
+  // 만남: 다음 섬김 일정이 그 주에 잡힌 분은 자동으로 함께 보인다
+  const sched = type === 'meets'
+    ? crmPeople().filter(p => p.nextDate && p.nextDate >= R.f && p.nextDate <= R.t && !planned.some(x => x.pid === p.id))
+    : [];
+  const rows = planned.map((x, i) => {
+    const pid = x.pid, nm = pid ? (nameOf(pid) || x.name) : x.name;
+    const ds = pid && done.has(pid) ? done.get(pid) : [];
+    const ok = ds.length > 0;
+    const past = WSEL === 'prev' || (WSEL === 'this' && !ok);
+    const st = ok ? `<span class="wk-ok">✓ ${P.done} ${ds.map(d => Number(d.slice(8)) + '일').join(', ')}</span>`
+      : WSEL === 'prev' ? '<span class="wk-no">미완료</span>' : '<span class="wk-todo">예정</span>';
+    return `<div class="wk-row ${ok ? 'ok' : ''}">
+      <b ${pid ? `data-gwopen="${pid}"` : ''}>${E(nm)}</b>${st}
+      <button type="button" class="wk-x" data-gwdel="${type}" data-i="${i}" title="빼기">×</button></div>`;
+  }).join('');
+  const schedRows = sched.map(p => {
+    const ds = done.get(p.id) || [];
+    return `<div class="wk-row sch ${ds.length ? 'ok' : ''}">
+      <b data-gwopen="${p.id}">${E(p.name)}</b><small>일정 ${Number(p.nextDate.slice(8))}일${p.nextTime ? ' ' + p.nextTime : ''} · ${E(p.nextAction || '')}</small>
+      ${ds.length ? `<span class="wk-ok">✓ ${P.done}</span>` : '<span class="wk-todo">일정</span>'}
+      <button type="button" class="btn sm ghost" data-gwadd="${type}" data-pid="${p.id}">계획에</button></div>`;
+  }).join('');
+  // 계획에 없었지만 그 주에 기록된 분
+  const extra = [...done.keys()].filter(pid => !planned.some(x => x.pid === pid) && !sched.some(p => p.id === pid))
+    .map(pid => nameOf(pid)).filter(Boolean);
+  const nDone = planned.filter(x => x.pid && done.has(x.pid)).length + sched.filter(p => done.has(p.id)).length;
+  const nAll = planned.length + sched.length;
+  const opts = crmPeople().slice().sort((a,b) => stageIdx(a.stage) - stageIdx(b.stage) || a.name.localeCompare(b.name, 'ko'))
+    .map(p => `<option value="${E(p.name)}">${E(stageOf(p.stage).name)}</option>`).join('');
+  return `
+  <div class="section-title">${P.ic} ${P.name} <small class="gx-sub">${WLBL[WSEL]} ${R.label} · 계획 ${nAll}명 · 완료 ${nDone}명</small></div>
+  <div class="card gx-pad wk-card">
+    <div class="wk-add"><input type="text" list="wkList-${type}" data-gwname="${type}" placeholder="${P.ph}" autocomplete="off">
+      <datalist id="wkList-${type}">${opts}</datalist>
+      <button type="button" class="btn sm primary" data-gwadd="${type}">추가</button></div>
+    ${rows}${schedRows}
+    ${!rows && !schedRows ? `<div class="gx-empty">아직 계획이 없습니다. 이름을 적고 추가하세요.</div>` : ''}
+    ${extra.length ? `<div class="wk-extra">계획에 없었지만 ${P.done} · ${extra.map(E).join(', ')}</div>` : ''}
+  </div>`;
+}
+function vWeek(){
+  const chips = ['prev','this','next'].map(k => { const R = wkRange(k);
+    return `<button class="chip ${WSEL === k ? 'on' : ''}" data-gwsel="${k}">${WLBL[k]} <small>${R.label}</small></button>`; }).join('');
+  return `
+  <div class="chips wk-chips">${chips}</div>
+  <p class="gx-note" style="margin:6px 0 0">${T0.getDay() === 0 ? '오늘은 일요일 — 다음 주 계획을 세우는 날입니다.' : '매주 일요일에 다음 주 계획을 잡아 두세요.'}
+    5통 전화와 만남은 섬김활동에 기록하면 여기 완료로 표시됩니다.</p>
+  ${planSection('calls')}
+  ${planSection('meets')}`;
+}
 /* ---------- 상담자료 — 스폰서·리더와 상담할 때 보여주는 요약 ---------- */
 let RSEL = 'month';
 function repRange(){
@@ -5447,6 +5553,7 @@ window.GROWTH = {
     if(v === 'gvision') return vVision();
     if(v === 'gself') return vSelf();
     if(v === 'ggrow') return vGrow();
+    if(v === 'gweek') return vWeek();
     if(v === 'gteam') return vTeam();
     return '';
   },
@@ -5599,6 +5706,28 @@ window.GROWTH = {
 
     on('[data-gtscope]', el => { TSCOPE = el.dataset.gtscope; again(); });
     on('[data-gtitem]', el => { TITEM = el.dataset.gtitem; again(); });
+
+    /* 주간계획 */
+    on('[data-gwsel]', el => { WSEL = el.dataset.gwsel; again(); });
+    const wkAdd = (type, pid, name) => {
+      const b = wkBucket(wkRange(WSEL).key, type);
+      if(pid && b.some(x => x.pid === pid)){ say('이미 계획에 있습니다'); return; }
+      b.push(pid ? {pid, name} : {pid:null, name});
+      gsave(); again();
+    };
+    on('[data-gwadd]', el => {
+      const type = el.dataset.gwadd;
+      if(el.dataset.pid){ const p = crmPeople().find(x => x.id === el.dataset.pid); if(p) wkAdd(type, p.id, p.name); return; }
+      const inp = root.querySelector(`[data-gwname="${type}"]`), n = inp.value.trim();
+      if(!n){ say('이름을 적어 주세요'); inp.focus(); return; }
+      const p = findPerson(n);
+      wkAdd(type, p ? p.id : null, p ? p.name : n);
+    });
+    root.querySelectorAll('[data-gwname]').forEach(inp => inp.onkeydown = e => {
+      if(e.key === 'Enter'){ e.preventDefault(); root.querySelector(`button[data-gwadd="${inp.dataset.gwname}"]:not([data-pid])`).click(); }
+    });
+    on('[data-gwdel]', el => { wkBucket(wkRange(WSEL).key, el.dataset.gwdel).splice(Number(el.dataset.i), 1); gsave(); again(); });
+    on('[data-gwopen]', el => { if(typeof openDetail === 'function') openDetail(el.dataset.gwopen); });
 
     /* 성장활동 */
     on('[data-gtype]', el => { GSEL = el.dataset.gtype; again(); });
