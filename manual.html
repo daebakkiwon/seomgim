@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>섬김성장노트 사용 설명서</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&display=swap');
+:root{--bg:#faf6f4;--panel:#fff;--panel-2:#fdf9f8;--line:#eee0dc;--text:#2c2427;--muted:#6f5f65;--accent:#9d5a72;--accent-soft:#fbeef2;--blue:#1f5fbf;--blue-soft:#eaf2f8;--ok:#5f9b6b;--danger:#c0504f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",system-ui,sans-serif;font-size:17px;line-height:1.7;word-break:keep-all}
+.wrap{max-width:760px;margin:0 auto;padding:0 18px 80px}
+header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);z-index:5}
+.hin{max-width:760px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:10px}
+h1{font-family:'Gowun Batang',serif;font-size:20px;margin:0;flex:1}
+h1 b{color:var(--blue)}
+.ver{font-size:12.5px;color:var(--muted)}
+h2{font-family:'Gowun Batang',serif;font-size:22px;margin:38px 0 10px;padding-left:12px;border-left:5px solid var(--accent)}
+h2.g{border-left-color:var(--blue)}
+h3{font-size:17.5px;margin:20px 0 6px;color:var(--accent)}
+h2.g ~ h3{color:var(--blue)}
+p{margin:6px 0 10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;margin:10px 0}
+.tip{background:var(--accent-soft);border-radius:12px;padding:12px 16px;margin:10px 0;font-size:16px}
+.tip b{color:var(--accent)}
+.tip.b{background:var(--blue-soft)}.tip.b b{color:var(--blue)}
+ol,ul{padding-left:22px;margin:6px 0 10px}
+li{margin:4px 0}
+.btn{display:inline-block;background:var(--accent);color:#fff;border-radius:8px;padding:1px 9px;font-size:15px;font-weight:700}
+.btn.blue{background:var(--blue)}
+.btn.line{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:15.5px;background:var(--panel);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--panel-2);font-size:14px;color:var(--muted)}
+.toc{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0 0}
+.toc a{display:block;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--text);text-decoration:none;font-weight:700;font-size:15.5px}
+.toc a.g{border-color:#bcd3ea;color:var(--blue)}
+.tab{display:inline-block;padding:2px 9px;border-radius:6px;background:var(--panel-2);border:1px solid var(--line);font-weight:700;font-size:15px}
+.tab.g{color:var(--blue);border-color:#bcd3ea;background:var(--blue-soft)}
+.step{display:flex;gap:10px;align-items:flex-start;margin:8px 0}
+.step i{flex:0 0 28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-style:normal;font-weight:800;font-size:15px}
+.g .step i{background:var(--blue)}
+.faq dt{font-weight:800;margin-top:12px}
+.faq dd{margin:2px 0 0 0;color:var(--muted)}
+@media(max-width:480px){body{font-size:16.5px}.toc{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div class="hin"><h1>섬김<b>성장</b>노트 사용 설명서</h1><span class="ver">처음 쓰는 분을 위한 안내</span></div></header>
+<div class="wrap">
+
+<p style="margin-top:18px">이 앱은 두 부분으로 되어 있습니다. <b>섬김노트</b>(고객을 섬기는 기록)와 <b style="color:var(--blue)">성장노트</b>(나의 실행을 키우는 기록)입니다. 아래 순서대로 한 번만 따라 해 보시면 됩니다.</p>
+
+<div class="toc">
+<a href="#s1">1. 처음 시작하기</a><a href="#s2">2. 화면 한눈에 보기</a>
+<a href="#s3">3. 고객 등록하기</a><a href="#s4">4. 기록 남기기 (가장 중요)</a>
+<a href="#s5">5. 다음 섬김 일정</a><a href="#s6">6. 고객구분은 자동</a>
+<a class="g" href="#s7">7. 비전 · 목표</a><a class="g" href="#s8">8. 자기섬김</a>
+<a class="g" href="#s9">9. 주간계획</a><a class="g" href="#s10">10. 성장활동 · 상담자료</a>
+<a class="g" href="#s11">11. 리더성장 (리더만)</a><a href="#s12">12. 백업과 자주 묻는 질문</a>
+</div>
+
+<h2 id="s1">1. 처음 시작하기</h2>
+<div class="card">
+<div class="step"><i>1</i><div><b>홈 화면에 추가</b><br>리더가 보내 준 주소를 열고, 아이폰은 공유 버튼 → "홈 화면에 추가", 안드로이드는 메뉴 → "홈 화면에 추가"를 누릅니다. 빨강·파랑 하트 아이콘이 생깁니다.</div></div>
+<div class="step"><i>2</i><div><b>새 버전 받기</b><br>앱이 새로워지면 위쪽에 "✨ 새로워진 내용이 있습니다 <span class="btn">받기</span>" 띠가 뜹니다. 받기를 누르면 끝입니다. 다시 설치할 필요가 없고 자료도 그대로입니다.</div></div>
+<div class="step"><i>3</i><div><b>내 이름 적기</b><br><span class="tab g">비전 · 목표</span> 탭 맨 위에 성명, 상위 PT, 상위 보석핀을 적습니다. 이것만 적으면 나의 실행 숫자가 리더에게 자동으로 전달됩니다.</div></div>
+</div>
+<div class="tip"><b>중요</b> 자료는 내 휴대폰 안에만 저장됩니다. 휴대폰을 바꾸거나 앱을 지우면 사라지니, 12번의 <b>백업</b>을 꼭 해 두세요.</div>
+
+<h2 id="s2">2. 화면 한눈에 보기</h2>
+<table>
+<tr><th>탭</th><th>무엇을 하는 곳인가</th></tr>
+<tr><td><span class="tab">🏠 홈</span></td><td>고객 단계별 인원, 이번 주 섬김활동, 이 달 대화거리, 일정표·어록, 고객구분 기준</td></tr>
+<tr><td><span class="tab">고객 목록</span></td><td>모든 고객. 이름을 누르면 그분의 섬김활동 화면</td></tr>
+<tr><td><span class="tab">섬김활동</span></td><td>예정된 섬김과 완료한 섬김</td></tr>
+<tr><td><span class="tab">명단분류</span></td><td>친정식구·초등친구처럼 명단별로 보기, 엑셀로 내보내기</td></tr>
+<tr><td><span class="tab g">비전 · 목표</span></td><td>내가 이 사업을 하는 이유, 5개년 핀 목표, 이 달 목표</td></tr>
+<tr><td><span class="tab g">자기섬김</span></td><td>오늘 한 것 기록 (음원/메세지 · 미팅 · 운동) + 자동 집계 4가지</td></tr>
+<tr><td><span class="tab g">주간계획</span></td><td>요일별 5통 전화 · 만남 계획, 바로 전화 걸기</td></tr>
+<tr><td><span class="tab g">성장활동</span></td><td>항목별 월간 내역, 상담자료 복사</td></tr>
+<tr><td><span class="tab g">리더성장</span></td><td>리더만 · 팀 현황과 순위</td></tr>
+</table>
+<p>화면 오른쪽 아래에는 항상 두 개의 둥근 버튼이 있습니다. <span class="btn blue">기록</span>은 빠른 기록, <span class="btn">+</span>는 새 고객 등록입니다. 위쪽 <span class="btn line">가 −</span> <span class="btn line">가 +</span>로 글씨 크기를 바꿀 수 있습니다.</p>
+
+<h2 id="s3">3. 고객 등록하기</h2>
+<div class="card">
+<div class="step"><i>1</i><div>오른쪽 아래 <span class="btn">+</span>를 누릅니다.</div></div>
+<div class="step"><i>2</i><div><b>📇 연락처 찾아보기</b>를 누르면 휴대폰 연락처에서 이름·번호·주소를 가져옵니다. 이름에 붙어 있던 전화번호나 다른 단어는 자동으로 지워지고 <b>이름만</b> 남습니다. 필요하면 이름 뒤에 참고 내용을 직접 붙여도 됩니다.</div></div>
+<div class="step"><i>3</i><div>명단분류(친정식구 등), 회원번호, 불편한 점·니즈를 아는 만큼만 적고 <b>추가</b>를 누릅니다. 나중에 채워도 됩니다.</div></div>
+</div>
+<div class="tip"><b>단계는 고르지 않아도 됩니다.</b> 예상고객으로 시작해서, 기록에 따라 소비자·이달소비자·학습소비자로 자동으로 올라갑니다 (6번 참고).</div>
+
+<h2 id="s4">4. 기록 남기기 (가장 중요)</h2>
+<p>고객과 한 일을 기록하는 것이 이 앱의 핵심입니다. 기록은 곧바로 5통 전화·소비자 집계와 고객구분에 반영됩니다.</p>
+<h3>방법 1 · 빠른 기록 버튼</h3>
+<div class="card">
+<div class="step"><i>1</i><div>어느 화면에서든 오른쪽 아래 <span class="btn blue">기록</span>을 누릅니다.</div></div>
+<div class="step"><i>2</i><div>이름을 두세 글자만 치면 고객이 뜹니다. 아무것도 안 치면 최근에 기록한 분이 먼저 나옵니다. 그분을 누릅니다.</div></div>
+<div class="step"><i>3</i><div>종류(통화, 제품첫구매 …)를 고르고 내용을 적은 뒤 <span class="btn">기록</span>. 날짜는 오늘이 기본이고, 지난 일을 적을 때만 바꿉니다.</div></div>
+<div class="step"><i>4</i><div>같은 창에서 <b>다음 섬김 일정</b>도 잡을 수 있고, <b>📝 특이사항 적기</b>를 누르면 니즈·동선·가족관계·인맥·메모를 바로 적을 수 있습니다.</div></div>
+</div>
+<h3>방법 2 · 전화 걸고 나서</h3>
+<p>앱에서 전화번호를 눌러 통화하고 돌아오면 "📞 ○○ 님과 통화하셨나요?"가 뜹니다. <b>통화 기록하기</b>를 누르면 그분과 "통화"가 미리 선택된 빠른 기록 창이 열립니다. 특이사항 칸도 펼쳐져 있어 통화 중 들은 말을 바로 적을 수 있습니다.</p>
+<h3>기록 종류와 뜻</h3>
+<table>
+<tr><th>종류</th><th>언제 쓰나</th><th>어디에 반영</th></tr>
+<tr><td>통화</td><td>전화로 안부·안내를 했을 때</td><td>5통 전화</td></tr>
+<tr><td>제품첫구매 / 제품재구매</td><td>제품을 처음 샀을 때 / 다시 샀을 때</td><td>소비자 만들기, 고객구분</td></tr>
+<tr><td>미팅참석</td><td>미팅에 함께 참석했을 때</td><td>학습소비자, 사업자</td></tr>
+<tr><td>음원프로모션 / 자료제공</td><td>음원이나 자료를 전했을 때</td><td>학습소비자</td></tr>
+<tr><td>만남</td><td>직접 만났을 때</td><td>주간계획 만남 완료</td></tr>
+<tr><td>신규가입</td><td>회원으로 가입했을 때</td><td>신규가입</td></tr>
+<tr><td>후기제공 · 후기나눔 · 문고리</td><td>그 밖의 섬김</td><td>기록으로 남음</td></tr>
+</table>
+
+<h2 id="s5">5. 다음 섬김 일정</h2>
+<p>고객을 열면 <b>다음 섬김</b> 칸이 있습니다. 내용(예: 무릎에 좋은 제품 알아봐 드리기)과 날짜·시간을 적고 <span class="btn">저장</span>하면 홈의 "이번 주 섬김활동"에 올라옵니다. 마치면 <span class="btn line">완료</span>를 누르세요. 기록에 남고 일정은 비워집니다. 📅 버튼으로 휴대폰 캘린더에도 넣을 수 있습니다.</p>
+
+<h2 id="s6">6. 고객구분은 자동으로 바뀝니다</h2>
+<p>홈 화면 맨 아래 <b>📋 고객구분 기준</b>을 누르면 언제든 볼 수 있습니다.</p>
+<table>
+<tr><th>단계</th><th>올라가는 기준</th><th>내려가는 때</th></tr>
+<tr><td>예상고객</td><td>등록한 모든 분</td><td></td></tr>
+<tr><td>소비자</td><td>제품을 한 번이라도 산 분</td><td>계속 유지</td></tr>
+<tr><td>이달소비자</td><td>이번 달에 산 분</td><td>이번 달 구매가 없으면</td></tr>
+<tr><td>학습소비자</td><td>자료제공 3회 · 미팅참석 2회 · 음원프로모션 1회 이상</td><td>두 달 연속 구매도 배움도 없으면</td></tr>
+<tr><td>애용자</td><td>재구매 10회 이상 + 두 달 연속 구매</td><td>두 달 연속 구매가 끊기면</td></tr>
+<tr><td>사업자</td><td>미팅 10회 이상 + 매달 재구매 + 섬김성장노트 사용(수정 화면에서 체크)</td><td>매달 구매가 끊기면</td></tr>
+</table>
+<div class="tip"><b>손으로도 바꿀 수 있습니다.</b> 고객 수정에서 단계를 고르면 그대로 유지되다가, 기준에서 내려가는 일이 생길 때만 자동으로 내려갑니다.</div>
+
+<h2 class="g" id="s7">7. 비전 · 목표</h2>
+<div class="card g">
+<div class="step"><i>1</i><div><b>내가 이 사업을 하는 이유</b>를 한 문장으로 적습니다. 흔들릴 때 가장 먼저 보는 문장입니다.</div></div>
+<div class="step"><i>2</i><div><b>성장 궤도</b>에 매년 9월 도달할 핀(PT, FSPH …)을 적으면 화살표 위에 표시됩니다.</div></div>
+<div class="step"><i>3</i><div><b>이번 달 목표</b>에서 핀 목표, PV 목표(만 단위, 예: 200)를 적고, 항목별 목표는 <span class="btn line">권장값</span>을 누르면 자동으로 채워집니다.</div></div>
+</div>
+<p>첫 상자의 <b>달성율</b>은 내가 정한 목표 기준, <b>DIA 달성율</b>은 권장값 기준입니다. 두 숫자 차이로 내 목표가 권장값보다 높은지 낮은지 알 수 있습니다.</p>
+
+<h2 class="g" id="s8">8. 자기섬김 · 오늘 한 것 적기</h2>
+<div class="card g">
+<div class="step"><i>1</i><div><b>음원/메세지</b>: 들은 음원 제목과 아침 메시지 한 문장. 둘 다 적어야 1개로 셉니다.</div></div>
+<div class="step"><i>2</i><div><b>미팅</b>: 미팅 제목을 적고 추가. 주 2회가 목표입니다.</div></div>
+<div class="step"><i>3</i><div><b>운동</b>: 운동 내용을 적고 추가.</div></div>
+</div>
+<p>아래 파란 상자의 <b>5통 전화 · 소비자 · 학습소비자 · 신규가입</b>은 직접 적지 않습니다. 4번에서 남긴 고객 기록이 자동으로 들어옵니다. 날짜 화살표로 지난 날도 적을 수 있습니다.</p>
+<div class="tip b"><b>실행률 점수</b>는 7개 항목을 "목표 대비 얼마나 꾸준히 했나"로 매긴 값입니다. 90점 이상 다이아, 80 골드, 65 실버, 50 브론즈, 50 미만은 리빌드 구간(다시 세우는 구간)입니다. 처음엔 누구나 낮게 나오니 걱정하지 마세요.</div>
+
+<h2 class="g" id="s9">9. 주간계획 · 일요일에 다음 주를 잡습니다</h2>
+<div class="card g">
+<div class="step"><i>1</i><div>위에서 <b>지난주 / 이번주 / 다음주</b>를 고릅니다. 일요일에는 다음주가 먼저 열립니다.</div></div>
+<div class="step"><i>2</i><div>요일 옆 <span class="btn blue">＋</span>를 누르면 전체 고객 목록이 뜹니다. 여러 명을 고르고 "계획에 추가".</div></div>
+<div class="step"><i>3</i><div>계획표의 📞를 누르면 바로 전화가 걸리고, 통화 후 기록하면 그 줄이 "✓ 통화 완료"로 바뀝니다.</div></div>
+</div>
+<p><b>만남 계획</b>에는 다음 섬김 일정이 잡힌 분이 해당 요일에 자동으로 나옵니다. 계획에 없던 분과 통화·만남을 했으면 아래에 따로 표시됩니다.</p>
+
+<h2 class="g" id="s10">10. 성장활동 · 상담자료</h2>
+<p>맨 위 <b>📋 전체</b>를 누르면 이 달의 모든 활동이 최근 날짜부터 보입니다. 항목 아이콘을 누르면 그 항목만 보이고 달성율이 나옵니다. 월 화살표로 지난달도 볼 수 있습니다.</p>
+<p>맨 아래 <b>상담자료</b>는 스폰서·리더와 상담할 때 쓰는 요약입니다. 이번 주 / 월간 / 최근 3개월을 고르고 <span class="btn">📋 상담자료 복사</span>를 누르면 카톡에 붙여넣기 좋은 글로 복사됩니다. 실행률, 항목별 실적, 고객 현황 3개월, 잘한 것·보완할 것이 들어 있습니다.</p>
+
+<h2 class="g" id="s11">11. 리더성장 (PT · 보석핀 리더만)</h2>
+<div class="card g">
+<div class="step"><i>1</i><div><b>리더 등록</b>에서 이름, 역할(PT / 보석핀), 본인 이름, 이메일, 비밀번호(6자 이상)를 적고 등록 신청합니다.</div></div>
+<div class="step"><i>2</i><div>총리더가 승인하면 팀 현황이 보입니다. PT는 직속 팀원만, 보석핀은 아래 PT 레그 전체를 봅니다.</div></div>
+<div class="step"><i>3</i><div>참가인원·달성율(전체 / 보석핀별 / PT별), 항목별 실행율 명단, 활동자 순위, 미보고 명단, 프로모션 달성자, 공지문 복사.</div></div>
+</div>
+<div class="tip b"><b>팀원은 아무것도 제출하지 않습니다.</b> 비전·목표에 성명과 상위 PT만 적으면 이름과 활동 숫자만 자동으로 올라갑니다. 고객 이름·전화·기록 내용은 올라가지 않습니다.</div>
+
+<h2 id="s12">12. 백업과 자주 묻는 질문</h2>
+<h3>백업은 한 번이면 됩니다</h3>
+<div class="card">
+<div class="step"><i>1</i><div>위쪽 <span class="btn line">데이터</span>를 누릅니다.</div></div>
+<div class="step"><i>2</i><div><b>📋 백업 글 복사</b>를 누르고, 카톡 "나에게 보내기"나 메모장에 붙여 둡니다. 고객 자료와 성장노트 자료가 모두 들어 있습니다.</div></div>
+<div class="step"><i>3</i><div>휴대폰을 바꾸면 새 앱의 데이터 → <b>붙여넣어 되살리기</b>에 그 글을 붙여넣습니다.</div></div>
+</div>
+<p>홈 화면에 "마지막 백업이 14일 전"이라고 뜨면 다시 한 번 복사해 두세요.</p>
+<h3>자주 묻는 질문</h3>
+<dl class="faq">
+<dt>앱이 새 버전으로 안 바뀌어요.</dt><dd>데이터 → <b>🔄 최신으로 받기</b>를 누르세요. 자료는 그대로입니다.</dd>
+<dt>5통 전화 숫자가 안 올라가요.</dt><dd>고객 기록의 종류가 "통화"여야 합니다. 빠른 기록에서 종류를 확인하세요.</dd>
+<dt>리더 화면에 내 이름이 없대요.</dt><dd>비전·목표 맨 위에 성명과 상위 PT를 적었는지 확인하세요. 적은 뒤 기록을 하나 남기면 올라갑니다.</dd>
+<dt>팀분류 줄이 안 보여요.</dt><dd>팀분류는 섬김노트 화면(홈·고객 목록·섬김활동·명단분류)에서만 보입니다. 파란 탭에서는 숨겨집니다.</dd>
+<dt>이름 옆에 붙여 둔 메모가 사라졌어요.</dt><dd>새 버전에서 이름만 남기도록 한 번 정리했습니다. 필요하면 고객 수정에서 이름 뒤에 다시 붙이세요.</dd>
+<dt>사파리와 홈 화면 앱의 자료가 달라요.</dt><dd>아이폰은 둘이 따로 저장됩니다. 한쪽에서 백업 글을 복사해 다른 쪽에 되살리면 같아집니다. 앞으로는 한쪽만 쓰세요.</dd>
+</dl>
+<p style="margin-top:30px;color:var(--muted);font-size:14px">궁금한 점은 리더에게 물어보세요. 이 설명서는 앱 홈 화면 아래 "📖 사용 설명서"에서 언제든 다시 볼 수 있습니다.</p>
+</div>
+</body>
+</html>

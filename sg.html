@@ -1299,7 +1299,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0938';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-1613';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1947,7 +1947,8 @@ function viewDash(){
     ${schedCard()}
     ${quoteCard()}
     <div class="slots" style="margin-top:8px"><button type="button" class="sbtn" data-criteria
-      style="background:var(--s6b);border-color:var(--s6);color:var(--s6)">📋 고객구분 기준</button></div>
+      style="background:var(--s6b);border-color:var(--s6);color:var(--s6)">📋 고객구분 기준</button>
+      <a class="sbtn" href="manual.html" target="_blank" rel="noopener" style="background:var(--s2b);border-color:var(--s2);color:var(--s2);text-decoration:none">📖 사용 설명서</a></div>
 
     ${checks.length ? `<div class="card" style="padding:13px 16px;font-size:14px;color:var(--muted)">
         ${checks.map(t => `<div class="chkline">${t}</div>`).join('')}
