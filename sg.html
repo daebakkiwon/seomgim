@@ -1299,7 +1299,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-1635';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-1652';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2850,6 +2850,26 @@ function openForm(id){
   </div>`;
 
   // 연락처 — 입력하는 대로 - 를 넣어준다
+  const nameIn = document.getElementById('f_name');
+  if(isNew && window.splitContactName){
+    let prevLen = nameIn.value.length, tmr = null;
+    const tidy = () => {
+      const sp = splitContactName(nameIn.value);
+      if(!sp.name || sp.name === nameIn.value.trim()) return;
+      nameIn.value = sp.name;
+      if(sp.rest){
+        const memo = document.getElementById('f_memo');
+        if(memo && !memo.value.trim()) memo.value = sp.rest;
+        toast(`이름만 남기고 '${sp.rest}'는 메모로 옮겼습니다`);
+      }
+    };
+    nameIn.addEventListener('input', () => {
+      const jump = nameIn.value.length - prevLen; prevLen = nameIn.value.length;
+      clearTimeout(tmr);
+      if(jump >= 4) tmr = setTimeout(tidy, 400);          // 자동채움처럼 한꺼번에 들어온 경우만
+    });
+    nameIn.addEventListener('change', tidy);
+  }
   const phoneEl = document.getElementById('f_phone');
   phoneEl.addEventListener('input', () => {
     const atEnd = phoneEl.selectionStart === phoneEl.value.length;
