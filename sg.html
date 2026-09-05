@@ -1299,7 +1299,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-1613';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-1625';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2706,7 +2706,7 @@ function openForm(id){
           <div class="f full">
             <div style="display:flex;gap:7px;flex-wrap:wrap">
               <button type="button" class="btn sm primary" id="findContact">📇 연락처 찾아보기</button>
-              ${CAN_PICK ? '' : `<button type="button" class="btn sm" id="pasteFill">📋 붙여넣기</button>`}
+              <button type="button" class="btn sm" id="pasteFill">📋 붙여넣기</button>
             </div>
             ${CAN_PICK ? '' : `
             <div class="howto hide" id="findHow" style="margin-top:10px;margin-bottom:0">
@@ -2949,7 +2949,7 @@ function openForm(id){
 
   // 연락처 찾아보기 — 안드로이드는 바로 목록, 아이폰은 방법을 펼친다
   document.getElementById('findContact').onclick = async () => {
-    if(CAN_PICK){ fill(await pickContact()); return; }
+    if(CAN_PICK){ const c = await pickContact(); if(c) fill(c); return; }
     document.getElementById('findHow').classList.toggle('hide');
   };
 
@@ -3121,18 +3121,34 @@ function parseVCards(text){
 
 // 폰 연락처에서 한 사람 고르기 (되는 기기에서만)
 async function pickContact(){
-  try{
-    const list = await navigator.contacts.select(['name', 'tel', 'address'], { multiple: false });
-    if(!list || !list.length) return null;
-    const c = list[0];
-    const a = (c.address && c.address[0]) || null;
-    return {
-      name: (c.name && c.name[0]) || '',
-      phone: fmtPhone((c.tel && c.tel[0]) || ''),
-      address: a ? [a.region, a.city, a.addressLine && a.addressLine.join(' ')]
-        .filter(Boolean).join(' ').trim() : '',
-    };
-  }catch(e){ return null; }
+  if(!navigator.contacts || !navigator.contacts.select){
+    toast('이 브라우저는 연락처 선택을 지원하지 않습니다 — 📋 붙여넣기를 쓰세요'); return null;
+  }
+  const run = p => navigator.contacts.select(p, { multiple: false });
+  let list = null;
+  try{ list = await run(['name', 'tel', 'address']); }
+  catch(e){
+    const n = (e && e.name) || '';
+    if(n === 'TypeError'){                                    // 주소를 지원하지 않는 기기
+      try{ list = await run(['name', 'tel']); }
+      catch(e2){ toast('연락처를 열지 못했습니다 (' + ((e2 && e2.name) || '오류') + ') — 📋 붙여넣기를 쓰세요'); return null; }
+    }else if(n === 'SecurityError'){
+      toast('연락처 창은 화면을 직접 눌렀을 때만 열립니다. 한 번 더 눌러 주세요'); return null;
+    }else if(n === 'InvalidStateError'){
+      toast('연락처 창이 이미 열려 있습니다'); return null;
+    }else{
+      toast('연락처를 열지 못했습니다 (' + (n || '오류') + ') — 📋 붙여넣기를 쓰세요'); return null;
+    }
+  }
+  if(!list || !list.length){ toast('연락처 선택을 취소했습니다'); return null; }
+  const c = list[0];
+  const a = (c.address && c.address[0]) || null;
+  return {
+    name: (c.name && c.name[0]) || '',
+    phone: fmtPhone((c.tel && c.tel[0]) || ''),
+    address: a ? [a.region, a.city, a.addressLine && a.addressLine.join(' ')]
+      .filter(Boolean).join(' ').trim() : '',
+  };
 }
 
 function parseList(text){
