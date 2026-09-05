@@ -983,8 +983,8 @@ select.sel{font-size:15px}
 }
 
 /* ===== 성장활동 — 항목 아이콘 · 달성율 · 일자별 내역 ===== */
-.gx-types{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:12px}
-@media(max-width:640px){.gx-types{grid-template-columns:repeat(4,1fr)}}
+.gx-types{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:12px}
+@media(max-width:640px){.gx-types{grid-template-columns:repeat(3,1fr)}}
 .gx-type{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:8px 2px 6px;
   display:flex;flex-direction:column;align-items:center;gap:3px;font-size:12.5px;font-weight:700;color:var(--muted);
   white-space:nowrap;min-width:0}
@@ -1295,7 +1295,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0917';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0923';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4892,6 +4892,7 @@ function week(){
 }
 /* ── 성장활동 — 항목별 월간 내역 ── */
 const GTYPES = [
+  {id:'all',      ic:'📋', name:'전체'},
   {id:'audio',    ic:'🎧', name:'음원',     core:'audio', field:'title'},
   {id:'msg',      ic:'💬', name:'메세지',   core:'audio', field:'msg'},
   {id:'meeting',  ic:'🤝', name:'미팅',     core:'meeting'},
@@ -4901,10 +4902,15 @@ const GTYPES = [
   {id:'learner',  ic:'📚', name:'학습소비자', core:'learner'},
   {id:'newjoin',  ic:'🌱', name:'신규가입', core:'newjoin'}
 ];
-let GSEL = 'audio';
+let GSEL = 'all';
 let GMON = {y:T0.getFullYear(), m:T0.getMonth()};
 const gType = () => GTYPES.find(x => x.id === GSEL) || GTYPES[0];
 function gEntries(t, R){
+  if(t.id === 'all'){
+    const all = [];
+    GTYPES.filter(x => x.id !== 'all').forEach(x => gEntries(x, R).forEach(e => all.push({d:e.d, k:e.k || x.name, text:e.text})));
+    return all.sort((a,b) => b.d.localeCompare(a.d));
+  }
   const c = CORES.find(x => x.id === t.core), out = [];
   for(let d = pd(R.t); ymd(d) >= R.f; d = addD(d,-1)){
     const ds = ymd(d);
@@ -4928,10 +4934,11 @@ function gHistText(){
   ].join('\n');
 }
 function vGrow(){
-  const t = gType(), c = CORES.find(x => x.id === t.core);
+  const t = gType(), c = CORES.find(x => x.id === t.core) || CORES[0];
   const {y,m} = GMON, R = mrange(y,m);
   const now = (y === T0.getFullYear() && m === T0.getMonth());
   const list = gEntries(t, R), P = pace(c, y, m);
+  const isAll = t.id === 'all';
   const done = c.kind === 'audio' ? new Set(list.map(e => e.d)).size : P.done;
   const goal = P.goal, pct = goal ? Math.min(done/goal,1)*100 : 0;
   const days = new Set(list.map(e => e.d)).size;
@@ -4945,7 +4952,7 @@ function vGrow(){
   }).join('');
   return `
   <div class="gx-types">${GTYPES.map(x => {
-    const isAuto = CORES.find(k => k.id === x.core).kind === 'crm';
+    const isAuto = !!(x.core && CORES.find(k => k.id === x.core).kind === 'crm');
     return `<button class="gx-type ${x.id === GSEL ? 'on' : ''} ${isAuto ? 'auto' : ''}" data-gtype="${x.id}"><span>${x.ic}</span>${x.name}</button>`;
   }).join('')}</div>
   <div class="gx-datebar">
@@ -4953,12 +4960,17 @@ function vGrow(){
     <b>${y}년 ${m+1}월 · ${t.ic} ${t.name}</b>
     <button class="btn sm ghost" data-ggmon="1" ${now ? 'disabled' : ''}>›</button>
   </div>
-  <div class="card gx-rate ${auto ? 'auto' : ''}">
+  ${isAll ? (() => { const sc = score(R.f, R.t), g = grade(sc); return `<div class="card gx-rate">
+    <div><span class="k">실행률</span><b>${sc}<small>점</small></b><span class="d gx-g${g.k}">${g.k} · ${g.t}</span></div>
+    <div><span class="k">이 달 활동</span><b>${list.length}<small>건</small></b><span class="d">7개 항목 합계</span></div>
+    <div><span class="k">활동한 날</span><b>${days}<small>일</small></b><span class="d">${P.running ? `남은 ${P.left}일` : '마감'}</span></div>
+    <div class="tr"><i style="width:${sc}%"></i></div>
+  </div>` })() : `<div class="card gx-rate ${auto ? 'auto' : ''}">
     <div><span class="k">달성율</span><b>${Math.round(pct)}<small>%</small></b><span class="d">${P.running ? (P.proj >= goal ? '순항' : '페이스 부족') : (done >= goal ? '목표 달성' : '미달')}</span></div>
     <div><span class="k">이 달 합계</span><b>${done}<small>${c.unit}</small></b><span class="d">목표 ${goal}${c.unit}</span></div>
     <div><span class="k">활동한 날</span><b>${days}<small>일</small></b><span class="d">${P.running ? `남은 ${P.left}일` : '마감'}</span></div>
     <div class="tr"><i style="width:${pct}%"></i></div>
-  </div>
+  </div>`}
   <div class="section-title">일자별 내역 <small class="gx-sub">${list.length}건 · 최근 순</small>
     <span class="gx-mnav"><button class="btn sm" data-ghcopy>내역 복사</button></span></div>
   <div class="card gx-pad ${auto ? 'gx-autocard' : ''}">${rows || '<div class="gx-empty">이 달에는 아직 기록이 없습니다.</div>'}</div>
