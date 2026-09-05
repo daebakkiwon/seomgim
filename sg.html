@@ -1252,7 +1252,9 @@ select.sel{font-size:15px}
 .gx-st i{font-style:normal;font-weight:800}
 .gx-st i.up{color:var(--ok)}.gx-st i.dn{color:var(--danger)}.gx-st i.same{color:var(--faint)}
 
-.brand h1 .brand-g{color:var(--s2)}
+.brand h1 .brand-g{color:#1f5fbf;font-weight:800}
+:root[data-theme="dark"] .brand h1 .brand-g{color:#7fb3ff}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .brand h1 .brand-g{color:#7fb3ff} }
 
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
@@ -1297,7 +1299,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0936';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0938';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
