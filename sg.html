@@ -1252,6 +1252,8 @@ select.sel{font-size:15px}
 .gx-st i{font-style:normal;font-weight:800}
 .gx-st i.up{color:var(--ok)}.gx-st i.dn{color:var(--danger)}.gx-st i.same{color:var(--faint)}
 
+.brand h1 .brand-g{color:var(--s2)}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1260,7 +1262,7 @@ select.sel{font-size:15px}
 <header class="top">
   <div class="top-in">
     <div class="brand">
-      <h1>섬김성장노트</h1>
+      <h1>섬김<span class="brand-g">성장</span>노트</h1>
       <span class="sub" id="savedAt"></span>
       <span class="spacer"></span>
       <button class="btn sm ghost" id="btnZoomOut" title="글씨 작게">가－</button>
@@ -1295,7 +1297,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0923';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0936';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
