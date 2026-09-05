@@ -1248,6 +1248,10 @@ select.sel{font-size:15px}
 .wk-pk.on i.chk{opacity:1}
 .wk-pk.in{opacity:.5}
 
+.gx-st td:first-child{white-space:nowrap}
+.gx-st i{font-style:normal;font-weight:800}
+.gx-st i.up{color:var(--ok)}.gx-st i.dn{color:var(--danger)}.gx-st i.same{color:var(--faint)}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1291,7 +1295,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0910';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0917';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4074,13 +4078,15 @@ const CRITERIA = [
   {id:'partner',  name:'사업자',    rule:'미팅참석 누적 10회 이상, 매달 제품재구매, 섬김성장노트를 쓰는 분 (고객 정보 수정에서 체크).', keep:'매달 구매가 끊기면 내려갑니다.'}
 ];
 
-function calc(p){
-  const now = ymOf(new Date());
+function calc(p, asOf){
+  const now = ymOf(asOf || new Date());
+  const limit = asOf ? new Date(asOf).getTime() : Infinity;
   const buyM = new Set(), learnM = new Set();
   let buys = 0, rebuy = 0, meet = 0;
   const learn = {'자료제공':0, '미팅참석':0, '음원프로모션':0};
   (p.logs || []).forEach(l => {
     if(!l || !l.at || !l.kind) return;
+    if(new Date(l.at).getTime() > limit) return;
     const m = ymOf(l.at);
     if(BUY.includes(l.kind)){ buys++; buyM.add(m); if(REBUY.includes(l.kind)) rebuy++; }
     if(l.kind in learn){ learn[l.kind]++; learnM.add(m); }
@@ -4154,7 +4160,7 @@ function showCriteria(){
 document.addEventListener('click', e => {
   if(e.target.closest('[data-criteria]')) showCriteria();
 });
-window.STAGE_AUTO = { calc, applyAll, showCriteria, CRITERIA };
+window.STAGE_AUTO = { calc, calcAt:(p, asOf) => calc(p, asOf), applyAll, showCriteria, CRITERIA };
 
 /* 연락처 이름 정리 — "김영희 010-1234-5678 헬스장" → "김영희". 필요하면 수정 칸에서 뒤에 참고 내용을 붙인다 */
 window.cleanContactName = function(raw){
@@ -4687,7 +4693,7 @@ function vVision(){
       const ach = achieve(T0.getFullYear(), T0.getMonth(), false), dia = achieve(T0.getFullYear(), T0.getMonth(), true);
       const pvp = p.pvGoal && p.pvDone ? Math.round(p.pvDone / p.pvGoal * 100) : null;
       return `<div class="gx-goals3">
-      <div><span class="k">FY${yy(FY)} 목표</span><b>${E(G.vision.g1 || G.vision.pins[FY] || '-')}</b></div>
+      <div><span class="k">PF${yy(FY)} 목표</span><b>${E(G.vision.g1 || G.vision.pins[FY] || '-')}</b></div>
       <div><span class="k">${T0.getMonth()+1}월 핀 목표</span><b>${E(p.pinGoal || '-')}</b></div>
       <div><span class="k">${T0.getMonth()+1}월 PV 목표</span><b>${p.pvGoal ? fmtN(p.pvGoal) + '만 PV' : '-'}</b>${pvp !== null ? `<small>실적 ${fmtN(p.pvDone)}만 · ${pvp}%</small>` : ''}</div>
     </div>
@@ -4723,7 +4729,7 @@ function vVision(){
     </svg></div>
   </div>
 
-  <div class="section-title">FY${FY} 핵심 목표 <small class="gx-sub">${FY-1}. 9. 1 ~ ${FY}. 8. 31</small></div>
+  <div class="section-title">PF${FY} 핵심 목표 <small class="gx-sub">${FY-1}. 9. 1 ~ ${FY}. 8. 31</small></div>
   <div class="card gx-pad">
     <label class="gx-lb">이 회계연도에 반드시 이룰 한 가지</label>
     <input type="text" data-gv="g1" value="${E(G.vision.g1)}" placeholder="예: PT 달성 · 파트너 3명 배출">
@@ -5506,20 +5512,54 @@ function repData(){
   const monthly = R.months.map(([y,m]) => { const M = mrange(y,m); return {m, sc:score(M.f, M.t)}; });
   return {R, sc, psc, items, best:bySc[0], worst:bySc[bySc.length-1], monthly, streak:streak(), longest:longest(R.f,R.t)};
 }
+
+/* 고객구분 인원 — 최근 3개월 (지난달·지지난달은 기록으로 되짚어 계산) */
+function stageStats(){
+  const months = [-2, -1, 0].map(k => { const d = new Date(GMON.y, GMON.m + k, 1); return {y:d.getFullYear(), m:d.getMonth()}; });
+  const cols = months.map(({y,m}) => {
+    const last = new Date(y, m+1, 0); last.setHours(23,59,59,999);
+    const asOf = (y === T0.getFullYear() && m === T0.getMonth()) ? null : last;
+    const counts = {}; STAGES.forEach(st => counts[st.id] = 0);
+    crmPeople().forEach(p => {
+      if(asOf && p.createdAt && new Date(p.createdAt) > asOf) return;
+      const st = asOf ? (window.STAGE_AUTO ? STAGE_AUTO.calcAt(p, asOf) : p.stage) : p.stage;
+      if(counts[st] !== undefined) counts[st]++;
+    });
+    return {y, m, counts, total:Object.values(counts).reduce((a,b) => a+b, 0)};
+  });
+  return cols;
+}
+function stageTable(){
+  const cols = stageStats();
+  const dlt = (a,b) => a === b ? '<i class="same">–</i>' : a > b ? `<i class="up">▲${a-b}</i>` : `<i class="dn">▼${b-a}</i>`;
+  return `<div class="gx-scroll"><table class="gx-tb gx-st">
+    <thead><tr><th>고객구분</th>${cols.map(c => `<th>${c.m+1}월</th>`).join('')}<th>증감</th></tr></thead>
+    <tbody>${STAGES.map(st => `<tr><td><span class="sdot" style="background:var(${st.c})"></span>${st.name}</td>
+      ${cols.map(c => `<td>${c.counts[st.id]}</td>`).join('')}<td>${dlt(cols[2].counts[st.id], cols[1].counts[st.id])}</td></tr>`).join('')}
+    <tr class="gx-sum"><td>전체</td>${cols.map(c => `<td>${c.total}</td>`).join('')}<td>${dlt(cols[2].total, cols[1].total)}</td></tr></tbody></table></div>`;
+}
+function stageText(){
+  const cols = stageStats(), cur = cols[2], prev = cols[1];
+  const sg = (a,b) => a === b ? '' : a > b ? ` (▲${a-b})` : ` (▼${b-a})`;
+  return [`👥 고객 현황 · ${cur.m+1}월 (전월 대비)`,
+    ...STAGES.map(st => `　${st.name} ${cur.counts[st.id]}명${sg(cur.counts[st.id], prev.counts[st.id])}`),
+    `　전체 ${cur.total}명${sg(cur.total, prev.total)} · ${cols.map(c => `${c.m+1}월 ${c.total}`).join(' → ')}`];
+}
 function repText(){
   const D = repData(), g = grade(D.sc), d = D.sc - D.psc;
   const bar = '━━━━━━━━━━━━━━━';
   const L = [`📋 상담자료 · ${D.R.label}`,
     `👤 ${G.name || '이름'}${G.upPt ? ' · 상위 PT ' + G.upPt : ''}${G.upJewel ? ' · 보석핀 ' + G.upJewel : ''}`];
-  if(G.vision.nowPin || G.vision.pins[FY]) L.push(`📍 핀 · 현재 ${G.vision.nowPin || '-'} → FY${FY} 목표 ${G.vision.pins[FY] || '-'}`);
+  if(G.vision.nowPin || G.vision.pins[FY]) L.push(`📍 핀 · 현재 ${G.vision.nowPin || '-'} → PF${FY} 목표 ${G.vision.pins[FY] || '-'}`);
   L.push(bar, `📊 실행률 ${D.sc}점 · ${g.k} ${g.t}`,
     `　직전 기간 ${D.psc}점 → ${d >= 0 ? '▲ +' + d : '▼ ' + d}점`,
     `🔥 연속 실행 ${D.streak}일 · 기간 내 최장 ${D.longest}일`);
   if(D.monthly.length > 1) L.push('📈 ' + D.monthly.map(x => `${x.m+1}월 ${x.sc}점`).join(' → '));
   L.push(bar, '✅ 항목별 실적 (실적 / 목표)');
   D.items.forEach(x => L.push(`　${x.c.no}. ${x.c.name}　${x.done} / ${x.goal}${x.c.unit} · ${x.pct}%`));
+  L.push(bar, ...stageText());
   L.push(bar, `💪 잘한 것 · ${D.best.c.name} ${D.best.pct}%`, `🔧 보완할 것 · ${D.worst.c.name} ${D.worst.pct}%`);
-  if(G.vision.g1) L.push(`🎯 FY${FY} 핵심 목표 · ${G.vision.g1}`);
+  if(G.vision.g1) L.push(`🎯 PF${FY} 핵심 목표 · ${G.vision.g1}`);
   if(G.vision.why) L.push(`💬 하는 이유 · ${G.vision.why}`);
   return L.join('\n');
 }
@@ -5540,16 +5580,18 @@ function repCard(){
     <div class="gx-rep-meta">
       <span>🔥 연속 <b>${D.streak}</b>일</span><span>최장 <b>${D.longest}</b>일</span>
       ${D.monthly.length > 1 ? `<span>📈 ${D.monthly.map(x => `${x.m+1}월 <b>${x.sc}</b>`).join(' → ')}</span>` : ''}
-      ${(G.vision.nowPin || G.vision.pins[FY]) ? `<span>📍 ${E(G.vision.nowPin || '-')} → FY${FY} <b>${E(G.vision.pins[FY] || '-')}</b></span>` : ''}
+      ${(G.vision.nowPin || G.vision.pins[FY]) ? `<span>📍 ${E(G.vision.nowPin || '-')} → PF${FY} <b>${E(G.vision.pins[FY] || '-')}</b></span>` : ''}
     </div>
     <div class="gx-rep-items">${D.items.map(x => `<div class="r ${x.c.kind === 'crm' ? 'auto' : ''}">
       <span class="n"><i>${x.c.no}</i>${E(x.c.name)}</span>
       <span class="tr"><u style="width:${Math.min(x.pct,100)}%"></u></span>
       <span class="v">${x.done} / ${x.goal}${x.c.unit}</span><b class="${x.pct >= 100 ? 'ok' : x.pct < 50 ? 'no' : ''}">${x.pct}%</b></div>`).join('')}</div>
+    <div class="ql-sec" style="margin-top:14px"><span>👥 고객 현황 · 최근 3개월</span></div>
+    ${stageTable()}
     <div class="gx-rep-notes">
       <div><span>💪 잘한 것</span><b>${E(D.best.c.name)} ${D.best.pct}%</b></div>
       <div><span>🔧 보완할 것</span><b>${E(D.worst.c.name)} ${D.worst.pct}%</b></div>
-      ${G.vision.g1 ? `<div><span>🎯 FY${FY} 핵심 목표</span><b>${E(G.vision.g1)}</b></div>` : ''}
+      ${G.vision.g1 ? `<div><span>🎯 PF${FY} 핵심 목표</span><b>${E(G.vision.g1)}</b></div>` : ''}
       ${G.vision.why ? `<div><span>💬 하는 이유</span><b>${E(G.vision.why)}</b></div>` : ''}
     </div>
     <div class="gx-btns" style="margin-top:12px"><button class="btn sm primary" data-grepcopy>📋 상담자료 복사</button></div>
