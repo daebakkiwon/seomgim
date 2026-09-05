@@ -1215,6 +1215,39 @@ select.sel{font-size:15px}
 .wk-x:hover{color:var(--danger);background:var(--s5b)}
 .wk-extra{margin-top:10px;padding:9px 12px;border-radius:9px;background:color-mix(in srgb,var(--ok) 10%,var(--panel));color:var(--ok);font-size:13.5px;font-weight:700;line-height:1.5}
 
+/* 주간계획 — 요일별 */
+.wk-card{padding:6px 12px 10px}
+.wk-day{padding:8px 0;border-bottom:1px solid var(--line)}
+.wk-day:last-of-type{border-bottom:0}
+.wk-day.today{background:var(--accent-soft);margin:0 -12px;padding:8px 12px;border-radius:10px}
+.wk-dh{display:flex;align-items:center;gap:7px}
+.wk-dh b{font-family:'Gowun Batang',serif;font-size:17px;width:22px}
+.wk-dh small{font-size:12.5px;font-weight:700;color:var(--muted)}
+.wk-dh em{font-style:normal;font-size:11.5px;font-weight:800;color:var(--accent);background:var(--panel);border-radius:5px;padding:1px 6px}
+.wk-plus{margin-left:auto;width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--panel);font-size:18px;line-height:1;color:var(--accent);font-weight:800}
+.wk-day.past .wk-plus{opacity:.45}
+.wk-items{display:flex;flex-direction:column;gap:4px;margin-top:6px;padding-left:29px}
+.wk-it{display:flex;align-items:center;gap:8px;font-size:15px;padding:4px 0}
+.wk-it b{font-weight:700;flex:0 0 auto;cursor:pointer}
+.wk-it b[data-gwopen]:hover{color:var(--accent)}
+.wk-it.ok b{color:var(--ok)}
+.wk-it small{flex:1;min-width:0;color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-it .wk-ok,.wk-it .wk-no{margin-left:auto}
+.wk-it small + .wk-ok,.wk-it small + .wk-no{margin-left:0}
+.wk-ok.dim{color:var(--muted)}
+.wk-tel{text-decoration:none;font-size:18px;line-height:1;padding:3px 6px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);flex:0 0 auto;margin-left:auto}
+.wk-it .wk-ok ~ .wk-tel,.wk-it .wk-no ~ .wk-tel{margin-left:4px}
+.wk-tag{font-size:11.5px;font-weight:800;color:var(--s2);background:var(--s2b);border-radius:5px;padding:2px 6px}
+.wk-pklist{display:flex;flex-direction:column;gap:5px;max-height:52vh;overflow:auto}
+.wk-pk{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:15px}
+.wk-pk b{flex:0 0 auto}
+.wk-pk small{margin-left:auto;color:var(--faint);font-size:12.5px}
+.wk-pk i{font-style:normal;font-size:12px;color:var(--faint);width:44px;text-align:right}
+.wk-pk i.chk{opacity:0;color:var(--ok);font-weight:800;font-size:16px}
+.wk-pk.on{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--panel))}
+.wk-pk.on i.chk{opacity:1}
+.wk-pk.in{opacity:.5}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1258,7 +1291,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-0859';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260905-0905';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -5332,50 +5365,99 @@ function doneLogs(type, R){
   }));
   return out;
 }
+const WDK = ['월','화','수','목','금','토','일'];
+const telHref = ph => { const d = String(ph || '').replace(/[^0-9+]/g, ''); return d ? `tel:${d}` : ''; };
 function planSection(type){
   const P = PLAN[type], R = wkRange(WSEL), key = R.key;
   const planned = wkBucket(key, type);
+  planned.forEach(x => { if(!x.d) x.d = R.f; });                      // 요일 없이 넣은 예전 항목은 월요일로
   const done = doneLogs(type, R);
-  const nameOf = pid => { const p = crmPeople().find(x => x.id === pid); return p ? p.name : ''; };
-  // 만남: 다음 섬김 일정이 그 주에 잡힌 분은 자동으로 함께 보인다
-  const sched = type === 'meets'
-    ? crmPeople().filter(p => p.nextDate && p.nextDate >= R.f && p.nextDate <= R.t && !planned.some(x => x.pid === p.id))
-    : [];
-  const rows = planned.map((x, i) => {
-    const pid = x.pid, nm = pid ? (nameOf(pid) || x.name) : x.name;
-    const ds = pid && done.has(pid) ? done.get(pid) : [];
-    const ok = ds.length > 0;
-    const past = WSEL === 'prev' || (WSEL === 'this' && !ok);
-    const st = ok ? `<span class="wk-ok">✓ ${P.done} ${ds.map(d => Number(d.slice(8)) + '일').join(', ')}</span>`
-      : WSEL === 'prev' ? '<span class="wk-no">미완료</span>' : '<span class="wk-todo">예정</span>';
-    return `<div class="wk-row ${ok ? 'ok' : ''}">
-      <b ${pid ? `data-gwopen="${pid}"` : ''}>${E(nm)}</b>${st}
-      <button type="button" class="wk-x" data-gwdel="${type}" data-i="${i}" title="빼기">×</button></div>`;
-  }).join('');
-  const schedRows = sched.map(p => {
-    const ds = done.get(p.id) || [];
-    return `<div class="wk-row sch ${ds.length ? 'ok' : ''}">
-      <b data-gwopen="${p.id}">${E(p.name)}</b><small>일정 ${Number(p.nextDate.slice(8))}일${p.nextTime ? ' ' + p.nextTime : ''} · ${E(p.nextAction || '')}</small>
-      ${ds.length ? `<span class="wk-ok">✓ ${P.done}</span>` : '<span class="wk-todo">일정</span>'}
-      <button type="button" class="btn sm ghost" data-gwadd="${type}" data-pid="${p.id}">계획에</button></div>`;
-  }).join('');
-  // 계획에 없었지만 그 주에 기록된 분
+  const byId = pid => crmPeople().find(x => x.id === pid);
+  const sched = type === 'meets' ? crmPeople().filter(p => p.nextDate && p.nextDate >= R.f && p.nextDate <= R.t) : [];
+  let nAll = 0, nDone = 0;
+  const days = [];
+  for(let i = 0; i < 7; i++){
+    const d = addD(R.ws, i), ds = ymd(d), today = ds === TS;
+    const items = [];
+    planned.forEach((x, idx) => { if(x.d === ds) items.push({idx, pid:x.pid, name:x.name, kind:'plan'}); });
+    sched.forEach(p => { if(p.nextDate === ds && !items.some(it => it.pid === p.id)) items.push({pid:p.id, name:p.name, kind:'sched', p}); });
+    const rows = items.map(it => {
+      const p = it.pid ? byId(it.pid) : null;
+      const nm = p ? p.name : it.name;
+      const ds2 = it.pid && done.has(it.pid) ? done.get(it.pid) : [];
+      const okToday = ds2.includes(ds), okWeek = ds2.length > 0;
+      nAll++; if(okWeek) nDone++;
+      const st = okToday ? `<span class="wk-ok">✓ ${P.done}</span>`
+        : okWeek ? `<span class="wk-ok dim">✓ ${Number(ds2[0].slice(8))}일 완료</span>`
+        : (ds < TS ? '<span class="wk-no">미완료</span>' : '');
+      const tel = p && p.phone ? `<a class="wk-tel" href="${telHref(p.phone)}" title="전화 걸기">📞</a>` : '';
+      return `<div class="wk-it ${okWeek ? 'ok' : ''} ${it.kind}">
+        <b ${p ? `data-gwopen="${p.id}"` : ''}>${E(nm)}</b>
+        ${it.kind === 'sched' ? `<small>${p.nextTime ? E(fmtTimeK ? fmtTimeK(p.nextTime) : p.nextTime) + ' · ' : ''}${E(p.nextAction || '일정')}</small>` : ''}
+        ${st}${tel}
+        ${it.kind === 'plan' ? `<button type="button" class="wk-x" data-gwdel="${type}" data-i="${it.idx}" title="빼기">×</button>` : '<span class="wk-tag">일정</span>'}
+      </div>`;
+    }).join('');
+    days.push(`<div class="wk-day ${today ? 'today' : ''} ${ds < TS ? 'past' : ''}">
+      <div class="wk-dh"><b>${WDK[i]}</b><small>${d.getMonth()+1}/${d.getDate()}</small>${today ? '<em>오늘</em>' : ''}
+        <button type="button" class="wk-plus" data-gwpick="${type}" data-d="${ds}" title="고객 목록에서 추가">＋</button></div>
+      ${rows ? `<div class="wk-items">${rows}</div>` : ''}
+    </div>`);
+  }
   const extra = [...done.keys()].filter(pid => !planned.some(x => x.pid === pid) && !sched.some(p => p.id === pid))
-    .map(pid => nameOf(pid)).filter(Boolean);
-  const nDone = planned.filter(x => x.pid && done.has(x.pid)).length + sched.filter(p => done.has(p.id)).length;
-  const nAll = planned.length + sched.length;
-  const opts = crmPeople().slice().sort((a,b) => stageIdx(a.stage) - stageIdx(b.stage) || a.name.localeCompare(b.name, 'ko'))
-    .map(p => `<option value="${E(p.name)}">${E(stageOf(p.stage).name)}</option>`).join('');
+    .map(pid => { const p = byId(pid); return p ? p.name : ''; }).filter(Boolean);
   return `
   <div class="section-title">${P.ic} ${P.name} <small class="gx-sub">${WLBL[WSEL]} ${R.label} · 계획 ${nAll}명 · 완료 ${nDone}명</small></div>
-  <div class="card gx-pad wk-card">
-    <div class="wk-add"><input type="text" list="wkList-${type}" data-gwname="${type}" placeholder="${P.ph}" autocomplete="off">
-      <datalist id="wkList-${type}">${opts}</datalist>
-      <button type="button" class="btn sm primary" data-gwadd="${type}">추가</button></div>
-    ${rows}${schedRows}
-    ${!rows && !schedRows ? `<div class="gx-empty">아직 계획이 없습니다. 이름을 적고 추가하세요.</div>` : ''}
+  <div class="card wk-card">${days.join('')}
     ${extra.length ? `<div class="wk-extra">계획에 없었지만 ${P.done} · ${extra.map(E).join(', ')}</div>` : ''}
   </div>`;
+}
+/* 고객 목록에서 골라 넣기 */
+function openPicker(type, date){
+  const P = PLAN[type], d = pd(date), key = wkRange(WSEL).key;
+  const already = new Set(wkBucket(key, type).filter(x => x.d === date && x.pid).map(x => x.pid));
+  const people = crmPeople().slice().sort((a,b) => stageIdx(a.stage) - stageIdx(b.stage) || a.name.localeCompare(b.name, 'ko'));
+  const sel = new Set();
+  const row = p => `<button type="button" class="wk-pk ${already.has(p.id) ? 'in' : ''}" data-pk="${p.id}" ${already.has(p.id) ? 'disabled' : ''}>
+    <b>${E(p.name)}</b><span class="badge" style="background:var(${stageOf(p.stage).b});color:var(${stageOf(p.stage).c})">${stageOf(p.stage).name}</span>
+    <small>${E(p.phone || '')}</small>${already.has(p.id) ? '<i>이미 있음</i>' : '<i class="chk">✓</i>'}</button>`;
+  document.getElementById('modal').innerHTML = `
+  <div class="overlay" data-close>
+    <div class="modal">
+      <div class="mhead"><h2>${P.ic} ${P.name} · ${d.getMonth()+1}/${d.getDate()} (${WDK[(d.getDay()+6)%7]})</h2><button class="x" data-close>×</button></div>
+      <div class="mbody">
+        <div class="f"><input id="wkQ" placeholder="이름 검색" autocomplete="off"></div>
+        <div class="chips" style="margin:8px 0"><button type="button" class="chip on" data-pkf="all">전체</button>${STAGES.map(st => `<button type="button" class="chip" data-pkf="${st.id}">${st.name}</button>`).join('')}</div>
+        <div class="wk-pklist" id="wkList">${people.map(row).join('') || '<div class="gx-empty">고객이 없습니다.</div>'}</div>
+      </div>
+      <div class="mfoot"><span class="left" id="wkCnt" style="font-weight:700;color:var(--muted)">0명 선택</span>
+        <button class="btn" data-close>취소</button><button class="btn primary" id="wkAddSel">계획에 추가</button></div>
+    </div>
+  </div>`;
+  let filt = 'all';
+  const refresh = () => {
+    const q = document.getElementById('wkQ').value.trim();
+    document.querySelectorAll('#wkList .wk-pk').forEach(el => {
+      const p = people.find(x => x.id === el.dataset.pk);
+      const show = (filt === 'all' || p.stage === filt) && (!q || p.name.includes(q) || (p.phone || '').includes(q));
+      el.classList.toggle('hide', !show);
+    });
+  };
+  document.getElementById('wkQ').addEventListener('input', refresh);
+  document.querySelectorAll('[data-pkf]').forEach(b => b.onclick = () => { filt = b.dataset.pkf; document.querySelectorAll('[data-pkf]').forEach(x => x.classList.toggle('on', x === b)); refresh(); });
+  document.querySelectorAll('#wkList .wk-pk:not([disabled])').forEach(b => b.onclick = () => {
+    const id = b.dataset.pk; if(sel.has(id)) sel.delete(id); else sel.add(id);
+    b.classList.toggle('on', sel.has(id));
+    document.getElementById('wkCnt').textContent = `${sel.size}명 선택`;
+  });
+  document.getElementById('wkAddSel').onclick = () => {
+    if(!sel.size){ say('고객을 골라 주세요'); return; }
+    const bucket = wkBucket(key, type);
+    sel.forEach(id => { const p = people.find(x => x.id === id); if(p) bucket.push({pid:p.id, name:p.name, d:date}); });
+    gsave(); if(typeof closeModal === 'function') closeModal(); if(typeof render === 'function') render();
+    say(`${sel.size}명을 계획에 넣었습니다`);
+  };
+  setTimeout(() => document.getElementById('wkQ').focus(), 50);
 }
 function vWeek(){
   const chips = ['prev','this','next'].map(k => { const R = wkRange(k);
@@ -5709,23 +5791,7 @@ window.GROWTH = {
 
     /* 주간계획 */
     on('[data-gwsel]', el => { WSEL = el.dataset.gwsel; again(); });
-    const wkAdd = (type, pid, name) => {
-      const b = wkBucket(wkRange(WSEL).key, type);
-      if(pid && b.some(x => x.pid === pid)){ say('이미 계획에 있습니다'); return; }
-      b.push(pid ? {pid, name} : {pid:null, name});
-      gsave(); again();
-    };
-    on('[data-gwadd]', el => {
-      const type = el.dataset.gwadd;
-      if(el.dataset.pid){ const p = crmPeople().find(x => x.id === el.dataset.pid); if(p) wkAdd(type, p.id, p.name); return; }
-      const inp = root.querySelector(`[data-gwname="${type}"]`), n = inp.value.trim();
-      if(!n){ say('이름을 적어 주세요'); inp.focus(); return; }
-      const p = findPerson(n);
-      wkAdd(type, p ? p.id : null, p ? p.name : n);
-    });
-    root.querySelectorAll('[data-gwname]').forEach(inp => inp.onkeydown = e => {
-      if(e.key === 'Enter'){ e.preventDefault(); root.querySelector(`button[data-gwadd="${inp.dataset.gwname}"]:not([data-pid])`).click(); }
-    });
+    on('[data-gwpick]', el => openPicker(el.dataset.gwpick, el.dataset.d));
     on('[data-gwdel]', el => { wkBucket(wkRange(WSEL).key, el.dataset.gwdel).splice(Number(el.dataset.i), 1); gsave(); again(); });
     on('[data-gwopen]', el => { if(typeof openDetail === 'function') openDetail(el.dataset.gwopen); });
 
