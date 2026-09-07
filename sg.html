@@ -1256,6 +1256,11 @@ select.sel{font-size:15px}
 :root[data-theme="dark"] .brand h1 .brand-g{color:#7fb3ff}
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .brand h1 .brand-g{color:#7fb3ff} }
 
+/* 상담자료 — 접힌 상태의 열기 버튼 */
+.gx-rep-cta{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 14px;text-align:center}
+.gx-rep-cta .btn{font-size:16px;padding:12px 26px;border-radius:12px}
+.gx-rep-cta small{font-size:12.5px;color:var(--muted);font-weight:600}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1299,7 +1304,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260905-1652';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260907-1334';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -5546,6 +5551,7 @@ function vWeek(){
 }
 /* ---------- 상담자료 — 스폰서·리더와 상담할 때 보여주는 요약 ---------- */
 let RSEL = 'month';
+let REPOPEN = false;   // 상담자료는 기본 접힘 — '상담자료 보기'를 눌러야 펼침
 function repRange(){
   if(RSEL === 'week'){
     const ws = weekStart(pd(SEL)), we = addD(ws,6);
@@ -5633,9 +5639,15 @@ function repText(){
   return L.join('\n');
 }
 function repCard(){
+  if(!REPOPEN) return `
+  <div class="card gx-pad gx-rep-cta">
+    <button class="btn primary" data-grepopen="1">📋 상담자료 보기</button>
+    <small>스폰서·리더와 상담할 때 보여주는 요약입니다</small>
+  </div>`;
   const D = repData(), g = grade(D.sc), d = D.sc - D.psc;
   return `
-  <div class="section-title">상담자료 <small class="gx-sub">스폰서·리더와 상담할 때</small></div>
+  <div class="section-title">상담자료 <small class="gx-sub">스폰서·리더와 상담할 때</small>
+    <span class="gx-mnav"><button class="btn sm" data-grepopen="0">접기 ▲</button></span></div>
   <div class="card gx-pad gx-rep">
     <div class="chips" style="margin-bottom:12px">${[['week','이번 주'],['month','월간'],['q','최근 3개월']].map(([k,l]) =>
       `<button class="chip ${RSEL === k ? 'on' : ''}" data-grsel="${k}">${l}</button>`).join('')}</div>
@@ -5663,7 +5675,7 @@ function repCard(){
       ${G.vision.g1 ? `<div><span>🎯 PF${FY} 핵심 목표</span><b>${E(G.vision.g1)}</b></div>` : ''}
       ${G.vision.why ? `<div><span>💬 하는 이유</span><b>${E(G.vision.why)}</b></div>` : ''}
     </div>
-    <div class="gx-btns" style="margin-top:12px"><button class="btn sm primary" data-grepcopy>📋 상담자료 복사</button></div>
+    <div class="gx-btns" style="margin-top:12px"><button class="btn sm primary" data-grepcopy>📋 상담자료 복사</button><button class="btn sm" data-grepopen="0">접기 ▲</button></div>
     <pre class="gx-out hide" id="gxRep"></pre>
   </div>`;
 }
@@ -5916,6 +5928,11 @@ window.GROWTH = {
     });
     on('[data-ghcopy]', () => copyOut(null, gHistText()));
     on('[data-grsel]', el => { RSEL = el.dataset.grsel; again(); });
+    on('[data-grepopen]', el => {
+      REPOPEN = el.dataset.grepopen === '1'; again();
+      const t = document.querySelector(REPOPEN ? '.gx-rep' : '.gx-rep-cta');
+      if(t) setTimeout(() => t.scrollIntoView({behavior:'smooth', block:'start'}), 0);
+    });
     on('[data-grepcopy]', () => { const el = document.getElementById('gxRep'); el.classList.remove('hide'); copyOut('gxRep', repText()); });
 
     if(v === 'gvision') setTimeout(drawArrow, 0);
