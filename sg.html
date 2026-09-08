@@ -1323,7 +1323,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260908-1213';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260908-1229';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4487,6 +4487,16 @@ window.VOICE = (() => {
   const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const DKEY = 'voice.dictate';                      // 음성 인식이 막힌 기기는 받아쓰기 모드로 기억
   let DICT = (IOS && navigator.standalone === true) || localStorage.getItem(DKEY) === '1';
+  /* 홈 화면 앱(아이폰)은 애플이 음성 인식 API를 막아 둠 → 녹음해서 음성 인식 서버(Groq/OpenAI Whisper)로 보내 글로 바꾼다.
+     키는 총리더가 리더성장 › 조직 등록에 넣으면 org/config 로 모두에게 내려온다. */
+  const sttKey = () => {
+    try{ const k = (JSON.parse(localStorage.getItem('growth.note.v1.org') || '{}').sttKey || '').trim(); if(k) return k; }catch(e){}
+    try{ return (localStorage.getItem('voice.sttKey') || '').trim(); }catch(e){ return ''; }
+  };
+  const sttApi = key => key.startsWith('gsk_')
+    ? {url:'https://api.groq.com/openai/v1/audio/transcriptions', model:'whisper-large-v3'}
+    : {url:'https://api.openai.com/v1/audio/transcriptions', model:'whisper-1'};
+  const canRecord = () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
   const say = t => (typeof toast === 'function' ? toast(t) : alert(t));
   const pad = n => String(n).padStart(2, '0');
   const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -4581,6 +4591,7 @@ window.VOICE = (() => {
     sheet.querySelector('#vcStop').textContent = btnLabel || '그만';
   }
   function stop(){
+    if(recd){ if(sheet && sheet.querySelector('#vcStop').textContent === '취소'){ const r = recd; recd = null; try{ r.mr.onstop = null; r.mr.stop(); r.stream.getTracks().forEach(t => t.stop()); }catch(e){} finish(); } else recStop(); return; }
     if(rec){ try{ rec.stop(); }catch(e){} }
     document.querySelectorAll('[data-vc-dict]').forEach(x => delete x.dataset.vcDict);
     finish();
@@ -4622,6 +4633,81 @@ window.VOICE = (() => {
     if(el.tagName === 'INPUT') el.setSelectionRange(el.value.length, el.value.length);
   }
 
+  /* 녹음 모드: 마이크로 녹음하고(말이 끝나면 자동 멈춤) 음성 인식 서버로 보내 글로 바꾼다 */
+  let recd = null;   // {mr, stream, ctx, raf, chunks}
+  function recStop(){
+    if(!recd) return;
+    const r = recd; recd = null;
+    clearTimeout(timer); timer = null;
+    try{ if(r.mr.state !== 'inactive') r.mr.stop(); }catch(e){}
+    try{ cancelAnimationFrame(r.raf); }catch(e){}
+    setTimeout(() => { try{ r.stream.getTracks().forEach(t => t.stop()); }catch(e){} try{ r.ctx && r.ctx.close(); }catch(e){} }, 300);
+  }
+  async function record(el, opt, btn){
+    const key = sttKey();
+    let stream;
+    try{ stream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+    catch(e){ say('마이크를 쓸 수 없습니다. 설정에서 마이크를 허용해 주세요.'); dictate(el, opt, btn); return; }
+    const mime = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(m => { try{ return MediaRecorder.isTypeSupported(m); }catch(e){ return false; } }) || '';
+    let mr;
+    try{ mr = mime ? new MediaRecorder(stream, {mimeType:mime}) : new MediaRecorder(stream); }
+    catch(e){ stream.getTracks().forEach(t => t.stop()); say('이 기기에서는 녹음이 안 됩니다'); dictate(el, opt, btn); return; }
+    const chunks = [];
+    mr.ondataavailable = e => { if(e.data && e.data.size) chunks.push(e.data); };
+    curBtn = btn; btn.classList.add('on');
+    ui('듣고 있어요…', opt.date ? '예) 내일 오후 3시 무릎 제품 알아봐 드리기' : (opt.name ? '이름을 말씀해 주세요' : '말이 끝나면 저절로 멈춥니다'), '완료');
+    // 말소리 감지: 말이 시작된 뒤 1.5초 조용하면 멈춤 · 6초 동안 아무 말 없으면 멈춤 · 최대 20초
+    let ctx = null, an = null, buf = null, spoke = false, lastLoud = Date.now(), t0 = Date.now();
+    try{
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = ctx.createMediaStreamSource(stream); an = ctx.createAnalyser(); an.fftSize = 1024; src.connect(an);
+      buf = new Uint8Array(an.fftSize);
+    }catch(e){ ctx = null; }
+    recd = {mr, stream, ctx, raf:0, chunks};
+    const tick = () => {
+      if(!recd || recd.mr !== mr) return;
+      if(an){
+        an.getByteTimeDomainData(buf);
+        let sum = 0; for(let i = 0; i < buf.length; i++){ const v = (buf[i] - 128) / 128; sum += v*v; }
+        const rms = Math.sqrt(sum / buf.length);
+        if(rms > 0.03){ if(!spoke){ spoke = true; ui('듣고 있어요…', '말씀 중… 끝나면 잠시 기다리세요', '완료'); } lastLoud = Date.now(); }
+        const quiet = Date.now() - lastLoud;
+        if((spoke && quiet > 1500) || (!spoke && quiet > 6000) || Date.now() - t0 > 20000){ recStop(); return; }
+      }else if(Date.now() - t0 > 8000){ recStop(); return; }
+      recd.raf = requestAnimationFrame(tick);
+    };
+    mr.onstop = async () => {
+      const blob = new Blob(chunks, {type: mr.mimeType || mime || 'audio/webm'});
+      if(!spoke && an){ finish(); say('말씀이 들리지 않았어요. 다시 눌러 주세요.'); return; }
+      if(!blob.size || blob.size < 1500){ finish(); say('말씀이 들리지 않았어요. 다시 눌러 주세요.'); return; }
+      ui('글로 바꾸는 중…', '잠시만요', '취소');
+      try{
+        const api = sttApi(key);
+        const ext = /mp4/.test(blob.type) ? 'm4a' : /ogg/.test(blob.type) ? 'ogg' : 'webm';
+        const fd = new FormData();
+        fd.append('file', blob, 'voice.' + ext); fd.append('model', api.model); fd.append('language', 'ko');
+        fd.append('response_format', 'json'); fd.append('temperature', '0');
+        const r = await fetch(api.url, {method:'POST', headers:{Authorization:'Bearer ' + key}, body:fd});
+        if(!r.ok){
+          const t = await r.text().catch(() => '');
+          finish();
+          if(r.status === 401 || r.status === 403) say('음성 인식 키가 맞지 않습니다. 총리더에게 알려 주세요.');
+          else if(r.status === 429) say('지금은 음성 인식이 붐빕니다. 잠시 뒤 다시 해 주세요.');
+          else say('음성 인식 실패 (' + r.status + ')' + (t ? ' ' + t.slice(0, 80) : ''));
+          return;
+        }
+        const j = await r.json();
+        if(curBtn !== btn) return;                       // 취소했으면 결과 버림
+        finish();
+        apply(el, opt, (j.text || '').trim());
+      }catch(e){ finish(); say('인터넷 연결을 확인해 주세요. (음성 인식 서버에 못 보냈습니다)'); }
+    };
+    try{ mr.start(250); }catch(e){ recStop(); finish(); say('녹음을 시작할 수 없습니다'); return; }
+    if(ctx && ctx.state === 'suspended'){ try{ ctx.resume(); }catch(e){} }
+    recd.raf = requestAnimationFrame(tick);
+    timer = setTimeout(recStop, 21000);
+  }
+
   /* 키보드 받아쓰기 모드: 칸에 커서를 두고 안내 → 입력이 끝나면(change) 날짜·이름 처리 */
   function dictate(el, opt, btn){
     if(rec) stop();
@@ -4642,8 +4728,12 @@ window.VOICE = (() => {
   }
   function start(el, opt, btn){
     const SR = getSR();
-    if(!SR || DICT){ dictate(el, opt, btn); return; }
+    if(recd){ recStop(); return; }                      // 녹음 중이면 '완료'
     if(rec){ stop(); return; }
+    if(!SR || DICT){
+      if(sttKey() && canRecord()) record(el, opt, btn); else dictate(el, opt, btn);
+      return;
+    }
     let final = '', interim = '';
     try{
       rec = new SR(); rec.lang = 'ko-KR'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
@@ -4663,7 +4753,7 @@ window.VOICE = (() => {
       if(k === 'service-not-allowed' || (k === 'not-allowed' && IOS)){
         // 이 기기(특히 아이폰 홈 화면 앱)는 음성 인식이 막혀 있음 → 앞으로는 키보드 받아쓰기로 안내
         DICT = true; try{ localStorage.setItem(DKEY, '1'); }catch(x){}
-        finish(); dictate(el, opt, btn); return;
+        finish(); if(sttKey() && canRecord()) record(el, opt, btn); else dictate(el, opt, btn); return;
       }
       if(k === 'not-allowed') say('마이크 사용을 허용해 주세요. (설정 › Safari › 마이크)');
       else if(k === 'no-speech') say('말씀이 들리지 않았어요. 다시 눌러 주세요.');
@@ -4703,7 +4793,7 @@ window.VOICE = (() => {
   window.addEventListener('error', e => { try{ say('⚠️ 오류: ' + (e.message || '알 수 없음')); }catch(x){} });
   window.addEventListener('unhandledrejection', e => { try{ say('⚠️ 오류: ' + ((e.reason && e.reason.message) || e.reason || '알 수 없음')); }catch(x){} });
 
-  return {parseKo, get supported(){ return !!getSR(); }, scan};
+  return {parseKo, get supported(){ return !!getSR(); }, get mode(){ return (getSR() && !DICT) ? 'api' : (sttKey() && canRecord()) ? 'record' : 'dictate'; }, scan};
 })();
 
 </script>
@@ -5579,6 +5669,10 @@ function teamBoard(){
       <select id="gxPtJw"><option value="">상위 보석핀 —</option>${ORG.jewels.map(n => `<option>${E(n)}</option>`).join('')}</select>
       <button class="btn sm" data-gpt>추가</button></div>
     <div class="gx-tags">${ORG.pts.map((p,i) => `<span class="gx-tag">${E(p.name)} <small>${E(p.jewel || '미지정')}</small><button data-gptdel="${i}">×</button></span>`).join('') || '<span class="gx-empty">없음</span>'}</div>
+    <div class="gx-lb" style="margin-top:14px">🎤 음성 인식 키 <small class="gx-sub">아이폰 홈 화면 앱에서 마이크를 바로 쓰려면 필요 (Groq · gsk_… 또는 OpenAI · sk-…)</small></div>
+    <div class="gx-add"><input type="text" id="gxStt" value="${E(ORG.sttKey || '')}" placeholder="gsk_…" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="btn sm" data-gstt>저장</button></div>
+    <div class="gx-note" style="margin-top:6px">${ORG.sttKey ? '✅ 등록됨 — 팀원 모두 앱을 다시 열면 적용됩니다' : '아직 없음 — 없으면 키보드의 받아쓰기로 안내합니다'}</div>
   </div>` : ''}`;
 }
 function teamNotice(award){
@@ -6158,6 +6252,7 @@ window.GROWTH = {
       await saveOrg(); again();
     });
     on('[data-gptdel]', async el => { ORG.pts.splice(Number(el.dataset.gptdel),1); await saveOrg(); again(); });
+    on('[data-gstt]', async () => { ORG.sttKey = document.getElementById('gxStt').value.trim(); await saveOrg(); again(); });
 
     on('[data-gtscope]', el => { TSCOPE = el.dataset.gtscope; again(); });
     on('[data-gtitem]', el => { TITEM = el.dataset.gtitem; again(); });
