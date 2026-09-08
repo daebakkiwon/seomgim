@@ -1261,6 +1261,25 @@ select.sel{font-size:15px}
 .gx-rep-cta .btn{font-size:16px;padding:12px 26px;border-radius:12px}
 .gx-rep-cta small{font-size:12.5px;color:var(--muted);font-weight:600}
 
+/* ===== 음성 입력 🎤 ===== */
+.vc-wrap{display:flex;align-items:stretch;gap:6px;flex:1 1 0;min-width:0;width:100%}
+.vc-wrap > input,.vc-wrap > textarea{flex:1 1 auto;min-width:0;width:auto}
+.vc-wrap.ta{align-items:flex-start}
+.vc-btn{flex:0 0 auto;width:44px;min-height:40px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);
+  font-size:19px;line-height:1;padding:0;cursor:pointer;color:var(--text)}
+.vc-btn:active{background:var(--accent-soft)}
+.vc-btn.on{background:#d9463e;border-color:#d9463e;color:#fff;animation:vcPulse 1s ease-in-out infinite}
+@keyframes vcPulse{0%,100%{box-shadow:0 0 0 0 rgba(217,70,62,.45)}50%{box-shadow:0 0 0 8px rgba(217,70,62,0)}}
+.vc-sheet{position:fixed;left:0;right:0;bottom:0;z-index:9999;padding:0 12px calc(14px + env(safe-area-inset-bottom))}
+.vc-sheet .vc-in{display:flex;align-items:center;gap:12px;max-width:560px;margin:0 auto;background:#2c2427;color:#fff;
+  border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.vc-sheet .vc-ic{font-size:30px;animation:vcPulse 1s ease-in-out infinite;border-radius:50%}
+.vc-sheet .vc-tx{flex:1;min-width:0}
+.vc-sheet .vc-tx b{display:block;font-size:15px}
+.vc-sheet .vc-tx span{display:block;font-size:14.5px;opacity:.9;margin-top:3px;word-break:keep-all}
+.vc-sheet .btn{background:#fff;color:#2c2427;border:0;flex:0 0 auto}
+.gx-pair .vc-btn,.gx-row2 .vc-btn{width:38px}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1304,7 +1323,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260907-1337';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260908-1207';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4453,6 +4472,208 @@ document.addEventListener('keydown', e => {
   if(!typing && (e.key === 'l' || e.key === 'ㅣ')){ e.preventDefault(); open(); }
 });
 window.QUICK_LOG = { open };
+})();
+
+</script>
+<script>
+/* ============================================================
+   음성 입력 — 입력칸 옆 🎤 버튼 (섬김노트 코드는 건드리지 않고 화면에 덧붙임)
+   · 다음 섬김 일정: "내일 오후 3시 무릎 제품 알아봐 드리기" → 날짜·시간 칸 자동, 나머지는 내용
+   · 활동 기록 / 특이사항 / 자기섬김 입력: 말한 내용을 칸에 넣음
+   · 이름 검색(5통계획·빠른기록): 이름을 말하면 찾아서 한 명이면 바로 고름
+   ============================================================ */
+window.VOICE = (() => {
+  const getSR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
+  const say = t => (typeof toast === 'function' ? toast(t) : alert(t));
+  const pad = n => String(n).padStart(2, '0');
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+  /* 어디에 마이크를 붙일지 */
+  const TARGETS = [
+    {sel:'#naText',   date:['#naDate', '#naTime']},        // 고객 상세 · 다음 섬김
+    {sel:'#qlPlan',   date:['#qlPlanDate', '#qlPlanTime']}, // 빠른 기록 · 일정
+    {sel:'#logText'}, {sel:'#qlText'},                      // 활동 기록
+    {sel:'textarea[data-qlinfo]'},                          // 빠른 기록 · 특이사항
+    {sel:'#f_needs, #f_route, #f_family, #f_network, #f_memo'}, // 고객 정보 수정
+    {sel:'input[data-gnew], input[data-gaud], input[data-gp]'}, // 자기섬김 직접 입력
+    {sel:'#wkQ', name:'.wk-pk:not(.hide):not([disabled])'}, // 5통계획 · 통화 대상 고르기
+    {sel:'#qlQ', name:'.ql-p'}                              // 빠른 기록 · 누구
+  ];
+
+  /* ---------- 한국어 날짜·시간 해석 ---------- */
+  const KNUM = {'한':1,'두':2,'세':3,'네':4,'다섯':5,'여섯':6,'일곱':7,'여덟':8,'아홉':9,'열':10,'열한':11,'열두':12};
+  const WD = {'월':1,'화':2,'수':3,'목':4,'금':5,'토':6,'일':0};
+  function parseKo(text, base){
+    base = base || new Date();
+    let s = ' ' + text.replace(/\s+/g, ' ') + ' ';
+    let date = null, time = null, hasDate = false;
+    const take = (re, fn) => { const m = s.match(re); if(m){ fn(m); s = s.replace(m[0], ' '); return true; } return false; };
+    const at = (d, n) => { const x = new Date(base.getFullYear(), base.getMonth(), base.getDate()); x.setDate(x.getDate() + n); return x; };
+
+    // 상대 날짜
+    take(/\s(오늘)\s?/,   () => { date = at(base, 0); });
+    take(/\s(내일)\s?/,   () => { date = at(base, 1); });
+    take(/\s(모레|내일모레)\s?/, () => { date = at(base, 2); });
+    take(/\s(글피)\s?/,   () => { date = at(base, 3); });
+    take(/\s(\d{1,2})일\s?(후|뒤)\s?/, m => { date = at(base, Number(m[1])); });
+    // N월 N일
+    take(/\s(\d{1,2})월\s?(\d{1,2})일\s?/, m => {
+      let y = base.getFullYear(); const d = new Date(y, Number(m[1]) - 1, Number(m[2]));
+      if(d < at(base, 0) && (at(base, 0) - d) > 30*86400000) d.setFullYear(y + 1);
+      date = d;
+    });
+    // 이번주/다음주/다다음주 X요일, 그냥 X요일
+    take(/\s(다다음\s?주|다음\s?주|이번\s?주|담주)?\s?([월화수목금토일])요일?\s?/, m => {
+      const w = WD[m[2]], cur = base.getDay();
+      const ix = x => (x === 0 ? 7 : x);                  // 월=1 … 일=7 (월요일 시작 주)
+      let n = (w - cur + 7) % 7;                          // 그냥 'X요일' = 다가오는 그 요일 (오늘 포함)
+      const k = (m[1] || '').replace(/\s/g, '');
+      if(k === '이번주') n = ix(w) - ix(cur);
+      if(k === '다음주' || k === '담주') n = ix(w) - ix(cur) + 7;
+      if(k === '다다음주') n = ix(w) - ix(cur) + 14;
+      date = at(base, n);
+    });
+    // N일 (이달, 지났으면 다음 달)
+    if(!date) take(/\s(\d{1,2})일\s?(에|날)?\s?(?![후뒤])/, m => {
+      const dd = Number(m[1]); if(dd < 1 || dd > 31) return;
+      let d = new Date(base.getFullYear(), base.getMonth(), dd);
+      if(d < at(base, 0)) d = new Date(base.getFullYear(), base.getMonth() + 1, dd);
+      date = d;
+    });
+    hasDate = !!date;
+
+    // 시간
+    let mer = null;
+    take(/\s(오전|아침|새벽)\s?/, () => { mer = 'am'; });
+    take(/\s(오후|저녁|낮|밤)\s?/,  () => { mer = 'pm'; });
+    if(take(/\s(정오)\s?/, () => { time = '12:00'; })){}
+    else take(/\s(\d{1,2}|한|두|세|네|다섯|여섯|일곱|여덟|아홉|열한|열두|열)\s?시\s?(반|(\d{1,2})\s?분)?\s?(에|쯤|경)?\s?/, m => {
+      let h = /^\d/.test(m[1]) ? Number(m[1]) : KNUM[m[1]];
+      if(h == null || h > 24) return;
+      let mi = m[2] === '반' ? 30 : (m[3] ? Number(m[3]) : 0);
+      if(mer === 'pm' && h < 12) h += 12;
+      else if(mer === 'am' && h === 12) h = 0;
+      else if(!mer && h >= 1 && h <= 6) h += 12;        // 오전·오후 말 안 하면 1~6시는 오후로
+      time = `${pad(h)}:${pad(mi)}`;
+    });
+    // 남은 말에서 군더더기 정리
+    let rest = s.replace(/\s+/g, ' ').trim().replace(/^(에|에서|께|쯤)\s?/, '').trim();
+    return {date: hasDate ? ymd(date) : '', time: time || '', rest};
+  }
+
+  /* ---------- 듣기 화면 ---------- */
+  let sheet = null, rec = null, curBtn = null, timer = null;
+  function ui(state, txt){
+    if(!sheet){
+      sheet = document.createElement('div'); sheet.className = 'vc-sheet hide';
+      sheet.innerHTML = `<div class="vc-in"><div class="vc-ic">🎤</div><div class="vc-tx"><b id="vcMsg"></b><span id="vcTxt"></span></div>
+        <button type="button" class="btn" id="vcStop">그만</button></div>`;
+      document.body.appendChild(sheet);
+      sheet.querySelector('#vcStop').onclick = stop;
+    }
+    if(state === 'off'){ sheet.classList.add('hide'); return; }
+    sheet.classList.remove('hide');
+    sheet.querySelector('#vcMsg').textContent = state;
+    sheet.querySelector('#vcTxt').textContent = txt || '';
+  }
+  function stop(){
+    if(rec){ try{ rec.stop(); }catch(e){} }
+    finish();
+  }
+  function finish(){
+    clearTimeout(timer); timer = null;
+    if(curBtn) curBtn.classList.remove('on');
+    curBtn = null; rec = null; ui('off');
+  }
+  const fire = (el, ev) => el.dispatchEvent(new Event(ev, {bubbles:true}));
+
+  function apply(el, opt, text){
+    text = (text || '').trim();
+    if(!text){ say('말씀이 들리지 않았어요. 다시 눌러 주세요.'); return; }
+    if(opt.name){
+      const nm = text.replace(/\s/g, '').replace(/(님|씨|이름|검색|찾아줘|찾아|추가)$/g, '');
+      el.value = nm; fire(el, 'input');
+      setTimeout(() => {
+        const hits = document.querySelectorAll(opt.name);
+        if(hits.length === 1){ hits[0].click(); say(`${nm} 님을 골랐습니다`); }
+        else if(!hits.length) say(`'${nm}' 님을 찾지 못했습니다`);
+        else say(`${hits.length}명이 나왔어요. 한 분을 눌러 주세요`);
+      }, 80);
+      return;
+    }
+    if(opt.date){
+      const r = parseKo(text);
+      const dEl = document.querySelector(opt.date[0]), tEl = document.querySelector(opt.date[1]);
+      if(r.date && dEl){ dEl.value = r.date; fire(dEl, 'change'); }
+      if(r.time && tEl){ tEl.value = r.time; fire(tEl, 'change'); }
+      text = r.rest;
+      const info = [r.date && r.date.slice(5).replace('-', '/'), r.time].filter(Boolean).join(' ');
+      if(info) say(`${info} 로 잡았습니다${text ? '' : ' · 내용도 말해 보세요'}`);
+      if(!text) return;
+    }
+    el.value = el.value.trim() ? el.value.trim() + ' ' + text : text;
+    fire(el, 'input'); fire(el, 'change');
+    el.focus();
+    if(el.tagName === 'INPUT') el.setSelectionRange(el.value.length, el.value.length);
+  }
+
+  function start(el, opt, btn){
+    const SR = getSR();
+    if(!SR){ say('이 브라우저는 음성 입력이 안 됩니다. 키보드의 🎤(받아쓰기)를 써 주세요.'); return; }
+    if(rec){ stop(); return; }
+    let final = '', interim = '';
+    try{
+      rec = new SR(); rec.lang = 'ko-KR'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    }catch(e){ say('음성 입력을 켤 수 없습니다'); rec = null; return; }
+    curBtn = btn; btn.classList.add('on');
+    ui('듣고 있어요…', opt.date ? '예) 내일 오후 3시 무릎 제품 알아봐 드리기' : (opt.name ? '이름을 말씀해 주세요' : '말씀이 끝나면 저절로 멈춥니다'));
+    rec.onresult = e => {
+      interim = '';
+      for(let i = e.resultIndex; i < e.results.length; i++){
+        const t = e.results[i][0].transcript;
+        if(e.results[i].isFinal) final += t; else interim += t;
+      }
+      ui('듣고 있어요…', final + interim);
+    };
+    rec.onerror = e => {
+      const k = e && e.error;
+      if(k === 'not-allowed' || k === 'service-not-allowed') say('마이크 사용을 허용해 주세요. (설정 › Safari › 마이크)');
+      else if(k === 'no-speech') say('말씀이 들리지 않았어요. 다시 눌러 주세요.');
+      else if(k !== 'aborted') say('음성 인식에 실패했습니다. 다시 눌러 주세요.');
+      finish();
+    };
+    rec.onend = () => {
+      const got = (final || interim).trim();
+      finish();
+      if(got) apply(el, opt, got);
+    };
+    try{ rec.start(); }catch(e){ say('음성 입력을 켤 수 없습니다'); finish(); return; }
+    timer = setTimeout(() => { if(rec) stop(); }, 15000);  // 15초 넘으면 멈춤
+  }
+
+  /* ---------- 입력칸 옆에 버튼 붙이기 ---------- */
+  function wrap(el, opt){
+    if(el.closest('.vc-wrap')) return;
+    const w = document.createElement('span'); w.className = 'vc-wrap' + (el.tagName === 'TEXTAREA' ? ' ta' : '');
+    el.parentNode.insertBefore(w, el); w.appendChild(el);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'vc-btn'; b.title = '음성으로 입력'; b.textContent = '🎤';
+    b.setAttribute('aria-label', '음성으로 입력');
+    b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); start(el, opt, b); });
+    w.appendChild(b);
+  }
+  let queued = false;
+  function scan(){
+    queued = false;
+    TARGETS.forEach(t => document.querySelectorAll(t.sel).forEach(el => wrap(el, t)));
+  }
+  function watch(){
+    scan();
+    new MutationObserver(() => { if(!queued){ queued = true; requestAnimationFrame(scan); } })
+      .observe(document.body, {childList:true, subtree:true});
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
+
+  return {parseKo, get supported(){ return !!getSR(); }, scan};
 })();
 
 </script>
