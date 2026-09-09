@@ -1292,6 +1292,12 @@ select.sel{font-size:15px}
 .card.empty.emptymini .big{font-size:28px;margin-bottom:6px}
 #installBar{background:#eaf2f8;border-color:#7fa6d9}
 
+/* 홈 화면 설치 안내 */
+.inst-body p{font-size:15px;line-height:1.6;margin:0 0 10px}
+.inst-steps{margin:0 0 12px;padding-left:22px;font-size:15px;line-height:1.7}
+.inst-steps li{margin-bottom:4px}
+.kbd{display:inline-block;border:1px solid var(--line);border-radius:6px;padding:0 6px;font-size:14px;background:var(--panel-2)}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1335,7 +1341,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-1107';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-1208';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1992,6 +1998,9 @@ function viewDash(){
     <div class="slots" style="margin-top:8px"><button type="button" class="sbtn" data-criteria
       style="background:var(--s6b);border-color:var(--s6);color:var(--s6)">📋 고객구분 기준</button>
       <a class="sbtn" href="manual.html" target="_blank" rel="noopener" style="background:var(--s2b);border-color:var(--s2);color:var(--s2);text-decoration:none">📖 사용 설명서</a></div>
+    ${(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true ? '' :
+      `<div class="slots" style="margin-top:8px"><button type="button" class="sbtn" data-install
+      style="background:var(--s3b);border-color:var(--s3);color:var(--s3)">📲 홈 화면에 설치하기</button></div>`}
 
     ${checks.length ? `<div class="card" style="padding:13px 16px;font-size:14px;color:var(--muted)">
         ${checks.map(t => `<div class="chkline">${t}</div>`).join('')}
@@ -4558,7 +4567,41 @@ window.INSTALL = (() => {
   window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; bar(); });
   window.addEventListener('appinstalled', () => { deferred = null; const el = document.getElementById('installBar'); if(el) el.remove(); say('홈 화면에 추가됐습니다. 앞으로 그 아이콘으로 여세요'); });
   new MutationObserver(() => { if(deferred && !document.getElementById('installBar')) bar(); }).observe(document.body, {childList:true});
-  return {get ready(){ return !!deferred; }, bar, prompt(){ const b = document.getElementById('instGo'); if(b) b.click(); }};
+  /* 홈 화면의 '📲 홈 화면에 설치하기' 버튼 — 설치 창을 바로 띄우고, 안 되면 기기별 방법을 보여준다 */
+  const UA = navigator.userAgent || '';
+  const IOS = /iP(hone|ad|od)/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const SAMSUNG = /SamsungBrowser/i.test(UA);
+  function guide(){
+    const inapp = window.INAPP && INAPP.name;
+    let body;
+    if(standalone()) body = `<p>✅ 지금 이미 <b>홈 화면 앱</b>으로 열려 있습니다. 따로 설치할 필요가 없어요.</p>`;
+    else if(inapp) body = `<p>지금은 <b>${inapp}</b> 안에서 열려 있어서 설치가 안 됩니다.</p>
+      <p>아래 버튼으로 크롬에서 연 다음, 크롬 화면의 <b>📲 홈 화면에 설치하기</b>를 다시 누르세요.</p>
+      <div class="gx-btns"><a class="btn primary" href="${INAPP.chromeUrl()}">크롬으로 열기</a></div>`;
+    else if(IOS) body = `<p>아이폰은 <b>사파리</b>에서 설치합니다.</p>
+      <ol class="inst-steps"><li>화면 <b>아래 가운데 공유 버튼</b> <span class="kbd">⎋</span> (네모에 화살표)을 누릅니다.</li>
+      <li>아래로 내려 <b>홈 화면에 추가</b>를 누릅니다.</li><li>오른쪽 위 <b>추가</b>를 누릅니다.</li></ol>
+      <p class="gx-note">크롬·네이버 앱에서 열었다면 주소를 복사해 사파리에 붙여넣고 하세요. 홈 화면 앱과 사파리는 자료가 따로 저장되니, 설치 뒤에는 홈 화면 아이콘으로만 쓰세요.</p>`;
+    else if(SAMSUNG) body = `<p><b>삼성 인터넷</b>에서는 이렇게 합니다.</p>
+      <ol class="inst-steps"><li>오른쪽 아래 <b>메뉴 ☰</b>를 누릅니다.</li><li><b>현재 페이지 추가</b> → <b>홈 화면</b>을 고릅니다.</li></ol>
+      <p class="gx-note">또는 크롬으로 열면 설치 창이 바로 뜹니다.</p>`;
+    else body = `<p>크롬이 아직 설치 창을 준비하지 못했습니다. 이럴 때는 크롬 메뉴로 하면 됩니다.</p>
+      <ol class="inst-steps"><li>오른쪽 위 <b>⋮</b>를 누릅니다.</li><li>목록을 아래로 내려 <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 누릅니다.</li><li><b>설치</b>(추가)를 누릅니다.</li></ol>
+      <p class="gx-note">메뉴에 둘 다 없으면 잠시 앱을 쓰다가 이 버튼을 다시 눌러 보세요. 크롬은 조금 사용한 뒤에 설치를 허용합니다. 그래도 없으면 북마크(⋮ → ☆)로 쓰셔도 자료는 똑같습니다.</p>`;
+    const m = document.getElementById('modal'); if(!m) return;
+    m.innerHTML = `<div class="overlay" data-close><div class="modal"><div class="mhead"><h2>📲 홈 화면에 설치</h2><button class="x" data-close>×</button></div>
+      <div class="mbody inst-body">${body}</div><div class="mfoot"><button class="btn" data-close>닫기</button></div></div></div>`;
+  }
+  document.addEventListener('click', async e => {
+    if(!e.target.closest('[data-install]')) return;
+    if(deferred){
+      const p = deferred;
+      try{ p.prompt(); const r = await p.userChoice; if(r && r.outcome === 'accepted'){ deferred = null; return; } }
+      catch(x){}
+    }
+    guide();
+  });
+  return {get ready(){ return !!deferred; }, bar, guide, prompt(){ const b = document.getElementById('instGo'); if(b) b.click(); }};
 })();
 
 /* ============================================================
