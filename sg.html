@@ -1281,15 +1281,16 @@ select.sel{font-size:15px}
 .gx-pair .vc-btn,.gx-row2 .vc-btn{width:38px}
 
 /* ===== 앱 속 브라우저 안내 띠 ===== */
-#inappBar{margin:10px 12px 0;background:#fff7e6;border:1.5px solid #f0b95a;border-radius:14px;padding:12px 14px}
-#inappBar .ia-in b{display:block;font-size:15.5px;margin-bottom:4px}
-#inappBar .ia-in span{display:block;font-size:13.5px;line-height:1.55;color:var(--muted)}
-#inappBar .ia-btns{display:flex;gap:8px;margin-top:10px}
-#inappBar .ia-btns .btn{text-decoration:none}
+#inappBar,#installBar{margin:10px 12px 0;background:#fff7e6;border:1.5px solid #f0b95a;border-radius:14px;padding:12px 14px}
+#inappBar .ia-in b,#installBar .ia-in b{display:block;font-size:15.5px;margin-bottom:4px}
+#inappBar .ia-in span,#installBar .ia-in span{display:block;font-size:13.5px;line-height:1.55;color:var(--muted)}
+#inappBar .ia-btns,#installBar .ia-btns{display:flex;gap:8px;margin-top:10px}
+#inappBar .ia-btns .btn,#installBar .ia-btns .btn{text-decoration:none}
 
 /* 홈 — 고객 0명 안내 (작게) */
 .card.empty.emptymini{padding:22px 16px 20px;margin:0 0 14px}
 .card.empty.emptymini .big{font-size:28px;margin-bottom:6px}
+#installBar{background:#eaf2f8;border-color:#7fa6d9}
 
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
@@ -1334,7 +1335,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-1059';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-1107';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4529,6 +4530,35 @@ window.INAPP = (() => {
     new MutationObserver(() => { if(!document.getElementById('inappBar')) banner(); }).observe(document.body, {childList:true});
   }
   return {name: NAME, chromeUrl, banner};
+})();
+
+/* ============================================================
+   홈 화면 설치 — 크롬 메뉴에 '홈 화면에 추가'가 없는 기기용. 크롬이 설치 가능하다고 알려오면(beforeinstallprompt) 띠를 띄운다
+   ============================================================ */
+window.INSTALL = (() => {
+  let deferred = null;
+  const standalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const later = () => { try{ return Number(localStorage.getItem('install.later') || 0) > Date.now(); }catch(e){ return false; } };
+  const say = t => (typeof toast === 'function' ? toast(t) : null);
+  function bar(){
+    if(!deferred || standalone() || later() || document.getElementById('installBar')) return;
+    const el = document.createElement('div'); el.id = 'installBar';
+    el.innerHTML = `<div class="ia-in"><b>📲 홈 화면에 앱으로 넣을 수 있어요</b>
+      <span>크롬 메뉴에 '홈 화면에 추가'가 없어도 여기서 바로 됩니다. 자료는 그대로 이어집니다.</span>
+      <div class="ia-btns"><button type="button" class="btn sm primary" id="instGo">홈 화면에 설치</button><button type="button" class="btn sm ghost" id="instNo">나중에</button></div></div>`;
+    const app = document.getElementById('app') || document.body;
+    app.insertBefore(el, app.firstChild);
+    document.getElementById('instNo').onclick = () => { el.remove(); try{ localStorage.setItem('install.later', String(Date.now() + 7*86400000)); }catch(e){} };
+    document.getElementById('instGo').onclick = async () => {
+      const p = deferred; if(!p){ el.remove(); return; }
+      try{ p.prompt(); const r = await p.userChoice; if(r && r.outcome === 'accepted'){ el.remove(); deferred = null; } }
+      catch(e){ say('설치 창을 열지 못했습니다. 크롬 메뉴(⋮) → 홈 화면에 추가를 눌러 주세요'); }
+    };
+  }
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; bar(); });
+  window.addEventListener('appinstalled', () => { deferred = null; const el = document.getElementById('installBar'); if(el) el.remove(); say('홈 화면에 추가됐습니다. 앞으로 그 아이콘으로 여세요'); });
+  new MutationObserver(() => { if(deferred && !document.getElementById('installBar')) bar(); }).observe(document.body, {childList:true});
+  return {get ready(){ return !!deferred; }, bar, prompt(){ const b = document.getElementById('instGo'); if(b) b.click(); }};
 })();
 
 /* ============================================================
