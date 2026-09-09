@@ -1281,9 +1281,9 @@ select.sel{font-size:15px}
 .gx-pair .vc-btn,.gx-row2 .vc-btn{width:38px}
 
 /* ===== 앱 속 브라우저 안내 띠 ===== */
-#inappBar,#installBar{margin:10px 12px 0;background:#fff7e6;border:1.5px solid #f0b95a;border-radius:14px;padding:12px 14px}
+#inappBar,#installBar{color:#2c2427;margin:10px 12px 0;background:#fff7e6;border:1.5px solid #f0b95a;border-radius:14px;padding:12px 14px}
 #inappBar .ia-in b,#installBar .ia-in b{display:block;font-size:15.5px;margin-bottom:4px}
-#inappBar .ia-in span,#installBar .ia-in span{display:block;font-size:13.5px;line-height:1.55;color:var(--muted)}
+#inappBar .ia-in span,#installBar .ia-in span{display:block;font-size:13.5px;line-height:1.55;color:#6f5f65}
 #inappBar .ia-btns,#installBar .ia-btns{display:flex;gap:8px;margin-top:10px}
 #inappBar .ia-btns .btn,#installBar .ia-btns .btn{text-decoration:none}
 
@@ -1301,6 +1301,12 @@ select.sel{font-size:15px}
 /* 빠른 기록 — 자동 열림 체크 */
 .ql-autoline{display:flex;align-items:flex-start;gap:8px;margin-top:14px;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;font-size:13.5px;color:var(--muted);line-height:1.45}
 .ql-autoline input{width:20px;height:20px;flex:0 0 auto;margin:0}
+
+/* 리더성장 — 중복 자료 안내 */
+.gx-dup{background:#fff7e6;border-color:#f0b95a;color:#2c2427;font-size:14px;line-height:1.55;margin-bottom:12px}
+.gx-dup small{color:#6f5f65}
+.gx-dup small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.gx-dup .btn{margin-top:8px}
 
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
@@ -1345,7 +1351,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-1906';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-1912';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -5583,7 +5589,7 @@ const ORG_KEY = 'growth.note.v1.org';
 let FBAPP = null, AUTH = null, FS = null, ME = null, LEADER = null, LEADER_LOADED = false;
 let ORG = (() => { try{ return Object.assign({jewels:[], pts:[], promo:{}}, JSON.parse(localStorage.getItem(ORG_KEY) || '{}')); }
   catch(e){ return {jewels:[], pts:[], promo:{}}; } })();
-let TEAM = {month:'', rows:[], prevRows:[], leaders:[], loading:false, loaded:false, err:''};
+let TEAM = {month:'', rows:[], prevRows:[], leaders:[], dups:[], loading:false, loaded:false, err:''};
 const SV = () => firebase.firestore.FieldValue.serverTimestamp();
 const curView = () => (typeof VIEW !== 'undefined' ? VIEW : '');
 const redrawIf = v => { if(curView() === v && typeof render === 'function') render(); };
@@ -5681,12 +5687,26 @@ async function loadTeam(){
     const [a, b] = await Promise.all([
       FS.collection('reports').doc(tKey()).collection('members').get(),
       FS.collection('reports').doc(tPrev()).collection('members').get()]);
-    TEAM.rows = a.docs.map(d => d.data()); TEAM.prevRows = b.docs.map(d => d.data());
+    const da = dedupe(a.docs.map(d => Object.assign({uid:d.id}, d.data())));
+    TEAM.rows = da.rows; TEAM.dups = da.dups;
+    TEAM.prevRows = dedupe(b.docs.map(d => Object.assign({uid:d.id}, d.data()))).rows;
     if(isAdmin()){ const p = await FS.collection('leaders').get(); TEAM.leaders = p.docs.map(d => Object.assign({uid:d.id}, d.data())); }
     TEAM.month = tKey(); TEAM.loaded = true;
   }catch(e){ TEAM.err = '자료를 불러오지 못했습니다. ' + (e && e.message ? e.message : ''); }
   TEAM.loading = false;
   redrawIf('gteam');
+}
+/* 같은 이름·상위 PT 자료가 두 건 이상이면(휴대폰 교체·재설치로 계정이 새로 생긴 경우) 가장 최근 것만 반영 */
+function dedupe(rows){
+  const keep = new Map(), dups = [];
+  rows.forEach(r => {
+    const k = String(r.name || '').replace(/\s/g, '') + '|' + String(r.pt || '');
+    const cur = keep.get(k);
+    if(!cur){ keep.set(k, r); return; }
+    const newer = (tMs(r) > tMs(cur)) || (tMs(r) === tMs(cur) && (r.score || 0) > (cur.score || 0));
+    if(newer){ dups.push(cur); keep.set(k, r); } else dups.push(r);
+  });
+  return {rows:[...keep.values()], dups};
 }
 const fmtErr = e => {
   const c = (e && e.code) || '';
@@ -5787,7 +5807,10 @@ function teamBoard(){
   const admin = isAdmin();
   const pending = TEAM.leaders.filter(l => !l.approved);
   const approved = TEAM.leaders.filter(l => l.approved);
-  return `
+  const dups = (TEAM.dups || []).filter(d => mine.some(x => x.name === d.name && (x.pt || '') === (d.pt || '')));
+  const dupNote = dups.length ? `<div class="card gx-pad gx-dup">👥 <b>${[...new Set(dups.map(d => d.name))].map(E).join(', ')}</b> 님 자료가 두 건 이상이라 최신 것만 반영했습니다 <small>(휴대폰을 바꾸거나 앱을 다시 설치하면 생깁니다)</small>
+    ${admin && now ? `<button class="btn sm" data-gdedupe>오래된 자료 ${dups.length}건 지우기</button>` : ''}</div>` : '';
+  return `${dupNote}
   <div class="gx-lead"><b>${E(LEADER.name)}</b><span>${roleName(LEADER)}</span>
     <button class="btn sm ghost" data-greload>새로고침</button><button class="btn sm ghost" data-glogout>로그아웃</button></div>
   <div class="gx-datebar">
@@ -6287,7 +6310,7 @@ if(typeof save === 'function'){
 }
 
 // 화면 점검용 — 서버 자료 없이 리더 화면을 그려 본다 (규칙상 실제 자료는 읽을 수 없다)
-window.__gxMock = (leader, rows, prevRows) => { LEADER = leader; LEADER_LOADED = true; ME = {uid:leader.uid || 'mock', isAnonymous:false}; TEAM = {month:tKey(), rows:rows || [], prevRows:prevRows || [], leaders:[], loading:false, loaded:true, err:''}; };
+window.__gxMock = (leader, rows, prevRows) => { LEADER = leader; LEADER_LOADED = true; ME = {uid:leader.uid || 'mock', isAnonymous:false}; const d = dedupe(rows || []); TEAM = {month:tKey(), rows:d.rows, dups:d.dups, prevRows:prevRows || [], leaders:[], loading:false, loaded:true, err:''}; };
 
 window.GROWTH = {
   views: VIEWS,
@@ -6427,6 +6450,12 @@ window.GROWTH = {
     on('[data-greject]', async el => {
       if(!confirm('이 리더의 권한을 해제할까요?')) return;
       try{ await FS.collection('leaders').doc(el.dataset.greject).update({approved:false}); TEAM.loaded = false; again(); }
+      catch(e){ say('실패 — ' + fmtErr(e)); }
+    });
+    on('[data-gdedupe]', async () => {
+      const list = TEAM.dups || [];
+      if(!list.length || !confirm('같은 이름의 오래된 자료 ' + list.length + '건을 지울까요? (최신 자료는 그대로 둡니다)')) return;
+      try{ for(const d of list){ if(d.uid) await FS.collection('reports').doc(tKey()).collection('members').doc(d.uid).delete(); } TEAM.loaded = false; again(); say('정리했습니다'); }
       catch(e){ say('실패 — ' + fmtErr(e)); }
     });
     on('[data-gdelrow]', async el => {
