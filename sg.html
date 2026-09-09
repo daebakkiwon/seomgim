@@ -1336,6 +1336,10 @@ select.sel{font-size:15px}
 .trow .tmv .btn{padding:2px 8px;font-size:11px;line-height:1.2;min-height:0}
 .trow .tmv .btn:disabled{opacity:.25}
 
+/* 고객 상세 — 단계 올리기/내리기 버튼 묶음 */
+.stbtns{display:flex;flex-direction:column;gap:6px;align-items:stretch;flex:0 0 auto}
+.stbtns .btn{white-space:nowrap}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1380,7 +1384,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-1937';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-2028';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2633,7 +2637,10 @@ function openDetail(id){
               ${p.phone ? telLink(p.phone, 'big') : ''}
             </div>
           </div>
-          ${next ? `<button class="btn sm primary" data-advance="${p.id}">${next.name}(으)로 성장 ↑</button>` : ''}
+          <div class="stbtns">
+            ${next ? `<button class="btn sm primary" data-advance="${p.id}">${next.name}(으)로 성장 ↑</button>` : ''}
+            ${stageIdx(p.stage) > 0 ? `<button class="btn sm ghost" data-demote="${p.id}">${STAGES[stageIdx(p.stage) - 1].name}(으)로 내리기 ↓</button>` : ''}
+          </div>
         </div>
 
         ${info.length ? `<div class="infoline">` +
@@ -4155,6 +4162,7 @@ document.getElementById('modal').addEventListener('click', e => {
   }
   const edit = t.closest('[data-edit]');    if(edit){ openForm(edit.dataset.edit); return; }
   const adv  = t.closest('[data-advance]'); if(adv){ advance(adv.dataset.advance); return; }
+  const dem  = t.closest('[data-demote]'); if(dem){ if(window.demoteStage) demoteStage(dem.dataset.demote); return; }
   const dn   = t.closest('[data-done]');    if(dn){ doneTask(dn.dataset.done); return; }
   const del  = t.closest('[data-del]');     if(del){ removePerson(del.dataset.del); return; }
   const dl   = t.closest('[data-dellog]');
@@ -4307,7 +4315,7 @@ function showCriteria(){
       <div class="mbody">
         <div style="font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:14px">
           섬김활동 기록(제품첫구매 · 제품재구매 · 자료제공 · 미팅참석 · 음원프로모션)을 보고
-          <b style="color:var(--text)">자동으로 올리고 내립니다.</b> 손으로 바꾼 단계는 기준이 달라질 때까지 그대로 둡니다.
+          <b style="color:var(--text)">자동으로 올리고 내립니다.</b> 고객 상세의 <b>↑ 성장 · ↓ 내리기</b> 버튼이나 수정 화면에서 직접 바꿀 수도 있고, 손으로 바꾼 단계는 기준이 달라질 때까지 그대로 둡니다.
         </div>
         ${CRITERIA.map((c, i) => { const st = stageOf(c.id); return `
         <div class="crit">
@@ -4324,6 +4332,20 @@ function showCriteria(){
 document.addEventListener('click', e => {
   if(e.target.closest('[data-criteria]')) showCriteria();
 });
+/* 단계 직접 내리기 — 기준이 다시 바뀌기 전까지는 자동으로 도로 올리지 않는다 */
+window.demoteStage = function(id){
+  const p = byId(id); if(!p) return;
+  const i = stageIdx(p.stage); if(i <= 0) return;
+  const prev = STAGES[i - 1];
+  const ok = confirm(`${p.name} 님을 '${stageOf(p.stage).name}'에서 '${prev.name}'(으)로 내릴까요?\n(기록 기준이 다시 달라지기 전까지는 그대로 둡니다)`);
+  if(!ok) return;
+  p.logs = p.logs || [];
+  p.logs.push({ id:uid(), at:new Date().toISOString(), kind:'성장', text:`${stageOf(p.stage).name} → ${prev.name} (직접 내림)` });
+  p.stage = prev.id;
+  p.stageAuto = calc(p);                                  // 지금 기준값을 기억해 두어 곧바로 도로 올리지 않게
+  save(); render(); openDetail(id);
+  toast(`${p.name} 님 → ${prev.name}`);
+};
 window.STAGE_AUTO = { calc, calcAt:(p, asOf) => calc(p, asOf), applyAll, showCriteria, CRITERIA };
 
 /* 연락처 이름 정리 — "김영희 010-1234-5678 헬스장" → "김영희". 필요하면 수정 칸에서 뒤에 참고 내용을 붙인다 */
