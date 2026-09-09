@@ -1384,7 +1384,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-2028';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-2035';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1785,7 +1785,9 @@ function toast(msg){
 /* ---------- 조회 ---------- */
 // 팀을 고르면 그 팀 사람만 본다. '전체'면 모두.
 function people(){
-  return TEAM ? DB.people.filter(p => (p.team || '') === TEAM) : DB.people;
+  if(!TEAM) return DB.people;
+  if(TEAM.startsWith('los:') && window.losLine){ const set = losLine(TEAM.slice(4)); return DB.people.filter(p => set.has(p.id)); }
+  return DB.people.filter(p => (p.team || '') === TEAM);
 }
 function teamCount(t){ return DB.people.filter(p => (p.team || '') === t).length; }
 function setTeam(t){
@@ -1850,20 +1852,21 @@ function weekActs(){
 function teamBar(){
   const el = document.getElementById('teamBar');
   if(!el) return;
-  const ts = DB.teams || [];
-  if(!ts.length){
-    el.innerHTML = `<button class="tchip add" data-tadd>＋ 팀분류 만들기</button>`;
+  const legs = window.losLegs ? losLegs() : [];
+  const ts = (DB.teams || []).filter(t => teamCount(t) > 0);
+  if(TEAM && TEAM.startsWith('los:') && !legs.some(l => 'los:' + l.id === TEAM)) TEAM = '';
+  if(TEAM && !TEAM.startsWith('los:') && !ts.includes(TEAM)) TEAM = '';
+  if(!legs.length && !ts.length){
+    el.innerHTML = `<button class="tchip add" data-tlos>라인별로 보기 — 고객 수정에서 추천인을 채우면 라인이 생깁니다</button>`;
   }else{
-    if(TEAM && !ts.includes(TEAM)) TEAM = '';       // 없어진 팀을 보고 있었다면 전체로
-    el.innerHTML = `<span class="tlabel">팀</span>`
+    el.innerHTML = `<span class="tlabel">라인</span>`
       + `<button class="tchip ${!TEAM ? 'on' : ''}" data-t="">전체 ${DB.people.length}</button>`
-      + ts.map(t => `<button class="tchip ${TEAM === t ? 'on' : ''}" data-t="${esc(t)}">
-          ${esc(t)} ${teamCount(t)}</button>`).join('')
-      + `<button class="tchip add" data-tadd>＋</button>`;
+      + legs.map(l => `<button class="tchip ${TEAM === 'los:' + l.id ? 'on' : ''}" data-t="los:${esc(l.id)}">${esc(l.name)} ${l.count}</button>`).join('')
+      + ts.map(t => `<button class="tchip ${TEAM === t ? 'on' : ''}" data-t="${esc(t)}">${esc(t)} ${teamCount(t)}</button>`).join('');
   }
   el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => setTeam(b.dataset.t));
-  const add = el.querySelector('[data-tadd]');
-  if(add) add.onclick = openTeams;
+  const go = el.querySelector('[data-tlos]');
+  if(go) go.onclick = () => { VIEW = 'glos'; render(); };
 }
 
 /* ---------- 팀분류 관리 ---------- */
@@ -2761,7 +2764,7 @@ function teamOptions(cur){
 function emptyTeam(){
   return `<div class="card empty" style="margin-top:24px">
     <div class="big">👥</div>
-    <h3>'${esc(TEAM)}' 팀에 아직 고객이 없습니다</h3>
+    <h3>'${esc(window.teamLabel ? teamLabel(TEAM) : TEAM)}'에 아직 고객이 없습니다</h3>
     <p>새 고객을 추가하시면 이 팀으로 들어갑니다.<br>
        이미 계신 분을 옮기시려면 그분을 열고 <b>수정</b>에서 팀을 골라주세요.</p>
     <button class="btn primary" id="emptyNew">＋ 이 팀에 고객 추가</button>
@@ -2868,14 +2871,14 @@ function openForm(id){
         <div class="frow">
           <div class="f full">
             <label>추천인 (스폰서)</label>
-            <select id="f_sponsor">${window.sponsorOptions ? sponsorOptions(p) : '<option value="">— 본인이 직접 —</option>'}</select>
+            <select id="f_sponsor">${window.sponsorOptions ? sponsorOptions(p, (typeof TEAM === 'string' && TEAM.startsWith('los:')) ? TEAM.slice(4) : '') : '<option value="">— 본인이 직접 —</option>'}</select>
             <div class="hint">이 분을 소개한 분입니다. LOS 탭에서 라인(계보)으로 보입니다. 내가 직접 만난 분이면 비워두세요.</div>
           </div>
         </div>
-        <div class="frow">
+        <div class="frow ${(DB.teams || []).some(t => teamCount(t) > 0) ? '' : 'hide'}">
           <div class="f full">
-            <label>팀분류</label>
-            <select id="f_team">${teamOptions(p ? (p.team || '') : TEAM)}</select>
+            <label>팀분류 <small style="font-weight:600;color:var(--faint)">(예전 방식 · 추천인으로 라인을 보세요)</small></label>
+            <select id="f_team">${teamOptions(p ? (p.team || '') : (TEAM.startsWith('los:') ? '' : TEAM))}</select>
             <div class="hint">레그별로 나눠 보실 때 씁니다. 안 쓰시면 비워두세요.</div>
           </div>
         </div>
@@ -4362,7 +4365,31 @@ window.cleanContactName = raw => splitContactName(raw).name;
 
 
 /* 추천인(스폰서) 선택 목록 — 본인과 본인 아래 라인은 고를 수 없게 한다 */
-window.sponsorOptions = function(p){
+/* LOS 라인 — 내 바로 아래 사람 중 아래 인원이 있는 사람이 '라인'이 된다 */
+window.losKids = function(){
+  const all = (typeof DB !== 'undefined' && DB && Array.isArray(DB.people)) ? DB.people : [];
+  const ids = new Set(all.map(p => p.id)), kids = new Map();
+  all.forEach(p => { const s = (p.sponsorId && ids.has(p.sponsorId) && p.sponsorId !== p.id) ? p.sponsorId : ''; if(!kids.has(s)) kids.set(s, []); kids.get(s).push(p); });
+  return kids;
+};
+window.losLine = function(headId){
+  const kids = losKids(), out = new Set();
+  const walk = (id, d) => { if(out.has(id) || d > 80) return; out.add(id); (kids.get(id) || []).forEach(c => walk(c.id, d + 1)); };
+  if(headId) walk(headId, 0);
+  return out;
+};
+window.losLegs = function(){
+  const kids = losKids();
+  return (kids.get('') || []).filter(p => (kids.get(p.id) || []).length)
+    .map(p => ({id:p.id, name:p.name, count:losLine(p.id).size}))
+    .sort((a,b) => b.count - a.count || (a.name || '').localeCompare(b.name || '', 'ko'));
+};
+window.teamLabel = function(t){
+  if(!t) return '';
+  if(String(t).startsWith('los:')){ const p = (DB.people || []).find(x => x.id === t.slice(4)); return p ? p.name + ' 라인' : '라인'; }
+  return t;
+};
+window.sponsorOptions = function(p, defId){
   const all = (typeof DB !== 'undefined' && DB && Array.isArray(DB.people)) ? DB.people : [];
   const block = new Set();
   if(p && p.id){
@@ -4371,7 +4398,7 @@ window.sponsorOptions = function(p){
     while(grow){ grow = false; all.forEach(x => { if(!block.has(x.id) && x.sponsorId && block.has(x.sponsorId)){ block.add(x.id); grow = true; } }); }
   }
   const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const cur = (p && p.sponsorId) || '';
+  const cur = (p && p.sponsorId) || (!p && defId) || '';
   const rows = all.filter(x => !block.has(x.id)).slice().sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ko'));
   return '<option value="">— 본인이 직접 —</option>' + rows.map(x =>
     `<option value="${esc(x.id)}" ${x.id === cur ? 'selected' : ''}>${esc(x.name)}${x.memberNo ? ' (' + esc(x.memberNo) + ')' : ''}</option>`).join('');
