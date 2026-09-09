@@ -1308,6 +1308,34 @@ select.sel{font-size:15px}
 .gx-dup small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
 .gx-dup .btn{margin-top:8px}
 
+/* ===== LOS 계보 ===== */
+.los-card{padding:6px 8px;clear:both;overflow:hidden}
+.los-row{display:flex;align-items:center;gap:6px;min-height:46px;padding:4px 6px 4px calc(6px + var(--d) * 22px);border-bottom:1px solid var(--line);position:relative}
+.los-row:last-child{border-bottom:0}
+.los-row:not(.root)::before{content:'';position:absolute;left:calc(var(--d) * 22px - 4px);top:0;bottom:0;border-left:1.5px dashed var(--line)}
+.los-row.root{background:var(--panel-2);border-radius:10px;border-bottom:0;margin-bottom:4px}
+.los-tg{flex:0 0 auto;width:24px;height:24px;border:1.5px solid #7fa6d9;border-radius:5px;background:var(--panel);color:#1f5fbf;font-size:15px;line-height:1;font-weight:800;padding:0;cursor:pointer}
+.los-tg.none{border:0;background:transparent}
+.los-ic{flex:0 0 auto;width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.los-ic.me{background:#1f5fbf;color:#fff}
+.los-nm{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:transparent;border:0;padding:0;text-align:left;font:inherit;color:var(--text);cursor:pointer}
+.los-nm b{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.los-nm small{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.los-star{font-style:normal;color:#e0a100;font-size:13px}
+.los-right{flex:0 0 auto;display:flex;align-items:center;gap:8px}
+.los-n{font-family:'Gowun Batang',serif;font-size:16px;font-weight:700;color:var(--muted)}
+.los-n small{font-size:11.5px;font-weight:600;margin-left:1px}
+.los-tel{width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--s2b);border:1px solid var(--s2);text-decoration:none;font-size:17px}
+.los-tel.none{width:38px;border:0;background:transparent}
+.los-legend{margin:8px 4px 0;font-size:12.5px;color:var(--muted);line-height:1.8}
+.los-legend i{display:inline-flex;width:18px;height:18px;border-radius:50%;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:800;margin:0 2px 0 4px;vertical-align:middle}
+.los-tb td:first-child{text-align:left}
+
+/* 팀분류 순서 바꾸기 */
+.trow .tmv{display:flex;flex-direction:column;gap:2px;flex:0 0 auto}
+.trow .tmv .btn{padding:2px 8px;font-size:11px;line-height:1.2;min-height:0}
+.trow .tmv .btn:disabled{opacity:.25}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1331,6 +1359,7 @@ select.sel{font-size:15px}
       <button class="tab" data-view="list">고객 목록 <span class="cnt" id="cntList"></span></button>
       <button class="tab" data-view="acts">섬김활동 <span class="cnt" id="cntActs"></span></button>
       <button class="tab" data-view="groups">명단분류</button>
+      <button class="tab" data-view="glos">LOS</button>
       <span class="tabsep"></span>
       <button class="tab gtab" data-view="gvision">비전 · 목표</button>
       <button class="tab gtab" data-view="gself">자기섬김</button>
@@ -1351,7 +1380,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-1912';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-1937';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1857,7 +1886,8 @@ function openTeams(){
 
   const draw = () => {
     document.getElementById('teamList').innerHTML = (DB.teams || []).length
-      ? DB.teams.map(t => `<div class="trow">
+      ? DB.teams.map((t, i) => `<div class="trow">
+          <span class="tmv"><button type="button" class="btn sm ghost" data-tmv="${esc(t)}" data-dir="-1" ${i === 0 ? 'disabled' : ''} title="위로">▲</button><button type="button" class="btn sm ghost" data-tmv="${esc(t)}" data-dir="1" ${i === DB.teams.length - 1 ? 'disabled' : ''} title="아래로">▼</button></span>
           <b>${esc(t)}</b><span class="n">${teamCount(t)}명</span>
           <button type="button" class="btn sm ghost" data-tren="${esc(t)}">이름 바꾸기</button>
           <button type="button" class="btn sm ghost" data-tdel="${esc(t)}">×</button>
@@ -1867,6 +1897,13 @@ function openTeams(){
   draw();
 
   document.getElementById('teamList').onclick = async e => {
+    const mv = e.target.closest('[data-tmv]');
+    if(mv){
+      const t = mv.dataset.tmv, d = Number(mv.dataset.dir), i = DB.teams.indexOf(t), j = i + d;
+      if(i < 0 || j < 0 || j >= DB.teams.length) return;
+      DB.teams.splice(i, 1); DB.teams.splice(j, 0, t);
+      save(); draw(); teamBar(); return;
+    }
     const del = e.target.closest('[data-tdel]');
     const ren = e.target.closest('[data-tren]');
     if(del){
@@ -2823,6 +2860,13 @@ function openForm(id){
 
         <div class="frow">
           <div class="f full">
+            <label>추천인 (스폰서)</label>
+            <select id="f_sponsor">${window.sponsorOptions ? sponsorOptions(p) : '<option value="">— 본인이 직접 —</option>'}</select>
+            <div class="hint">이 분을 소개한 분입니다. LOS 탭에서 라인(계보)으로 보입니다. 내가 직접 만난 분이면 비워두세요.</div>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="f full">
             <label>팀분류</label>
             <select id="f_team">${teamOptions(p ? (p.team || '') : TEAM)}</select>
             <div class="hint">레그별로 나눠 보실 때 씁니다. 안 쓰시면 비워두세요.</div>
@@ -3118,6 +3162,7 @@ function openForm(id){
       source: val('source') === '__new' ? '' : val('source'),
       memberNo: val('memberNo'), needs: val('needs'), route: val('route'),
       noteUser: document.getElementById('f_noteUser').checked,
+      sponsorId: (document.getElementById('f_sponsor') || {}).value || '',
       team: val('team') === '__new' ? '' : val('team'),
       family: val('family'), network: val('network'),
       memo: nameRest ? (val('memo') ? val('memo') + '\n' + nameRest : nameRest) : val('memo'),
@@ -4293,6 +4338,23 @@ window.splitContactName = function(raw){
 window.cleanContactName = raw => splitContactName(raw).name;
 })();
 
+
+/* 추천인(스폰서) 선택 목록 — 본인과 본인 아래 라인은 고를 수 없게 한다 */
+window.sponsorOptions = function(p){
+  const all = (typeof DB !== 'undefined' && DB && Array.isArray(DB.people)) ? DB.people : [];
+  const block = new Set();
+  if(p && p.id){
+    block.add(p.id);
+    let grow = true;
+    while(grow){ grow = false; all.forEach(x => { if(!block.has(x.id) && x.sponsorId && block.has(x.sponsorId)){ block.add(x.id); grow = true; } }); }
+  }
+  const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const cur = (p && p.sponsorId) || '';
+  const rows = all.filter(x => !block.has(x.id)).slice().sort((a,b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+  return '<option value="">— 본인이 직접 —</option>' + rows.map(x =>
+    `<option value="${esc(x.id)}" ${x.id === cur ? 'selected' : ''}>${esc(x.name)}${x.memberNo ? ' (' + esc(x.memberNo) + ')' : ''}</option>`).join('');
+};
+
 </script>
 <script>
 /* ============================================================
@@ -5012,7 +5074,7 @@ window.VOICE = (() => {
 const GKEY = 'growth.note.v1';
 const VIEWS = {
   gvision:'비전 · 목표', gself:'자기섬김', ggrow:'성장활동', gweek:'5통계획',
-  gteam:'리더성장'
+  gteam:'리더성장', glos:'LOS'
 };
 
 /* ---------- 코어 ---------- */
@@ -6110,6 +6172,53 @@ function vWeek(){
     통화한 분은 섬김활동에 '통화'로 기록하면 여기 완료로 표시됩니다. 만남 일정은 홈 화면에서 봅니다.</p>
   ${planSection('calls')}`;
 }
+/* ============================================================
+   LOS — 라인 오브 스폰서십. 추천인(sponsorId)으로 이어진 계보를 트리로 보여준다
+   ============================================================ */
+const LOS_CLOSED = new Set();
+function losTree(){
+  const all = crmPeople();
+  const ids = new Set(all.map(p => p.id));
+  const kids = new Map();
+  all.forEach(p => { const s = (p.sponsorId && ids.has(p.sponsorId) && p.sponsorId !== p.id) ? p.sponsorId : ''; if(!kids.has(s)) kids.set(s, []); kids.get(s).push(p); });
+  const order = (a,b) => stageIdx(b.stage) - stageIdx(a.stage) || (a.name || '').localeCompare(b.name || '', 'ko');
+  kids.forEach(v => v.sort(order));
+  const seen = new Set();
+  const count = id => { if(seen.has(id)) return 0; seen.add(id); return (kids.get(id) || []).reduce((n, c) => n + 1 + count(c.id), 0); };
+  const below = {}; all.forEach(p => { seen.clear(); below[p.id] = count(p.id); });
+  const stat = id => { const out = {n:0, consumer:0, partner:0}; const walk = (x, d) => { if(d > 60) return; (kids.get(x) || []).forEach(c => { out.n++; if(['consumer','active','learner','loyal'].includes(c.stage)) out.consumer++; if(c.stage === 'partner') out.partner++; walk(c.id, d+1); }); }; walk(id, 0); return out; };
+  return {all, kids, below, stat};
+}
+function losRow(p, depth, T){
+  const st = stageOf(p.stage), ch = T.kids.get(p.id) || [], closed = LOS_CLOSED.has(p.id);
+  const tel = p.phone ? `<a class="los-tel" href="${telHref(p.phone)}" data-id="${E(p.id)}" title="전화 걸기">📞</a>` : '<span class="los-tel none"></span>';
+  return `<div class="los-row" style="--d:${depth}">
+    ${ch.length ? `<button type="button" class="los-tg" data-lostoggle="${E(p.id)}">${closed ? '＋' : '－'}</button>` : '<span class="los-tg none"></span>'}
+    <span class="los-ic" style="background:var(${st.b});color:var(${st.c})" title="${st.name}">${st.name[0]}</span>
+    <button type="button" class="los-nm" data-losopen="${E(p.id)}"><b>${E(p.name)}</b>${p.memberNo ? `<small>(${E(p.memberNo)})</small>` : ''}${p.noteUser ? '<i class="los-star" title="섬김성장노트 사용">★</i>' : ''}</button>
+    <span class="los-right">${ch.length ? `<span class="los-n">${T.below[p.id]}<small>명</small></span>` : ''}${tel}</span>
+  </div>` + (ch.length && !closed ? ch.map(c => losRow(c, depth + 1, T)).join('') : '');
+}
+function vLos(){
+  const T = losTree(), roots = T.kids.get('') || [], total = T.all.length;
+  const me = (G.name || '').trim() || '나';
+  const noSp = roots.length;
+  const legs = roots.filter(r => (T.kids.get(r.id) || []).length);
+  const legRows = legs.map(r => { const st = T.stat(r.id); return `<tr><td><b>${E(r.name)}</b></td><td>${st.n + 1}명</td><td>${st.consumer + (['consumer','active','learner','loyal'].includes(r.stage) ? 1 : 0)}명</td><td>${st.partner + (r.stage === 'partner' ? 1 : 0)}명</td></tr>`; }).join('');
+  return `
+  <div class="section-title">LOS 계보 <small class="gx-sub">추천인으로 이어진 라인 · 이름을 누르면 상세 · 📞 전화</small>
+    <span class="gx-mnav"><button class="btn sm" data-losall="open">모두 펼치기</button><button class="btn sm" data-losall="close">모두 접기</button></span></div>
+  <div class="card los-card">
+    <div class="los-row root" style="--d:0"><span class="los-tg none"></span><span class="los-ic me">나</span>
+      <span class="los-nm"><b>${E(me)}</b><small>본인</small></span><span class="los-right"><span class="los-n">${total}<small>명</small></span></span></div>
+    ${roots.length ? roots.map(r => losRow(r, 1, T)).join('') : '<div class="gx-empty" style="padding:18px">아직 고객이 없습니다.</div>'}
+  </div>
+  <div class="los-legend">동그라미 색 = 고객 단계 (${STAGES.map(s => `<i style="background:var(${s.b});color:var(${s.c})">${s.name[0]}</i>${s.name}`).join(' · ')}) · ★ 섬김성장노트 사용 · 숫자 = 그 아래 인원</div>
+  ${legs.length ? `<div class="section-title">라인별 인원 <small class="gx-sub">내 바로 아래에서 시작하는 라인</small></div>
+  <div class="card gx-pad"><table class="gx-tb los-tb"><thead><tr><th>라인</th><th>인원</th><th>소비자</th><th>사업자</th></tr></thead><tbody>${legRows}</tbody></table></div>` : ''}
+  <div class="gx-note" style="margin-top:10px">추천인은 고객을 열어 <b>수정 → 추천인(스폰서)</b>에서 정합니다. 추천인이 없는 분(${noSp}명)은 내 바로 아래에 놓입니다.</div>`;
+}
+
 /* ---------- 상담자료 — 스폰서·리더와 상담할 때 보여주는 요약 ---------- */
 let RSEL = 'month';
 let REPOPEN = false;   // 상담자료는 기본 접힘 — '상담자료 보기'를 눌러야 펼침
@@ -6321,6 +6430,7 @@ window.GROWTH = {
     if(v === 'ggrow') return vGrow();
     if(v === 'gweek') return vWeek();
     if(v === 'gteam') return vTeam();
+    if(v === 'glos') return vLos();
     return '';
   },
   bind(v, redraw){
@@ -6485,6 +6595,11 @@ window.GROWTH = {
     on('[data-gwpick]', el => openPicker(el.dataset.gwpick, el.dataset.d));
     on('[data-gwdel]', el => { wkBucket(wkRange(WSEL).key, el.dataset.gwdel).splice(Number(el.dataset.i), 1); gsave(); again(); });
     on('[data-gwopen]', el => { if(typeof openDetail === 'function') openDetail(el.dataset.gwopen); });
+
+    /* LOS */
+    on('[data-lostoggle]', el => { const id = el.dataset.lostoggle; if(LOS_CLOSED.has(id)) LOS_CLOSED.delete(id); else LOS_CLOSED.add(id); again(); });
+    on('[data-losopen]', el => { if(typeof openDetail === 'function') openDetail(el.dataset.losopen); });
+    on('[data-losall]', el => { LOS_CLOSED.clear(); if(el.dataset.losall === 'close') crmPeople().forEach(p => LOS_CLOSED.add(p.id)); again(); });
 
     /* 성장활동 */
     on('[data-gtype]', el => { GSEL = el.dataset.gtype; again(); });
