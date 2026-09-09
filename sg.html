@@ -1341,7 +1341,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-1711';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-1858';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -4494,6 +4494,36 @@ function askCall(){
 }
 if(pending() && Date.now() - pending().at > 3000) setTimeout(askCall, 800);      // 앱이 새로 열린 경우
 
+/* ---------- 걸려온 전화 → 주소로 번호를 넘겨받으면 그 고객의 통화 기록 화면을 바로 연다
+   sg.html?call=01012345678  (안드로이드 자동화 앱: 통화 종료 → 이 주소 열기) ---------- */
+function incoming(num){
+  const t = tail8(num);
+  if(!t || t.length < 7){ toast('전화번호가 없습니다'); return false; }
+  const hits = DB.people.filter(x => tail8(x.phone) === t);
+  if(hits.length === 1){
+    const p = hits[0];
+    clearPending();
+    open({pid:p.id, kind:'통화', expandInfo:true});
+    toast('📞 걸려온 전화 · ' + p.name + ' 님 — 통화 내용을 적어 주세요');
+    return true;
+  }
+  open();
+  const q = document.getElementById('qlQ');
+  if(q){ q.value = hits.length ? hits[0].name : fmtPhone(digits(num)); q.dispatchEvent(new Event('input', {bubbles:true})); }
+  toast(hits.length ? '같은 번호가 ' + hits.length + '명 — 한 분을 고르세요' : '등록되지 않은 번호입니다 — ＋ 새 고객으로 넣을 수 있어요');
+  return false;
+}
+(function fromUrl(){
+  let num = '';
+  try{
+    const u = new URL(location.href);
+    num = u.searchParams.get('call') || u.searchParams.get('tel') || '';
+    if(!num && /[#&?]call=/.test(location.hash)) num = decodeURIComponent(location.hash.replace(/^.*call=/, '').split('&')[0]);
+    if(num){ u.searchParams.delete('call'); u.searchParams.delete('tel'); history.replaceState(null, '', u.pathname + (u.search || '') ); }
+  }catch(e){}
+  if(num) setTimeout(() => incoming(num), 700);
+})();
+
 const fab = document.getElementById('fabLog');
 if(fab) fab.onclick = open;
 document.addEventListener('keydown', e => {
@@ -4501,7 +4531,7 @@ document.addEventListener('keydown', e => {
   const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement && document.activeElement.tagName);
   if(!typing && (e.key === 'l' || e.key === 'ㅣ')){ e.preventDefault(); open(); }
 });
-window.QUICK_LOG = { open };
+window.QUICK_LOG = { open, incoming };
 })();
 
 </script>
