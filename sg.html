@@ -1280,6 +1280,13 @@ select.sel{font-size:15px}
 .vc-sheet .btn{background:#fff;color:#2c2427;border:0;flex:0 0 auto}
 .gx-pair .vc-btn,.gx-row2 .vc-btn{width:38px}
 
+/* ===== 앱 속 브라우저 안내 띠 ===== */
+#inappBar{margin:10px 12px 0;background:#fff7e6;border:1.5px solid #f0b95a;border-radius:14px;padding:12px 14px}
+#inappBar .ia-in b{display:block;font-size:15.5px;margin-bottom:4px}
+#inappBar .ia-in span{display:block;font-size:13.5px;line-height:1.55;color:var(--muted)}
+#inappBar .ia-btns{display:flex;gap:8px;margin-top:10px}
+#inappBar .ia-btns .btn{text-decoration:none}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1323,7 +1330,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260908-1229';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-1028';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3179,6 +3186,8 @@ function parseVCards(text){
 
 // 폰 연락처에서 한 사람 고르기 (되는 기기에서만)
 async function pickContact(){
+  const inapp = window.INAPP && INAPP.name;
+  if(inapp){ toast(inapp + ' 안에서는 연락처를 열 수 없어요. 위쪽 "크롬으로 열기"를 누르거나 📋 붙여넣기를 쓰세요'); if(INAPP.banner) INAPP.banner(); return null; }
   if(!navigator.contacts || !navigator.contacts.select){
     toast('이 브라우저는 연락처 선택을 지원하지 않습니다 — 📋 붙여넣기를 쓰세요'); return null;
   }
@@ -3189,7 +3198,7 @@ async function pickContact(){
     const n = (e && e.name) || '';
     if(n === 'TypeError'){                                    // 주소를 지원하지 않는 기기
       try{ list = await run(['name', 'tel']); }
-      catch(e2){ toast('연락처를 열지 못했습니다 (' + ((e2 && e2.name) || '오류') + ') — 📋 붙여넣기를 쓰세요'); return null; }
+      catch(e2){ toast('이 브라우저에서는 연락처를 열 수 없어요. 크롬으로 열거나 📋 붙여넣기를 쓰세요 (' + ((e2 && e2.name) || '오류') + ')'); return null; }
     }else if(n === 'SecurityError'){
       toast('연락처 창은 화면을 직접 눌렀을 때만 열립니다. 한 번 더 눌러 주세요'); return null;
     }else if(n === 'InvalidStateError'){
@@ -4476,6 +4485,41 @@ window.QUICK_LOG = { open };
 
 </script>
 <script>
+window.STT_KEY = "";
+/* ============================================================
+   안드로이드 앱 속 브라우저(네이버·카카오톡 등) 감지 — 연락처 찾기·음성 입력이 안 되므로 크롬으로 열도록 안내
+   ============================================================ */
+window.INAPP = (() => {
+  const UA = navigator.userAgent || '';
+  const ANDROID = /Android/i.test(UA);
+  const rules = [[/NAVER\(inapp|NAVER\s*\(/i, '네이버 앱'], [/KAKAOTALK/i, '카카오톡'], [/Instagram/i, '인스타그램'], [/FBAN|FBAV/i, '페이스북'],
+    [/\bLine\//i, '라인'], [/DaumApps|DaumDevice/i, '다음 앱'], [/; wv\)/i, '앱 속 브라우저']];
+  const hit = rules.find(([re]) => re.test(UA));
+  const NAME = ANDROID && hit ? hit[1] : '';
+  const chromeUrl = () => {
+    const u = location.href.replace(/^https?:\/\//, '').replace(/#.*$/, '');
+    return 'intent://' + u + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(location.href.replace(/#.*$/, '')) + ';end';
+  };
+  function banner(){
+    if(!NAME || document.getElementById('inappBar')) return;
+    if(sessionStorage.getItem('inapp.later') === '1') return;
+    const el = document.createElement('div'); el.id = 'inappBar';
+    el.innerHTML = `<div class="ia-in"><b>📱 지금은 ${NAME} 안에서 열려 있어요</b>
+      <span>여기서는 <u>연락처 찾아보기</u>와 <u>🎤 음성 입력</u>이 안 됩니다. 크롬으로 열어 홈 화면에 추가해 쓰세요.<br>
+      자료 옮기기: 데이터 → 📋 백업 글 복사 → 크롬에서 붙여넣어 되살리기</span>
+      <div class="ia-btns"><a class="btn sm primary" id="iaGo" href="${chromeUrl()}">크롬으로 열기</a><button class="btn sm ghost" id="iaNo">나중에</button></div></div>`;
+    const app = document.getElementById('app') || document.body;
+    app.insertBefore(el, app.firstChild);
+    document.getElementById('iaNo').onclick = () => { el.remove(); try{ sessionStorage.setItem('inapp.later', '1'); }catch(e){} };
+  }
+  if(NAME){
+    const go = () => { banner(); };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go();
+    new MutationObserver(() => { if(!document.getElementById('inappBar')) banner(); }).observe(document.body, {childList:true});
+  }
+  return {name: NAME, chromeUrl, banner};
+})();
+
 /* ============================================================
    음성 입력 — 입력칸 옆 🎤 버튼 (섬김노트 코드는 건드리지 않고 화면에 덧붙임)
    · 다음 섬김 일정: "내일 오후 3시 무릎 제품 알아봐 드리기" → 날짜·시간 칸 자동, 나머지는 내용
@@ -4491,7 +4535,8 @@ window.VOICE = (() => {
      키는 총리더가 리더성장 › 조직 등록에 넣으면 org/config 로 모두에게 내려온다. */
   const sttKey = () => {
     try{ const k = (JSON.parse(localStorage.getItem('growth.note.v1.org') || '{}').sttKey || '').trim(); if(k) return k; }catch(e){}
-    try{ return (localStorage.getItem('voice.sttKey') || '').trim(); }catch(e){ return ''; }
+    try{ const k = (localStorage.getItem('voice.sttKey') || '').trim(); if(k) return k; }catch(e){}
+    return (window.STT_KEY || '').trim();                // 빌드에 심어 둔 키
   };
   const sttApi = key => key.startsWith('gsk_')
     ? {url:'https://api.groq.com/openai/v1/audio/transcriptions', model:'whisper-large-v3'}
