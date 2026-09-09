@@ -758,7 +758,7 @@ select.sel{font-size:15px}
 .gx-sub3 span{font-family:'Gowun Batang',serif;font-size:14px;font-weight:700;color:var(--text);text-align:center}
 
 /* 목표 */
-.gx-goal{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-bottom:2px solid color-mix(in srgb,var(--text) 28%,var(--line))}
+.gx-goal{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:10px 0;border-bottom:2px solid rgba(120,100,110,.55);border-bottom:2px solid color-mix(in srgb,var(--text) 28%,var(--line))}
 .gx-goal .gx-no{font-style:normal;display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:6px;padding:0 5px;
   background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:800;margin-right:2px}
 .gx-goal.extra{background:var(--s2b);margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:9px}
@@ -777,8 +777,8 @@ select.sel{font-size:15px}
 .gx-goal .f .gx-pace{margin-left:auto}
 @media(max-width:640px){.gx-goal .f{font-size:12px;gap:6px}.gx-goal .f .gx-pace{font-size:11.5px;padding:2px 6px}}
 .gx-pace{font-weight:700;padding:2px 8px;border-radius:5px;font-size:13px}
-.gx-pace.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--panel))}
-.gx-pace.no{color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,var(--panel))}
+.gx-pace.ok{color:var(--ok);background:rgba(95,155,107,.14);background:color-mix(in srgb,var(--ok) 14%,var(--panel))}
+.gx-pace.no{color:var(--danger);background:rgba(192,80,79,.12);background:color-mix(in srgb,var(--danger) 12%,var(--panel))}
 
 /* 점수판 */
 .gx-board{display:grid;grid-template-columns:minmax(210px,.8fr) 1fr;gap:12px;margin-bottom:14px;align-items:stretch}
@@ -801,7 +801,7 @@ select.sel{font-size:15px}
 .gx-gS{color:var(--accent)}.gx-gA{color:var(--ok)}.gx-gB{color:var(--s4)}.gx-gD{color:var(--danger)}
 
 /* 코어 입력 */
-.gx-core{padding:14px 0;border-bottom:2px solid color-mix(in srgb,var(--text) 28%,var(--line))}
+.gx-core{padding:14px 0;border-bottom:2px solid rgba(120,100,110,.55);border-bottom:2px solid color-mix(in srgb,var(--text) 28%,var(--line))}
 .gx-core:first-child{padding-top:0}
 .gx-core:last-child{border-bottom:0;padding-bottom:0}
 .gx-ch{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:9px}
@@ -825,7 +825,7 @@ select.sel{font-size:15px}
 .gx-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .gx-tag{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent);
   border-radius:8px;padding:5px 10px;font-size:14px;font-weight:700}
-.gx-tag.miss{background:color-mix(in srgb,var(--danger) 12%,var(--panel));color:var(--danger)}
+.gx-tag.miss{background:rgba(192,80,79,.12);background:color-mix(in srgb,var(--danger) 12%,var(--panel));color:var(--danger)}
 .gx-tag small{color:var(--muted);font-weight:600}
 .gx-tag button{border:0;background:transparent;color:inherit;opacity:.55;padding:0 2px}
 .gx-week{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}
@@ -956,7 +956,7 @@ select.sel{font-size:15px}
 .gx-auto{font-size:13px;font-weight:600;color:var(--muted);margin-top:-2px}
 .gx-auto b{color:var(--s2)}
 .gx-autocard{background:var(--s2b);border-color:var(--s2)}
-.gx-autocard .gx-core{border-bottom-color:color-mix(in srgb,var(--s2) 70%,var(--text))}
+.gx-autocard .gx-core{border-bottom-color:var(--s2);border-bottom-color:color-mix(in srgb,var(--s2) 70%,var(--text))}
 .gx-autot{color:var(--s2)}
 .gx-row2{display:flex;gap:7px}
 .gx-row2 input{flex:1;min-width:0}
@@ -1025,10 +1025,10 @@ select.sel{font-size:15px}
 .gx-lead{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
 .gx-lead b{font-size:16px}
 .gx-lead span{font-size:13px;font-weight:700;color:var(--muted);flex:1}
-.gx-tb tr.top td{background:color-mix(in srgb,var(--ok) 10%,transparent)}
-.gx-tb tr.low td{background:color-mix(in srgb,var(--danger) 8%,transparent)}
+.gx-tb tr.top td{background:rgba(95,155,107,.10);background:color-mix(in srgb,var(--ok) 10%,transparent)}
+.gx-tb tr.low td{background:rgba(192,80,79,.08);background:color-mix(in srgb,var(--danger) 8%,transparent)}
 .gx-tb tr.stale td{color:var(--faint)}
-.gx-tag.miss{background:color-mix(in srgb,var(--danger) 10%,var(--panel));color:var(--danger)}
+.gx-tag.miss{background:rgba(192,80,79,.10);background:color-mix(in srgb,var(--danger) 10%,var(--panel));color:var(--danger)}
 
 .gx-tb tr.gx-sum td{font-weight:700;border-top:2px solid var(--line);background:var(--panel)}
 @media(max-width:640px){.gx-types[style]{grid-template-columns:repeat(4,1fr) !important}}
@@ -1043,8 +1043,8 @@ select.sel{font-size:15px}
   .gx-tb tbody td::before{content:none}
   .gx-tb tbody td:first-child{padding:8px 5px;border-bottom:1px solid var(--line);margin:0}
   .gx-tb th{padding:8px 5px;font-size:11.5px;white-space:nowrap}
-  .gx-tb tr.top td{background:color-mix(in srgb,var(--ok) 12%,transparent)}
-  .gx-tb tr.low td{background:color-mix(in srgb,var(--danger) 10%,transparent)}
+  .gx-tb tr.top td{background:rgba(95,155,107,.12);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+  .gx-tb tr.low td{background:rgba(192,80,79,.10);background:color-mix(in srgb,var(--danger) 10%,transparent)}
   .gx-tb tr.gx-sum td{background:var(--panel-2)}
 }
 
@@ -1111,7 +1111,7 @@ select.sel{font-size:15px}
 .ql-p b{flex:0 0 auto}
 .ql-p small{margin-left:auto;color:var(--faint);font-size:12.5px}
 .ql-done{display:flex;flex-direction:column;gap:4px;margin-top:10px}
-.ql-ok{font-size:13.5px;font-weight:600;color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--panel));border-radius:8px;padding:6px 10px}
+.ql-ok{font-size:13.5px;font-weight:600;color:var(--ok);background:rgba(95,155,107,.10);background:color-mix(in srgb,var(--ok) 10%,var(--panel));border-radius:8px;padding:6px 10px}
 
 /* ===== 통화 후 기록 묻기 ===== */
 .callask{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:150;
@@ -1145,7 +1145,7 @@ select.sel{font-size:15px}
 .gx-rates .tr i.dia{background:linear-gradient(90deg,#7FB3D9,#BFE0F5)}
 .gx-pin3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px;margin:0 0 12px;border:2px solid var(--accent);border-radius:12px;background:var(--accent-soft)}
 .gx-pin3 label{color:var(--accent)}
-.gx-pin3 input{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--panel)}
+.gx-pin3 input{border-color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:var(--panel)}
 .gx-pin3 label{display:flex;flex-direction:column;gap:4px;min-width:0;font-size:13px;font-weight:700;color:var(--muted)}
 .gx-pin3 input{border:1px solid var(--line);border-radius:9px;padding:9px 10px;background:var(--panel-2);width:100%;min-width:0;
   font-family:'Gowun Batang',serif;font-weight:700;font-size:16px;color:var(--text)}
@@ -1213,7 +1213,7 @@ select.sel{font-size:15px}
 .wk-row.sch .wk-ok,.wk-row.sch .wk-todo{margin-left:0}
 .wk-x{background:none;border:0;color:var(--faint);font-size:20px;line-height:1;padding:0 4px;border-radius:6px}
 .wk-x:hover{color:var(--danger);background:var(--s5b)}
-.wk-extra{margin-top:10px;padding:9px 12px;border-radius:9px;background:color-mix(in srgb,var(--ok) 10%,var(--panel));color:var(--ok);font-size:13.5px;font-weight:700;line-height:1.5}
+.wk-extra{margin-top:10px;padding:9px 12px;border-radius:9px;background:rgba(95,155,107,.10);background:color-mix(in srgb,var(--ok) 10%,var(--panel));color:var(--ok);font-size:13.5px;font-weight:700;line-height:1.5}
 
 /* 주간계획 — 요일별 */
 .wk-card{padding:6px 12px 10px}
@@ -1244,7 +1244,7 @@ select.sel{font-size:15px}
 .wk-pk small{margin-left:auto;color:var(--faint);font-size:12.5px}
 .wk-pk i{font-style:normal;font-size:12px;color:var(--faint);width:44px;text-align:right}
 .wk-pk i.chk{opacity:0;color:var(--ok);font-weight:800;font-size:16px}
-.wk-pk.on{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--panel))}
+.wk-pk.on{border-color:var(--ok);background:rgba(95,155,107,.10);background:color-mix(in srgb,var(--ok) 10%,var(--panel))}
 .wk-pk.on i.chk{opacity:1}
 .wk-pk.in{opacity:.5}
 
@@ -1341,7 +1341,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-1208';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260909-1711';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
