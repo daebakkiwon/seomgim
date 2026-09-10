@@ -1340,6 +1340,23 @@ select.sel{font-size:15px}
 .stbtns{display:flex;flex-direction:column;gap:6px;align-items:stretch;flex:0 0 auto}
 .stbtns .btn{white-space:nowrap}
 
+/* ===== 늘어나는 입력칸 · 기록 수정 ===== */
+.dtf textarea,.logadd textarea,.logadd .logrow textarea{flex:1 1 0;min-width:0;width:100%;border:1px solid var(--line);background:var(--panel-2);border-radius:9px;
+  padding:10px 11px;font-size:15.5px;line-height:1.45;font-family:inherit;outline:none;resize:none;overflow:hidden;min-height:44px;display:block}
+.logadd textarea,.logadd .logrow textarea{font-size:15px}
+.dtf textarea:focus,.logadd textarea:focus{border-color:var(--accent);background:var(--panel);box-shadow:0 0 0 3px var(--accent-soft)}
+.log .del{opacity:1;font-size:12.5px;padding:2px 6px;border:1px solid var(--line);border-radius:7px;color:var(--muted);margin-left:auto}
+.log .del.edit{margin-left:auto;color:var(--accent);border-color:var(--accent-soft)}
+.log .del.edit + .del{margin-left:0}
+.logedit{margin-top:8px;padding:10px;border:1.5px solid var(--accent);border-radius:12px;background:var(--panel-2)}
+.logedit .logrow{display:flex;gap:7px;margin-bottom:7px}
+.logedit select,.logedit input[type=date]{flex:1 1 0;min-width:0;border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--panel);font-size:14px}
+.logedit textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--panel);font-size:15px;line-height:1.5;font-family:inherit;resize:none;overflow:hidden;min-height:60px;display:block}
+.logedit .gx-btns{margin-top:8px}
+.ql-r{position:relative;flex-wrap:wrap}
+.ql-r .ql-ed{margin-left:auto;font-size:12.5px;padding:2px 8px;border:1px solid var(--accent-soft);border-radius:7px;background:transparent;color:var(--accent)}
+.ql-r .logedit{flex-basis:100%}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1384,7 +1401,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260909-2035';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260910-1747';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2615,6 +2632,7 @@ function openDetail(id){
           <div class="lh">
             <span class="kchip" style="background:var(${kindColor(l.kind)})">${esc(l.kind)}</span>
             <span class="lt">${shortDay(l.at)}</span>
+            ${l.kind === '시스템' ? '' : `<button class="del edit" data-editlog="${l.id}">수정</button>`}
             <button class="del" data-dellog="${l.id}">삭제</button>
           </div>
           <div class="lx">${esc(l.text)}</div>
@@ -2654,8 +2672,7 @@ function openDetail(id){
 
         <div class="section-title" style="margin-top:0">다음 섬김</div>
         <div class="dtf" style="margin-bottom:10px">
-          <input type="text" id="naText" value="${esc(p.nextAction || '')}"
-                 placeholder="섬김 내용 — 예: 무릎에 좋은 제품 알아봐 드리기" autocomplete="off">
+          <textarea id="naText" rows="1" data-autogrow placeholder="섬김 내용 — 예: 무릎에 좋은 제품 알아봐 드리기">${esc(p.nextAction || '')}</textarea>
         </div>
         <div class="dtrow compact">
           <label class="dtf2"><span>날짜</span><input type="date" id="naDate" value="${esc(p.nextDate || todayStr())}"></label>
@@ -2676,7 +2693,7 @@ function openDetail(id){
             <input type="date" id="logDate" value="${todayStr()}">
           </div>
           <div class="logrow">
-            <input id="logText" placeholder="무슨 이야기를 나눴는지, 무엇을 챙겨드렸는지" autocomplete="off">
+            <textarea id="logText" rows="1" data-autogrow placeholder="무슨 이야기를 나눴는지, 무엇을 챙겨드렸는지"></textarea>
             <button class="btn primary" id="logAdd">기록</button>
           </div>
         </div>
@@ -4434,7 +4451,7 @@ function open(opts){
         <div id="qlBody" class="hide">
           <div class="ql-sec"><span>📅 다음 섬김 · 일정</span><small id="qlPlanNow"></small></div>
           <div class="dtf" style="margin-bottom:8px">
-            <input type="text" id="qlPlan" placeholder="섬김 내용 — 예: 무릎에 좋은 제품 알아봐 드리기" autocomplete="off">
+            <textarea id="qlPlan" rows="1" data-autogrow placeholder="섬김 내용 — 예: 무릎에 좋은 제품 알아봐 드리기"></textarea>
           </div>
           <div class="dtrow compact">
             <label class="dtf2"><span>날짜</span><input type="date" id="qlPlanDate"></label>
@@ -4451,7 +4468,7 @@ function open(opts){
               <input type="date" id="qlDate" value="${todayStr()}">
             </div>
             <div class="logrow">
-              <input id="qlText" placeholder="무슨 이야기를 나눴는지, 무엇을 챙겨드렸는지" autocomplete="off">
+              <textarea id="qlText" rows="1" data-autogrow placeholder="무슨 이야기를 나눴는지, 무엇을 챙겨드렸는지"></textarea>
               <button class="btn primary" id="qlAdd">기록</button>
             </div>
           </div>
@@ -4520,6 +4537,7 @@ function open(opts){
   const fillPlan = () => {
     const p = SELP;
     document.getElementById('qlPlan').value = p.nextAction || '';
+    setTimeout(() => autogrow(document.getElementById('qlPlan')), 30);
     document.getElementById('qlPlanDate').value = p.nextDate || todayStr();
     document.getElementById('qlPlanTime').value = p.nextTime || '';
     const has = !!(p.nextAction || p.nextDate);
@@ -4544,9 +4562,10 @@ function open(opts){
   const fillRecent = () => {
     const logs = (SELP.logs || []).slice().sort((a,b) => b.at.localeCompare(a.at)).slice(0, 5);
     document.getElementById('qlRecent').innerHTML = logs.length
-      ? logs.map(l => `<div class="ql-r"><span class="kchip" style="background:var(${kindColor(l.kind)})">${esc(l.kind)}</span><small>${shortDay(l.at)}</small><span>${esc(l.text)}</span></div>`).join('')
+      ? logs.map(l => `<div class="ql-r" data-logid="${l.id}"><span class="kchip" style="background:var(${kindColor(l.kind)})">${esc(l.kind)}</span><small>${shortDay(l.at)}</small><span>${esc(l.text)}</span>${l.kind === '시스템' ? '' : `<button type="button" class="ql-ed" data-editlog="${l.id}">수정</button>`}</div>`).join('')
       : '<div class="ql-lb">아직 기록이 없습니다.</div>';
   };
+  document.addEventListener('ql:refresh', () => { if(SELP && document.getElementById('qlRecent')) fillRecent(); });
   document.getElementById('qlPlanSave').onclick = () => {
     if(!SELP) return;
     const t = document.getElementById('qlPlan').value.trim();
@@ -4617,6 +4636,53 @@ function askCall(){
   el.querySelector('[data-no]').onclick = () => { clearPending(); el.remove(); };
 }
 if(pending() && Date.now() - pending().at > 3000) setTimeout(askCall, 800);      // 앱이 새로 열린 경우
+
+/* ---------- 기록 수정 — 상세 화면·빠른 기록의 '수정'을 누르면 그 자리에서 종류·날짜·내용을 고친다 ---------- */
+function findLog(id){
+  for(const p of DB.people){ const l = (p.logs || []).find(x => x.id === id); if(l) return {p, l}; }
+  return null;
+}
+function openLogEditor(btn){
+  const id = btn.dataset.editlog, hit = findLog(id); if(!hit) return;
+  const {p, l} = hit;
+  const host = btn.closest('.log, .ql-r'); if(!host || host.querySelector('.logedit')) return;
+  const d = l.at.slice(0, 10);
+  host.insertAdjacentHTML('beforeend', `<div class="logedit">
+    <div class="logrow"><select data-ek>${LOG_KINDS.map(k => `<option ${k === l.kind ? 'selected' : ''}>${esc(k)}</option>`).join('')}</select><input type="date" data-ed value="${d}"></div>
+    <textarea data-et rows="2" data-autogrow>${esc(l.text)}</textarea>
+    <div class="gx-btns"><button type="button" class="btn sm primary" data-esave>저장</button><button type="button" class="btn sm" data-ecancel>취소</button></div>
+  </div>`);
+  const box = host.querySelector('.logedit');
+  const lx = host.querySelector('.lx, :scope > span:last-of-type'); if(lx) lx.classList.add('hide');
+  box.querySelector('[data-ecancel]').onclick = () => { box.remove(); if(lx) lx.classList.remove('hide'); };
+  box.querySelector('[data-esave]').onclick = () => {
+    const text = box.querySelector('[data-et]').value.trim();
+    if(!text){ toast('내용을 적어 주세요'); return; }
+    const nd = box.querySelector('[data-ed]').value;
+    l.kind = box.querySelector('[data-ek]').value; l.text = text;
+    if(nd && nd !== d) l.at = new Date(nd + 'T12:00:00').toISOString();
+    save(); toast('고쳤습니다');
+    if(typeof STAGE_AUTO !== 'undefined' && STAGE_AUTO.applyAll()) save();
+    if(host.classList.contains('ql-r')) document.dispatchEvent(new Event('ql:refresh'));
+    else if(typeof OPEN !== 'undefined' && OPEN) openDetail(OPEN);
+    if(typeof render === 'function') render();
+  };
+  setTimeout(() => { const t = box.querySelector('[data-et]'); t.focus(); autogrow(t); }, 30);
+}
+document.addEventListener('click', e => { const b = e.target.closest('[data-editlog]'); if(b){ e.preventDefault(); openLogEditor(b); } });
+
+/* 글 양에 따라 늘어나는 입력칸 */
+function autogrow(t){ if(!t) return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, 320) + 'px'; }
+document.addEventListener('input', e => { if(e.target.matches && e.target.matches('textarea[data-autogrow]')) autogrow(e.target); });
+const growAll = () => document.querySelectorAll('textarea[data-autogrow]').forEach(autogrow);
+let growT = null;
+new MutationObserver(() => { clearTimeout(growT); growT = setTimeout(growAll, 60); }).observe(document.body, {childList:true, subtree:true});
+document.addEventListener('focusin', e => { if(e.target.matches && e.target.matches('textarea[data-autogrow]')) autogrow(e.target); });
+window.addEventListener('resize', () => { clearTimeout(growT); growT = setTimeout(growAll, 100); });
+/* 한 줄 입력칸에서 Enter는 예전처럼 저장(줄바꿈 아님) */
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && !e.shiftKey && e.target.matches && e.target.matches('#naText, #logText')) e.preventDefault();
+}, true);
 
 /* ---------- 걸려온 전화 등으로 앱을 떠났다가 돌아오면 빠른 기록을 바로 연다 (설정 없이 동작) ----------
    · 20초 이상 ~ 3시간 이내 떠났다 돌아온 경우만 (잠깐 다른 앱 봤다 온 것, 다음날 여는 것은 제외)
