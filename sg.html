@@ -1357,6 +1357,10 @@ select.sel{font-size:15px}
 .ql-r .ql-ed{margin-left:auto;font-size:12.5px;padding:2px 8px;border:1px solid var(--accent-soft);border-radius:7px;background:transparent;color:var(--accent)}
 .ql-r .logedit{flex-basis:100%}
 
+/* 라인 필터 중 안내 */
+.filtnote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border-radius:10px;background:#fff7e6;border:1px solid #f0b95a;color:#2c2427;font-size:13.5px}
+.filtnote .btn{margin-left:auto}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1401,7 +1405,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260910-1747';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260913-2310';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -1882,6 +1886,7 @@ function teamBar(){
       + ts.map(t => `<button class="tchip ${TEAM === t ? 'on' : ''}" data-t="${esc(t)}">${esc(t)} ${teamCount(t)}</button>`).join('');
   }
   el.querySelectorAll('[data-t]').forEach(b => b.onclick = () => setTeam(b.dataset.t));
+  const onChip = el.querySelector('.tchip.on'); if(onChip && onChip.scrollIntoView) setTimeout(() => onChip.scrollIntoView({block:'nearest', inline:'center'}), 0);
   const go = el.querySelector('[data-tlos]');
   if(go) go.onclick = () => { VIEW = 'glos'; render(); };
 }
@@ -2005,6 +2010,8 @@ function render(){
   else if(VIEW === 'groups') v.innerHTML = viewGroups();
   else                     v.innerHTML = viewActs();
 
+  if(TEAM && window.teamLabel) v.insertAdjacentHTML('afterbegin', `<div class="filtnote">🔎 <b>${esc(teamLabel(TEAM))}</b>만 보는 중 · 다른 분은 숨겨져 있습니다 <button type="button" class="btn sm" id="filtAll">전체 보기</button></div>`);
+  const fa = document.getElementById('filtAll'); if(fa) fa.onclick = () => setTeam('');
   bindView();
   stamp();
 }
@@ -2715,8 +2722,9 @@ function openDetail(id){
     p.nextAction = t;
     p.nextDate   = t ? (dt || todayStr()) : '';   // 내용을 지우면 날짜도 함께 비운다
     p.nextTime   = t ? tm : '';
+    if(p.nextAction && TEAM && !people().some(x => x.id === p.id)) setTeamQuiet('');
     save(); render(); openDetail(id);
-    toast(p.nextAction ? '홈 섬김활동에 올렸습니다' : '다음 섬김을 비웠습니다');
+    toast(p.nextAction ? (window.planSavedMsg ? planSavedMsg(p) : '섬김활동에 올렸습니다') : '다음 섬김을 비웠습니다');
   };
   document.querySelectorAll('#modal a.tel').forEach(a => a.onclick = tapPhone);
 
@@ -4572,8 +4580,9 @@ function open(opts){
     const dt = document.getElementById('qlPlanDate').value, tm = document.getElementById('qlPlanTime').value;
     if(!t){ toast('섬김 내용을 적어 주세요'); return; }
     SELP.nextAction = t; SELP.nextDate = dt || todayStr(); SELP.nextTime = tm;
+    if(TEAM && !people().some(x => x.id === SELP.id)) setTeamQuiet('');   // 라인 필터 밖 고객이면 전체로
     save(); render(); fillPlan();
-    toast('홈 섬김활동에 올렸습니다');
+    toast(planSavedMsg(SELP));
   };
   document.getElementById('qlPlanDone').onclick = () => { if(!SELP) return; doneTask(SELP.id); fillPlan(); fillRecent(); };
   document.getElementById('qlPlan').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('qlPlanSave').click(); } });
@@ -4636,6 +4645,13 @@ function askCall(){
   el.querySelector('[data-no]').onclick = () => { clearPending(); el.remove(); };
 }
 if(pending() && Date.now() - pending().at > 3000) setTimeout(askCall, 800);      // 앱이 새로 열린 경우
+
+/* 일정 저장 안내 문구 — 날짜·시간을 함께 보여준다 */
+window.planSavedMsg = function(p){
+  const d = p.nextDate ? fmtDue(p.nextDate).txt : '';
+  const t = p.nextTime ? ' ' + fmtTimeK(p.nextTime) : '';
+  return `일정 저장 · ${d}${t} — 홈과 섬김활동 탭에 보입니다`;
+};
 
 /* ---------- 기록 수정 — 상세 화면·빠른 기록의 '수정'을 누르면 그 자리에서 종류·날짜·내용을 고친다 ---------- */
 function findLog(id){
