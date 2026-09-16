@@ -1361,6 +1361,10 @@ select.sel{font-size:15px}
 .filtnote{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border-radius:10px;background:#fff7e6;border:1px solid #f0b95a;color:#2c2427;font-size:13.5px}
 .filtnote .btn{margin-left:auto}
 
+/* 고객 0명 — 예전 자료 안내 */
+.lostnote{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#fff7e6;border:1px solid #f0b95a;color:#2c2427;font-size:13.5px;line-height:1.6;text-align:left}
+.lostnote b{display:inline}.lostnote .btn{margin-top:6px}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1405,7 +1409,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260913-2310';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260916-1913';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2012,6 +2016,17 @@ function render(){
 
   if(TEAM && window.teamLabel) v.insertAdjacentHTML('afterbegin', `<div class="filtnote">🔎 <b>${esc(teamLabel(TEAM))}</b>만 보는 중 · 다른 분은 숨겨져 있습니다 <button type="button" class="btn sm" id="filtAll">전체 보기</button></div>`);
   const fa = document.getElementById('filtAll'); if(fa) fa.onclick = () => setTeam('');
+  const lh = document.getElementById('lostHelp'); if(lh) lh.onclick = () => { document.getElementById('modal').innerHTML = `<div class="overlay" data-close><div class="modal"><div class="mhead"><h2>예전 자료 되찾기</h2><button class="x" data-close>×</button></div>
+    <div class="mbody inst-body">
+      <p>자료는 <b>브라우저(앱)마다 따로</b> 저장됩니다. 지워진 것이 아니라 전에 쓰던 곳에 그대로 있습니다.</p>
+      <ol class="inst-steps">
+        <li><b>전에 쓰던 곳</b>에서 앱을 엽니다. 아이폰이면 <b>사파리</b>(홈 화면 앱을 새로 만들었다면 사파리에 남아 있습니다), 안드로이드면 전에 쓰던 <b>삼성 인터넷·크롬·네이버·카카오톡</b> 중 하나입니다.</li>
+        <li>거기서 위쪽 <b>데이터</b> → <b>📋 백업 글 복사</b>를 누릅니다.</li>
+        <li>지금 이 앱에서 <b>데이터</b> → <b>붙여넣어 되살리기</b> 칸에 붙여넣고 되살리기를 누릅니다.</li>
+        <li>확인이 끝나면 앞으로는 <b>한 곳에서만</b> 쓰세요. 아이폰은 홈 화면 앱, 안드로이드는 크롬 홈 화면 앱을 권합니다.</li>
+      </ol>
+      <p class="gx-note">아이폰 사파리는 7일 넘게 안 열면 자료를 지울 수 있습니다. 홈 화면 앱은 그렇지 않습니다. 옮긴 뒤 데이터 → 백업 글 복사를 카톡 나에게 보내기로 한 번 보관해 두세요.</p>
+    </div><div class="mfoot"><button class="btn" data-close>닫기</button></div></div></div>`; };
   bindView();
   stamp();
 }
@@ -2062,6 +2077,13 @@ function viewDash(){
       <p>첫 만남부터 기록하며 한 분씩 섬겨보세요.</p>
       <button class="btn primary" id="emptyNew">+ 첫 고객 추가</button>
       <button class="btn" id="emptyImport" style="margin-left:6px">명단 한 번에 불러오기</button>
+      <div class="lostnote">
+        <b>😥 전에 쓰던 자료가 안 보이나요?</b> 지워진 것이 아니라 <u>전에 쓰던 브라우저 안</u>에 남아 있습니다.
+        ${(navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))
+          ? '홈 화면 앱은 자료를 따로 저장합니다. <b>전에 쓰던 브라우저(사파리·크롬)</b>에서 이 주소를 열어 <b>데이터 → 📋 백업 글 복사</b> 후, 여기 <b>데이터 → 붙여넣어 되살리기</b>에 넣으면 그대로 돌아옵니다.'
+          : '전에 쓰던 브라우저나 홈 화면 앱에서 이 주소를 열어 <b>데이터 → 📋 백업 글 복사</b> 후, 여기 <b>데이터 → 붙여넣어 되살리기</b>에 넣으면 그대로 돌아옵니다.'}
+        <button type="button" class="btn sm" id="lostHelp">자세히 보기</button>
+      </div>
     </div>` : ''}
     <div class="pipeline">${pipe}</div>
 
