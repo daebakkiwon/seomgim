@@ -1409,7 +1409,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260916-1913';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260916-1921';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -3961,6 +3961,7 @@ function openData(){
             지금 쓰시는 것 — <b style="color:var(--text)">${esc(APP_VER)}</b>
           </div>
           <button type="button" class="btn primary" id="doUpgrade">🔄 최신으로 받기</button>
+        <div class="hint" id="persistNote" style="margin-top:8px">${window.STORAGE_PERSIST ? '🔒 저장공간 보호: 켜짐 — 휴대폰 공간이 부족해도 이 앱 자료는 지우지 않습니다' : '⚠️ 저장공간 보호: 아직 아님 — 홈 화면 앱으로 설치하면 켜집니다. 백업 글을 카톡에 보관해 두세요'}</div>
         </div>
 
         <div class="section-title" style="margin-top:0">글로 백업 · 되살리기</div>
@@ -4888,6 +4889,21 @@ window.INSTALL = (() => {
     guide();
   });
   return {get ready(){ return !!deferred; }, bar, guide, prompt(){ const b = document.getElementById('instGo'); if(b) b.click(); }};
+})();
+
+
+/* ============================================================
+   저장공간 보호 — 브라우저가 공간 부족·오래 안 씀을 이유로 이 앱의 자료를 지우지 못하게 "지속 저장"을 요청한다
+   (안드로이드 크롬은 홈 화면 앱이면 대개 바로 허용, 아이폰은 홈 화면 앱이면 원래 지우지 않음)
+   ============================================================ */
+(async () => {
+  try{
+    if(!navigator.storage || !navigator.storage.persist) return;
+    const before = await navigator.storage.persisted();
+    const ok = before || await navigator.storage.persist();
+    window.STORAGE_PERSIST = ok;
+    if(ok && !before) console.log('지속 저장 허용됨');
+  }catch(e){}
 })();
 
 /* ============================================================
