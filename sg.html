@@ -1426,7 +1426,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260916-1944';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260916-1952';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2099,7 +2099,7 @@ function viewDash(){
         ${(navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))
           ? '홈 화면 앱은 자료를 따로 저장합니다. <b>전에 쓰던 브라우저(사파리·크롬)</b>에서 이 주소를 열어 <b>데이터 → 📋 백업 글 복사</b> 후, 여기 <b>데이터 → 붙여넣어 되살리기</b>에 넣으면 그대로 돌아옵니다.'
           : '전에 쓰던 브라우저나 홈 화면 앱에서 이 주소를 열어 <b>데이터 → 📋 백업 글 복사</b> 후, 여기 <b>데이터 → 붙여넣어 되살리기</b>에 넣으면 그대로 돌아옵니다.'}
-        <br><b>☁️ 자동 백업</b>을 켜 두셨다면 <b>데이터 → 되살리기</b>에 휴대폰 번호와 비밀 단어를 넣는 것이 가장 빠릅니다.
+        <br><b>☁️ 자동 백업</b>을 켜 두셨다면 <b>데이터 → 같은 휴대폰 번호로 자동 백업 켜기</b>가 가장 빠릅니다. 서버 자료를 찾아 그대로 되살립니다.
         <button type="button" class="btn sm" id="lostHelp">자세히 보기</button>
       </div>
     </div>` : ''}
@@ -6938,27 +6938,22 @@ window.CLOUD = (() => {
   const fmtWhen = iso => { if(!iso) return '아직 없음'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; };
   function section(){
     const on = !!(ST && ST.code);
+    if(on) return `<div class="section-title" style="margin-top:0">☁️ 서버 자동 백업</div>
+    <div class="card cb-card" id="cbCard">
+      <div class="cb-st">✅ <b>켜짐</b> · 휴대폰 <b>${pretty(ST.code)}</b><br>마지막 백업 <b>${fmtWhen(ST.last)}</b>${ST.n != null ? ` · ${ST.n}명` : ''}${lastErr ? `<div class="cb-err">⚠️ 마지막 시도 실패: ${lastErr}</div>` : ''}</div>
+      <div class="hint">저장할 때마다 자동으로 올라갑니다. 휴대폰을 바꾸거나 자료가 지워지면 새 앱에서 <b>같은 휴대폰 번호${ST.code.split('|')[1] ? '와 비밀 단어' : ''}</b>로 자동 백업 켜기를 누르면 그대로 돌아옵니다.</div>
+      <div class="gx-btns" style="margin-top:8px"><button type="button" class="btn sm primary" data-cbnow>지금 백업</button><button type="button" class="btn sm ghost" data-cboff>끄기</button></div>
+    </div>`;
     return `<div class="section-title" style="margin-top:0">☁️ 서버 자동 백업</div>
     <div class="card cb-card" id="cbCard">
-      ${on ? `<div class="cb-st"><b>켜짐</b> · 마지막 백업 <b>${fmtWhen(ST.last)}</b>${ST.n != null ? ` · ${ST.n}명` : ''}${lastErr ? `<div class="cb-err">⚠️ 마지막 시도 실패: ${lastErr}</div>` : ''}</div>
-        <div class="cb-code">복구 번호 <b>${pretty(ST.code)}</b><button type="button" class="btn sm" data-cbcopy>복사</button></div>
-        <div class="hint">휴대폰을 바꾸거나 자료가 지워지면 새 앱의 데이터 화면에서 <b>내 휴대폰 번호 + 비밀 단어</b>로 되살립니다. 비밀 단어는 잊지 않게 카톡 '나에게 보내기'에 적어 두세요.</div>
-        <div class="gx-btns" style="margin-top:8px"><button type="button" class="btn sm primary" data-cbnow>지금 백업</button><button type="button" class="btn sm" data-cbshow>번호 크게 보기</button><button type="button" class="btn sm ghost" data-cboff>끄기</button></div>`
-      : `<div class="hint" style="margin-bottom:8px">저장할 때마다 자료를 <b>암호화해서 팀 서버에</b> 올려 둡니다. 휴대폰 자료가 지워져도 <b>내 휴대폰 번호</b>만으로 그대로 되살립니다. 비밀 단어를 함께 정하면 내 번호를 아는 사람도 못 보게 됩니다.</div>
-        <div class="cb-form">
-          <label><span>내 휴대폰 번호</span><input type="tel" id="cbPhone" placeholder="010-0000-0000" autocomplete="tel" inputmode="numeric"></label>
-          <label><span>비밀 단어 <small>(안 적어도 됨 · 적으면 더 안전 · 예: GO2030)</small></span><input type="text" id="cbWord" placeholder="비워 두면 휴대폰 번호만으로 되살립니다" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
-        </div>
-        <button type="button" class="btn primary" data-cbon>☁️ 자동 백업 켜기</button>`}
-      <div class="cb-restore">
-        <div class="gx-lb">되살리기 <small class="gx-sub">다른 휴대폰이나 지워진 뒤에</small></div>
-        <div class="cb-form">
-          <label><span>휴대폰 번호</span><input type="tel" id="cbRPhone" placeholder="010-0000-0000" inputmode="numeric" autocomplete="off"></label>
-          <label><span>비밀 단어 <small>(정하지 않았으면 비움)</small></span><input type="text" id="cbRWord" placeholder="정했던 단어 · 없으면 비움" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
-        </div>
-        <div class="gx-btns"><button type="button" class="btn sm primary" data-cbrestore>서버에서 되살리기</button></div>
-        <div class="hint">되살리면 지금 자료를 덮어씁니다. 되살린 뒤에는 같은 번호·단어로 자동 백업이 이어집니다. 예전에 받은 8글자 번호(AB12-CD34)는 휴대폰 칸을 비우고 단어 칸에 넣으세요.</div>
+      <div class="hint" style="margin-bottom:8px">휴대폰 번호를 넣고 켜 두면 저장할 때마다 자료가 <b>암호화되어 팀 서버</b>에 올라갑니다. 자료가 지워지거나 휴대폰을 바꿔도 <b>같은 번호로 다시 켜면 그대로 돌아옵니다.</b></div>
+      <div class="cb-form">
+        <label><span>내 휴대폰 번호</span><input type="tel" id="cbPhone" placeholder="010-0000-0000" autocomplete="tel" inputmode="numeric"></label>
+        <label id="cbWordRow" class="hide"><span>비밀 단어 <small>(예: GO2030 · 내 번호를 아는 사람도 못 보게)</small></span><input type="text" id="cbWord" placeholder="정했던 단어가 있으면 그대로" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
       </div>
+      <button type="button" class="btn primary" data-cbon>☁️ 자동 백업 켜기</button>
+      <button type="button" class="btn sm ghost" data-cbword style="margin-left:6px">비밀 단어도 쓰기</button>
+      <div class="hint" style="margin-top:8px">전에 8글자 복구 번호(AB12-CD34)로 켰던 분은 "비밀 단어도 쓰기"를 누르고 단어 칸에 그 번호를, 휴대폰 칸은 비워 두세요.</div>
     </div>`;
   }
   function showCode(code, fresh){
@@ -6975,66 +6970,65 @@ window.CLOUD = (() => {
     try{ await navigator.clipboard.writeText(t); say('복사했습니다. 카톡 나에게 보내기에 붙여 두세요'); }
     catch(e){ prompt('아래 번호를 길게 눌러 복사하세요', pretty(code)); }
   }
+  function askChoice(msg, opts){
+    return new Promise(res => {
+      const m = document.getElementById('modal');
+      m.innerHTML = `<div class="overlay"><div class="modal"><div class="mhead"><h2>어느 자료를 쓸까요?</h2></div>
+        <div class="mbody"><p style="white-space:pre-line;font-size:15px;line-height:1.6">${msg}</p>
+        <div class="gx-btns" style="flex-direction:column;gap:8px">${opts.map(([k,l]) => `<button type="button" class="btn ${k === 'server' ? 'primary' : ''}" data-ch="${k}">${l}</button>`).join('')}<button type="button" class="btn ghost" data-ch="">취소</button></div></div></div></div>`;
+      m.querySelectorAll('[data-ch]').forEach(b => b.onclick = () => { const v = b.dataset.ch; if(typeof openData === 'function'){ openData(); } res(v || null); });
+    });
+  }
   function mount(){
     const host = document.getElementById('cbHost'); if(!host) return;
     host.innerHTML = section();
     const on = (sel, fn) => { const el = host.querySelector(sel); if(el) el.onclick = fn; };
+    on('[data-cbword]', () => { const r = host.querySelector('#cbWordRow'); r.classList.toggle('hide'); if(!r.classList.contains('hide')) host.querySelector('#cbWord').focus(); });
     on('[data-cbon]', async () => {
       const f = fb();
       if(!f || !f.FS){ say('팀 서버에 연결되지 않았습니다. 인터넷을 확인해 주세요'); return; }
-      const phone = document.getElementById('cbPhone').value, word = document.getElementById('cbWord').value;
-      const bad = validPair(phone, word); if(bad){ say(bad); return; }
-      if(!normWord(word) && typeof askConfirm === 'function'){
-        const ok = await askConfirm('비밀 단어 없이 휴대폰 번호만으로 켭니다.\n편하지만, 내 번호를 아는 사람이 이 앱에서 내 고객 명단을 되살릴 수 있습니다.\n그래도 번호만으로 할까요?', '번호만으로');
-        if(!ok) return;
-      }
-      const code = makeCode(phone, word);
-      say('확인 중…');
-      try{
-        const {id} = await keys(code);
-        const m = await f.FS.collection('backups').doc(id).get();
-        if(m.exists){
-          const meta = m.data();
-          if(!DB.people.length){
-            const yes = typeof askConfirm === 'function' ? await askConfirm(`이 번호·단어로 올려 둔 자료(${meta.n}명)가 이미 서버에 있습니다.\n지금 앱은 비어 있으니 그 자료를 되살릴까요?`, '되살리기') : true;
-            if(yes){ document.getElementById('cbRPhone').value = phone; document.getElementById('cbRWord').value = word; host.querySelector('[data-cbrestore]').click(); return; }
-          }else{
-            const yes = typeof askConfirm === 'function' ? await askConfirm(`이 번호·단어로 올려 둔 자료(${meta.n}명)가 이미 서버에 있습니다.\n지금 앱의 자료(${DB.people.length}명)로 덮어쓰며 이어서 백업할까요?\n(다른 분의 번호라면 취소하고 단어를 바꾸세요)`, '이어서 백업') : true;
-            if(!yes) return;
-          }
+      const phone = host.querySelector('#cbPhone').value, word = host.querySelector('#cbWord').value;
+      let code;
+      if(!normPhone(phone) && normOld(word).length === 8) code = normOld(word);                 // 옛 8글자 번호
+      else {
+        const bad = validPair(phone, word); if(bad){ say(bad); return; }
+        if(!normWord(word) && typeof askConfirm === 'function'){
+          const ok = await askConfirm('비밀 단어 없이 휴대폰 번호만으로 켭니다.\n내 번호를 아는 사람이 이 앱에서 내 고객 명단을 되살릴 수 있습니다.\n그래도 번호만으로 할까요? (단어를 쓰려면 취소 → "비밀 단어도 쓰기")', '번호만으로');
+          if(!ok) return;
         }
-      }catch(e){ say('서버 확인에 실패했습니다 — ' + (e.message || '')); return; }
+        code = makeCode(phone, word);
+      }
+      say('서버 확인 중…');
+      let found = null;
+      try{ found = await fetchBackup(code).catch(e => { if(/저장된 자료가 없습니다/.test(e.message)) return null; throw e; }); }
+      catch(e){ say(e.message || '서버 확인에 실패했습니다'); return; }
+      if(found){
+        const {d, meta} = found;
+        const when = meta.updated && meta.updated.toDate ? fmtWhen(meta.updated.toDate().toISOString()) : '';
+        if(!DB.people.length){
+          applyBackup(d); ST = {code, last:new Date().toISOString(), n:d.people.length}; put();
+          if(typeof closeModal === 'function') closeModal();
+          say(`서버에 있던 ${d.people.length}명을 되살렸습니다 · 자동 백업이 이어집니다`);
+          return;
+        }
+        const choice = await askChoice(`이 번호로 올려 둔 자료가 서버에 있습니다 (${d.people.length}명 · ${when}).\n지금 앱에도 ${DB.people.length}명이 있습니다. 어느 쪽을 쓸까요?`,
+          [['server', `서버 자료로 되살리기 (${d.people.length}명)`], ['local', `지금 앱 자료로 이어서 백업 (${DB.people.length}명)`]]);
+        if(!choice) return;
+        if(choice === 'server'){
+          applyBackup(d); ST = {code, last:new Date().toISOString(), n:d.people.length}; put();
+          if(typeof closeModal === 'function') closeModal();
+          say(`서버 자료 ${d.people.length}명을 되살렸습니다 · 자동 백업이 이어집니다`); return;
+        }
+      }
       ST = {code, last:null, n:null}; put();
-      showCode(code, true);
       const ok = await upload('on');
-      say(ok ? '첫 백업을 올렸습니다' : '백업을 올리지 못했습니다 — ' + lastErr);
+      say(ok ? `자동 백업을 켰습니다 (${DB.people.length}명 올림)` : '백업을 올리지 못했습니다 — ' + lastErr);
       mount();
     });
-    on('[data-cbcopy]', () => copyCode(ST.code));
-    on('[data-cbshow]', () => showCode(ST.code, false));
     on('[data-cbnow]', async () => { say('백업 중…'); const ok = await upload('now'); say(ok ? '백업했습니다' : '실패 — ' + lastErr); mount(); });
     on('[data-cboff]', async () => {
       const yes = typeof askConfirm === 'function' ? await askConfirm('서버 자동 백업을 끌까요?\n서버에 올라간 자료는 그대로 남고, 앞으로 올리지만 않습니다.', '끄기') : confirm('끌까요?');
       if(!yes) return; ST = null; try{ localStorage.removeItem(KEY); }catch(e){} mount();
-    });
-    on('[data-cbrestore]', async () => {
-      const rp = document.getElementById('cbRPhone').value, rw = document.getElementById('cbRWord').value;
-      let code;
-      if(!normPhone(rp) && normOld(rw).length === 8) code = normOld(rw);            // 옛 8글자 번호
-      else { const bad = validPair(rp, rw); if(bad){ say(bad); return; } code = makeCode(rp, rw); }
-      say('서버에서 받는 중…');
-      try{
-        const {d, meta} = await fetchBackup(code);
-        const when = meta.updated && meta.updated.toDate ? fmtWhen(meta.updated.toDate().toISOString()) : '';
-        const yes = typeof askConfirm === 'function'
-          ? await askConfirm(`서버에 ${d.people.length}명 (${when} 백업)이 있습니다.\n지금 자료(${DB.people.length}명)를 이 내용으로 덮어쓸까요?`, '되살리기')
-          : confirm('덮어쓸까요?');
-        if(!yes) return;
-        applyBackup(d);
-        ST = {code, last:new Date().toISOString(), n:d.people.length}; put();
-        if(typeof closeModal === 'function') closeModal();
-        say(`${d.people.length}명을 되살렸습니다 · 이 번호로 자동 백업이 이어집니다`);
-      }catch(e){ say(e.message || '되살리지 못했습니다'); }
     });
   }
   new MutationObserver(() => { const h = document.getElementById('cbHost'); if(h && !h.dataset.cb){ h.dataset.cb = '1'; mount(); } }).observe(document.body, {childList:true, subtree:true});
