@@ -1365,6 +1365,17 @@ select.sel{font-size:15px}
 .lostnote{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#fff7e6;border:1px solid #f0b95a;color:#2c2427;font-size:13.5px;line-height:1.6;text-align:left}
 .lostnote b{display:inline}.lostnote .btn{margin-top:6px}
 
+/* ===== 서버 자동 백업 ===== */
+.cb-card{padding:14px 16px;margin-bottom:18px;box-shadow:none}
+.cb-st{font-size:14px;margin-bottom:8px}
+.cb-err{font-size:12.5px;color:var(--danger);margin-top:4px}
+.cb-code{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;margin-bottom:6px}
+.cb-code b{font-family:'Gowun Batang',serif;font-size:22px;letter-spacing:2px;color:#1f5fbf}
+.cb-big{font-family:'Gowun Batang',serif;font-size:40px;letter-spacing:4px;color:#1f5fbf;padding:16px;border:2px dashed #7fa6d9;border-radius:14px;background:var(--panel-2)}
+.cb-restore{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.cb-restore .gx-lb{margin-bottom:6px}
+#cbCode{text-transform:uppercase;letter-spacing:2px;font-size:17px}
+
 .tabsep{flex:0 0 1px;align-self:center;height:18px;background:var(--line);margin:0 4px}
 </style>
 </head>
@@ -1409,7 +1420,7 @@ select.sel{font-size:15px}
 <div id="toast"></div>
 
 <script>
-const APP_VER = '20260916-1921';   // 새 내용이 올라왔는지 알아보는 표시
+const APP_VER = '20260916-1929';   // 새 내용이 올라왔는지 알아보는 표시
 
 /* ============================================================
    섬김노트 — 데이터
@@ -2082,6 +2093,7 @@ function viewDash(){
         ${(navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches))
           ? '홈 화면 앱은 자료를 따로 저장합니다. <b>전에 쓰던 브라우저(사파리·크롬)</b>에서 이 주소를 열어 <b>데이터 → 📋 백업 글 복사</b> 후, 여기 <b>데이터 → 붙여넣어 되살리기</b>에 넣으면 그대로 돌아옵니다.'
           : '전에 쓰던 브라우저나 홈 화면 앱에서 이 주소를 열어 <b>데이터 → 📋 백업 글 복사</b> 후, 여기 <b>데이터 → 붙여넣어 되살리기</b>에 넣으면 그대로 돌아옵니다.'}
+        <br><b>☁️ 복구 번호</b>(AB12-CD34 모양)를 받아 두셨다면 <b>데이터 → 복구 번호로 되살리기</b>가 가장 빠릅니다.
         <button type="button" class="btn sm" id="lostHelp">자세히 보기</button>
       </div>
     </div>` : ''}
@@ -3964,7 +3976,8 @@ function openData(){
         <div class="hint" id="persistNote" style="margin-top:8px">${window.STORAGE_PERSIST ? '🔒 저장공간 보호: 켜짐 — 휴대폰 공간이 부족해도 이 앱 자료는 지우지 않습니다' : '⚠️ 저장공간 보호: 아직 아님 — 홈 화면 앱으로 설치하면 켜집니다. 백업 글을 카톡에 보관해 두세요'}</div>
         </div>
 
-        <div class="section-title" style="margin-top:0">글로 백업 · 되살리기</div>
+        <div id="cbHost"></div>
+        <div class="section-title" style="margin-top:10px">글로 백업 · 되살리기</div>
         <div style="font-size:13.5px;color:var(--muted);margin-bottom:8px">
           아래 글을 복사해 <b>카톡 '나에게 보내기'</b>나 메모장에 붙여두세요.
           나중에 그 글을 여기 붙여넣으면 그대로 되살아납니다. 파일이 필요 없습니다.
@@ -4067,7 +4080,7 @@ function openData(){
         `백업 글에 ${d.people.length}명이 들어 있습니다.\n지금 자료(${DB.people.length}명)를 이 내용으로 덮어쓸까요?`, '되살리기');
       if(!yes) return;
       migrate(d);
-      DB = { people:d.people, groups:d.groups || DEFAULT_GROUPS.slice(), lastBackup:d.lastBackup || null, growth:d.growth || DB.growth, updatedAt:null };
+      DB = { people:d.people, groups:d.groups || DEFAULT_GROUPS.slice(), teams:d.teams || [], lastBackup:d.lastBackup || null, growth:d.growth || DB.growth, updatedAt:null };
       LOAD_BROKEN = null;
       save(); closeModal(); render();
       toast(`${DB.people.length}명을 되살렸습니다`);
@@ -5875,7 +5888,7 @@ function pushReport(){
       const mc = monthCounts(y,m), key = mk(y,m);
       const doc = {uid:ME.uid, name:G.name.trim(), pt:G.upPt || '', jewel:G.upJewel || '', nowPin:G.vision.nowPin || '',
         score:mc.score, counts:mc.counts, rates:mc.rates, days:mc.days, streak:streak(), month:key,
-        app:(typeof APP_VER === 'string' ? APP_VER : '')};
+        app:(typeof APP_VER === 'string' ? APP_VER : ''), cloud:!!(window.CLOUD && CLOUD.on())};
       const sig = JSON.stringify(doc);
       if(PUSH_DONE[key] === sig) continue;
       try{
@@ -6592,6 +6605,8 @@ window.__gxMock = (leader, rows, prevRows) => { LEADER = leader; LEADER_LOADED =
 
 window.GROWTH = {
   views: VIEWS,
+  fb(){ try{ fbReady(); }catch(e){} return {FS, AUTH, ME}; },
+  myName(){ return (G.name || '').trim(); },
   has: v => !!VIEWS[v],
   html(v){
     if(v === 'gvision') return vVision();
@@ -6790,6 +6805,207 @@ window.GROWTH = {
     if(v === 'gvision') setTimeout(drawArrow, 0);
   }
 };
+})();
+
+</script>
+<script>
+/* ============================================================
+   ☁️ 서버 자동 백업 — 휴대폰 자료가 지워져도 '복구 번호'로 되살린다
+   · 복구 번호(예: AB12-CD34)로 열쇠를 만들어 자료를 암호화한 뒤 팀 서버(Firestore)에 올린다
+     → 번호가 없으면 서버 관리자도 내용을 볼 수 없다
+   · 저장할 때마다 20초 뒤 자동 백업 (하루 몇 번이든), 앱을 떠날 때도 한 번
+   · 되살리기: 데이터 화면에서 복구 번호 입력 → 그대로 내려받아 복원
+   ============================================================ */
+window.CLOUD = (() => {
+  const KEY = 'crm.cloud';                                   // {code, id, last, n}
+  const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';          // 헷갈리는 0·O·1·I 제외
+  const say = t => (typeof toast === 'function' ? toast(t) : null);
+  let ST = (() => { try{ return JSON.parse(localStorage.getItem(KEY) || 'null') || null; }catch(e){ return null; } })();
+  const put = () => { try{ localStorage.setItem(KEY, JSON.stringify(ST)); }catch(e){} };
+  const fb = () => (window.GROWTH && GROWTH.fb) ? GROWTH.fb() : null;
+  const enc = new TextEncoder(), dec = new TextDecoder();
+
+  function genCode(){
+    const a = new Uint8Array(8); crypto.getRandomValues(a);
+    let s = ''; for(let i = 0; i < 8; i++) s += ALPHA[a[i] % ALPHA.length];
+    return s.slice(0, 4) + '-' + s.slice(4);
+  }
+  const norm = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/0/g, 'O').replace(/1/g, 'I');
+  const pretty = c => { const n = norm(c); return n.slice(0, 4) + '-' + n.slice(4, 8); };
+  const b64 = u8 => { let s = ''; for(let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+  const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  const hex = u8 => [...u8].map(b => b.toString(16).padStart(2, '0')).join('');
+
+  async function keys(code){
+    const c = norm(code);
+    const base = await crypto.subtle.importKey('raw', enc.encode(c), 'PBKDF2', false, ['deriveKey']);
+    const key = await crypto.subtle.deriveKey({name:'PBKDF2', salt:enc.encode('seomgim-backup-v1'), iterations:120000, hash:'SHA-256'},
+      base, {name:'AES-GCM', length:256}, false, ['encrypt', 'decrypt']);
+    const id = hex(new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode('id:' + c)))).slice(0, 40);
+    return {key, id};
+  }
+  async function gzip(u8){
+    if(!window.CompressionStream) return {u8, gz:false};
+    try{
+      const cs = new CompressionStream('gzip');
+      const w = cs.writable.getWriter(); w.write(u8); w.close();
+      const out = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+      return {u8:out, gz:true};
+    }catch(e){ return {u8, gz:false}; }
+  }
+  async function gunzip(u8){
+    const ds = new DecompressionStream('gzip');
+    const w = ds.writable.getWriter(); w.write(u8); w.close();
+    return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+  }
+  async function encrypt(key, text){
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const {u8, gz} = await gzip(enc.encode(text));
+    const ct = new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, u8));
+    return {iv:b64(iv), data:b64(ct), gz};
+  }
+  async function decrypt(key, iv, data, gz){
+    let u8 = new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM', iv:unb64(iv)}, key, unb64(data)));
+    if(gz) u8 = await gunzip(u8);
+    return dec.decode(u8);
+  }
+
+  const PART = 700000;                                      // 문서 1MB 제한 → 70만 자씩 나눠 저장
+  let T = null, busy = false, lastErr = '';
+  async function upload(reason){
+    const f = fb(); if(!ST || !ST.code || !f || !f.FS || !f.ME || busy) return false;
+    if(typeof DB === 'undefined' || !DB) return false;
+    if(typeof LOAD_BROKEN !== 'undefined' && LOAD_BROKEN && !DB.people.length) return false;
+    busy = true;
+    try{
+      const {key, id} = await keys(ST.code);
+      const json = JSON.stringify(DB);
+      const e = await encrypt(key, json);
+      const parts = []; for(let i = 0; i < e.data.length; i += PART) parts.push(e.data.slice(i, i + PART));
+      const doc = f.FS.collection('backups').doc(id);
+      const batch = f.FS.batch();
+      parts.forEach((p, i) => batch.set(doc.collection('p').doc(String(i)), {i, d:p}));
+      batch.set(doc, {v:1, iv:e.iv, gz:e.gz, parts:parts.length, n:DB.people.length, bytes:json.length,
+        name:(window.GROWTH && GROWTH.myName ? GROWTH.myName() : ''), app:(typeof APP_VER === 'string' ? APP_VER : ''),
+        updated:firebase.firestore.FieldValue.serverTimestamp(), by:f.ME.uid});
+      await batch.commit();
+      ST.last = new Date().toISOString(); ST.n = DB.people.length; ST.id = id; lastErr = ''; put();
+      document.dispatchEvent(new Event('cloud:updated'));
+      return true;
+    }catch(err){ lastErr = (err && err.message) || String(err); return false; }
+    finally{ busy = false; }
+  }
+  function schedule(ms){ if(!ST || !ST.code) return; clearTimeout(T); T = setTimeout(() => upload('auto'), ms == null ? 20000 : ms); }
+
+  async function fetchBackup(code){
+    const f = fb(); if(!f || !f.FS) throw new Error('팀 서버에 연결되지 않았습니다. 인터넷을 확인해 주세요');
+    if(!f.ME){ try{ await f.AUTH.signInAnonymously(); }catch(e){} }
+    const {key, id} = await keys(code);
+    const doc = f.FS.collection('backups').doc(id);
+    const m = await doc.get();
+    if(!m.exists) throw new Error('이 복구 번호로 저장된 자료가 없습니다. 번호를 다시 확인해 주세요');
+    const meta = m.data();
+    const ps = await doc.collection('p').get();
+    const arr = []; ps.forEach(d => { const x = d.data(); arr[x.i] = x.d; });
+    if(arr.length < meta.parts || arr.some(x => x == null)) throw new Error('자료 일부를 받지 못했습니다. 다시 시도해 주세요');
+    let text;
+    try{ text = await decrypt(key, meta.iv, arr.join(''), meta.gz); }
+    catch(e){ throw new Error('복구 번호가 맞지 않습니다'); }
+    const d = JSON.parse(text);
+    if(!d || !Array.isArray(d.people)) throw new Error('자료 형식이 다릅니다');
+    return {d, meta};
+  }
+  function applyBackup(d){
+    if(typeof migrate === 'function') migrate(d);
+    DB = { people:d.people, groups:d.groups || DEFAULT_GROUPS.slice(), teams:d.teams || [], lastBackup:d.lastBackup || null, growth:d.growth || (DB && DB.growth), updatedAt:null };
+    if(typeof LOAD_BROKEN !== 'undefined') LOAD_BROKEN = null;
+    save(); if(typeof render === 'function') render();
+  }
+
+  /* ---------- 화면 ---------- */
+  const fmtWhen = iso => { if(!iso) return '아직 없음'; const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; };
+  function section(){
+    const on = !!(ST && ST.code);
+    return `<div class="section-title" style="margin-top:0">☁️ 서버 자동 백업</div>
+    <div class="card cb-card" id="cbCard">
+      ${on ? `<div class="cb-st"><b>켜짐</b> · 마지막 백업 <b>${fmtWhen(ST.last)}</b>${ST.n != null ? ` · ${ST.n}명` : ''}${lastErr ? `<div class="cb-err">⚠️ 마지막 시도 실패: ${lastErr}</div>` : ''}</div>
+        <div class="cb-code">복구 번호 <b>${pretty(ST.code)}</b><button type="button" class="btn sm" data-cbcopy>번호 복사</button></div>
+        <div class="hint">휴대폰을 바꾸거나 자료가 지워지면 새 앱의 데이터 화면에서 이 번호로 되살립니다. <b>카톡 '나에게 보내기'에 꼭 보관하세요.</b></div>
+        <div class="gx-btns" style="margin-top:8px"><button type="button" class="btn sm primary" data-cbnow>지금 백업</button><button type="button" class="btn sm" data-cbshow>번호 크게 보기</button><button type="button" class="btn sm ghost" data-cboff>끄기</button></div>`
+      : `<div class="hint" style="margin-bottom:8px">저장할 때마다 자료를 <b>암호화해서 팀 서버에</b> 올려 둡니다. 휴대폰 자료가 지워져도 <b>복구 번호</b> 하나로 그대로 되살립니다. 번호가 없으면 아무도 내용을 볼 수 없습니다.</div>
+        <button type="button" class="btn primary" data-cbon>☁️ 자동 백업 켜기</button>`}
+      <div class="cb-restore">
+        <div class="gx-lb">복구 번호로 되살리기</div>
+        <div class="gx-add"><input type="text" id="cbCode" placeholder="예: AB12-CD34" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="9">
+          <button type="button" class="btn sm" data-cbrestore>되살리기</button></div>
+        <div class="hint">되살리면 지금 자료를 덮어씁니다. 되살린 뒤에는 그 번호로 자동 백업이 이어집니다.</div>
+      </div>
+    </div>`;
+  }
+  function showCode(code, fresh){
+    document.getElementById('modal').innerHTML = `<div class="overlay" data-close><div class="modal"><div class="mhead"><h2>☁️ 복구 번호</h2><button class="x" data-close>×</button></div>
+      <div class="mbody" style="text-align:center">
+        <div class="cb-big">${pretty(code)}</div>
+        <p style="font-size:15px;line-height:1.6;margin:10px 0 14px">${fresh ? '자동 백업이 켜졌습니다. ' : ''}이 번호만 있으면 어느 휴대폰에서든 자료를 그대로 되살립니다.<br><b>지금 바로 카톡 "나에게 보내기"에 붙여 두세요.</b></p>
+        <button type="button" class="btn primary" data-cbcopy2>📋 번호 복사</button>
+      </div><div class="mfoot"><button class="btn" data-close>닫기</button></div></div></div>`;
+    document.querySelector('[data-cbcopy2]').onclick = () => copyCode(code);
+  }
+  async function copyCode(code){
+    const t = `섬김성장노트 복구 번호: ${pretty(code)}\n(데이터 → 복구 번호로 되살리기)`;
+    try{ await navigator.clipboard.writeText(t); say('복사했습니다. 카톡 나에게 보내기에 붙여 두세요'); }
+    catch(e){ prompt('아래 번호를 길게 눌러 복사하세요', pretty(code)); }
+  }
+  function mount(){
+    const host = document.getElementById('cbHost'); if(!host) return;
+    host.innerHTML = section();
+    const on = (sel, fn) => { const el = host.querySelector(sel); if(el) el.onclick = fn; };
+    on('[data-cbon]', async () => {
+      const f = fb();
+      if(!f || !f.FS){ say('팀 서버에 연결되지 않았습니다. 인터넷을 확인해 주세요'); return; }
+      ST = {code:genCode(), last:null, n:null}; put();
+      showCode(ST.code, true);
+      const ok = await upload('on');
+      say(ok ? '첫 백업을 올렸습니다' : '백업을 올리지 못했습니다 — ' + lastErr);
+      mount();
+    });
+    on('[data-cbcopy]', () => copyCode(ST.code));
+    on('[data-cbshow]', () => showCode(ST.code, false));
+    on('[data-cbnow]', async () => { say('백업 중…'); const ok = await upload('now'); say(ok ? '백업했습니다' : '실패 — ' + lastErr); mount(); });
+    on('[data-cboff]', async () => {
+      const yes = typeof askConfirm === 'function' ? await askConfirm('서버 자동 백업을 끌까요?\n서버에 올라간 자료는 그대로 남고, 앞으로 올리지만 않습니다.', '끄기') : confirm('끌까요?');
+      if(!yes) return; ST = null; try{ localStorage.removeItem(KEY); }catch(e){} mount();
+    });
+    on('[data-cbrestore]', async () => {
+      const code = norm(document.getElementById('cbCode').value);
+      if(code.length !== 8){ say('복구 번호 8글자를 넣어 주세요 (예: AB12-CD34)'); return; }
+      say('서버에서 받는 중…');
+      try{
+        const {d, meta} = await fetchBackup(code);
+        const when = meta.updated && meta.updated.toDate ? fmtWhen(meta.updated.toDate().toISOString()) : '';
+        const yes = typeof askConfirm === 'function'
+          ? await askConfirm(`서버에 ${d.people.length}명 (${when} 백업)이 있습니다.\n지금 자료(${DB.people.length}명)를 이 내용으로 덮어쓸까요?`, '되살리기')
+          : confirm('덮어쓸까요?');
+        if(!yes) return;
+        applyBackup(d);
+        ST = {code, last:new Date().toISOString(), n:d.people.length}; put();
+        if(typeof closeModal === 'function') closeModal();
+        say(`${d.people.length}명을 되살렸습니다 · 이 번호로 자동 백업이 이어집니다`);
+      }catch(e){ say(e.message || '되살리지 못했습니다'); }
+    });
+  }
+  new MutationObserver(() => { const h = document.getElementById('cbHost'); if(h && !h.dataset.cb){ h.dataset.cb = '1'; mount(); } }).observe(document.body, {childList:true, subtree:true});
+  document.addEventListener('cloud:updated', () => { const h = document.getElementById('cbHost'); if(h) mount(); });
+
+  /* 저장할 때마다 자동 백업 (20초 뒤), 앱을 떠날 때 바로 */
+  if(typeof save === 'function'){
+    const _s = save;
+    save = function(){ const r = _s.apply(this, arguments); schedule(); return r; };
+  }
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden' && T){ clearTimeout(T); T = null; upload('leave'); } });
+  setTimeout(() => { if(ST && ST.code && (!ST.last || Date.now() - new Date(ST.last) > 6*3600e3)) upload('open'); }, 6000);
+
+  return {on:() => !!(ST && ST.code), code:() => ST && ST.code, upload, restore:fetchBackup, apply:applyBackup, pretty};
 })();
 
 </script>
