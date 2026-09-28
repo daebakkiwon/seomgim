@@ -605,6 +605,8 @@ function openSettings(){
     <div class="grp"><label class="t">내 등록 정보</label>
       <div style="font-size:15px">${esc(S.profile?.name || '')} · ${esc(phoneFmt(S.profile?.phone))}${S.profile?.group ? ' · ' + esc(S.profile.group) : ''}</div>
       <div class="hint" id="sSync">${esc(SYNC.status())}</div>
+      <button class="btn ghost" id="sSyncNow">🔄 다른 기기와 지금 맞추기</button>
+      <div class="hint">앱 버전 ${esc(BUILD)}</div>
       <button class="btn ghost" id="sEdit">등록 정보 고치기</button></div>
     ${INSTALL.installed() ? '' : `<div class="grp"><label class="t">홈 화면에 앱 추가</label><button class="btn" id="sInst">📲 홈 화면에 추가하는 방법 보기</button></div>`}
     <div class="grp"><label class="t">음성으로 적기 — 아이폰 홈 화면 앱용 (선택)</label>
@@ -623,6 +625,7 @@ function openSettings(){
   $('#sTh').onclick = e => { if(!e.target.matches('button')) return; S.theme = e.target.dataset.v; save(); applyPrefs(); $('#sTh').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target)); };
   $('#sEdit').onclick = () => { bg.remove(); const p = S.profile; S.profile = null; viewRegister(); $('#rName').value = p.name; $('#rPhone').value = phoneFmt(p.phone); $('#rGroup').value = p.group || ''; };
   $('#sInst') && ($('#sInst').onclick = () => { bg.remove(); INSTALL.open(); });
+  $('#sSyncNow').onclick = async () => { $('#sSync').textContent = '맞추는 중…'; const r = await SYNC.relink(); $('#sSync').textContent = SYNC.status(); toast(r === 'merged' ? '다른 기기의 기록을 불러와 합쳤습니다 📱' : r === 'error' ? '서버에 연결하지 못했습니다' : '이미 같은 기록입니다'); route(); };
   $('#sBk').onclick = () => download(`아가페성경공부_백업_${today()}.json`, JSON.stringify({app:'agape1', at:new Date().toISOString(), data:S}), 'application/json');
   $('#sRs').onclick = () => $('#sFile').click();
   $('#sFile').onchange = async e => {
@@ -841,7 +844,17 @@ const SYNC = (() => {
     let ch = false;
     for(const [id, rn] of Object.entries(R.notes || {})){
       const ln = S.notes[id];
-      if(!ln || (rn.t || 0) > (ln.t || 0)){ S.notes[id] = rn; ch = true; }
+      if(!ln || (rn.t || 0) > (ln.t || 0)){ if(JSON.stringify(ln) !== JSON.stringify(rn)){ S.notes[id] = rn; ch = true; } continue; }
+      if((rn.t || 0) < (ln.t || 0)) continue;                   // 이 기기 것이 더 새것
+      // 시각이 같음(예전 버전에서 적은 기록 등) → 어느 쪽도 잃지 않게 칸별로 합친다
+      const before = JSON.stringify(ln);
+      ln.done = !!(ln.done || rn.done);
+      ln.q = ln.q || {}; for(const [k, v] of Object.entries(rn.q || {})) if((v || '').trim() && !(ln.q[k] || '').trim()) ln.q[k] = v;
+      ln.act = ln.act || {}; for(const [k, v] of Object.entries(rn.act || {})) if(v) ln.act[k] = true;
+      if((rn.memo || '').length > (ln.memo || '').length) ln.memo = rn.memo;
+      if((rn.copy || '').length > (ln.copy || '').length) ln.copy = rn.copy;
+      ln.marks = [...new Set([...(ln.marks || []), ...(rn.marks || [])])];
+      if(JSON.stringify(ln) !== before) ch = true;
     }
     for(const [id, p] of Object.entries(R.heard || {})) if(p > (S.heard[id] || 0)){ S.heard[id] = p; ch = true; }
     if((R.listenSec || 0) > (S.listenSec || 0)){ S.listenSec = R.listenSec; ch = true; }
@@ -1055,6 +1068,29 @@ $('#bSet').onclick = openSettings;
 addEventListener('pagehide', () => { if(curAud){ S.pos[curAud] = aud.currentTime; try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} } SYNC.now(); });
 route();
 addEventListener('load', () => SYNC.init());
+
+/* ---------- 새 버전 자동 적용 ----------
+   홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
+   새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
+const BUILD = '2026.09.28-2128';
+async function checkUpdate(){
+  if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
+  if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
+  checkUpdate.at = Date.now();
+  try{
+    const v = (await (await fetch('version.json?t=' + Date.now(), {cache:'no-store'})).json()).v;
+    if(!v || v === BUILD) return;
+    let tried = ''; try{ tried = sessionStorage.getItem('agape.reloadFor') || ''; }catch(e){}
+    if(tried === v) return;
+    try{ sessionStorage.setItem('agape.reloadFor', v); }catch(e){}
+    try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
+    await SYNC.now().catch(() => {});
+    toast('새 버전으로 바꾸는 중입니다…');
+    setTimeout(() => location.reload(), 600);
+  }catch(e){}
+}
+addEventListener('load', () => setTimeout(checkUpdate, 1500));
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') checkUpdate(); });
 </script>
 <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
