@@ -733,7 +733,8 @@ const FOLLOW = (() => {
     setTimeout(() => {
       cur = -1; paint();
       const el = document.querySelector('.sn.now'); if(!el || el.dataset.g === '0') return;
-      el.scrollIntoView({block:'center', behavior:'smooth'});
+      const y = el.getBoundingClientRect().top + scrollY - innerHeight / 2 + 40;
+      window.scrollTo(0, Math.max(0, y));                         // 바로 그 자리로
       toast('지난번 멈춘 곳입니다 ▶ 누르면 여기서부터 들려 드려요');
     }, 300);
   }
@@ -1092,7 +1093,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.09.28-2147';
+const BUILD = '2026.09.28-2150';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
