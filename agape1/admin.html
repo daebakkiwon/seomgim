@@ -187,11 +187,19 @@ function detail(){
   $('#detail').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start">
       <div><b style="font-size:18px">${esc(p.name)}</b> <span class="hint">${esc(phoneF(p.phone))} · ${esc(p.group || '모임 없음')} · ${p.ua || ''}</span>
       <div class="hint" style="margin-top:4px">공부한 날 ${p.days || 0}일 · 들은 시간 ${p.listenMin || 0}분 · 묵상 노트 ${p.memos || 0}개 · 보낸 질문 ${myQ}개 · 마지막 ${esc(p.lastDay || '-')}</div></div>
-      <button class="btn ghost" id="dx">닫기</button></div>
+      <div style="display:flex;gap:6px"><button class="btn ghost" id="ddel">기록 지우기</button><button class="btn ghost" id="dx">닫기</button></div></div>
     <div class="grid">${LESSONS.map(l => { const d = done.has(l.id), h = (p.heard?.[l.id] || 0) >= 90, w = p.wrote?.[l.id];
       return `<div class="cell${d ? ' d' : h ? ' h' : ''}" title="제${l.no}과 ${esc(l.title)}${p.heard?.[l.id] ? ' · 들음 ' + p.heard[l.id] + '%' : ''}${w ? ' · 적은 답 ' + w : ''}">${l.no}${w ? '<span class="w">✎</span>' : ''}</div>`; }).join('')}</div>
     <div class="legend"><span><i style="background:var(--cell2)"></i>마침</span><span><i style="background:var(--cell1)"></i>끝까지 들음</span><span><i style="background:var(--cell0)"></i>아직</span><span>✎ 답을 적음</span></div></div>`;
   $('#dx').onclick = () => { OPEN = null; $('#detail').innerHTML = ''; };
+  $('#ddel').onclick = async () => {
+    if(!confirm(`${p.name}님의 진도 기록을 서버에서 지울까요? (보낸 질문도 함께 지웁니다)`)) return;
+    try{
+      const [a, b] = await Promise.all([FS.collection('agape1').where('phone', '==', p.phone).get(), FS.collection('agape1q').where('phone', '==', p.phone).get()]);
+      await Promise.all([...a.docs.filter(d => d.data().name === p.name), ...b.docs.filter(d => d.data().name === p.name)].map(d => d.ref.delete()));
+      OPEN = null; load();
+    }catch(e){ alert('지우지 못했습니다: ' + (e.code || e.message)); }
+  };
   $('#detail').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 function csv(rows){
