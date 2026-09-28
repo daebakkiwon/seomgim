@@ -106,13 +106,22 @@ function login(msg){
   $('#tabs').hidden = true;
   $('#view').innerHTML = `<div class="card login"><h2>관리자 로그인</h2><p>섬김성장노트 총리더 계정(이메일·비밀번호)으로 들어옵니다.</p>
     <input type="email" id="em" placeholder="이메일" autocomplete="username"><input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password">
-    <div class="err" id="er">${esc(msg || '')}</div><button class="btn" id="go" style="width:100%">들어가기</button></div>`;
+    <div class="err" id="er">${esc(msg || '')}</div><button class="btn" id="go" style="width:100%">들어가기</button>
+    <button class="btn ghost" id="fg" style="width:100%;margin-top:8px">비밀번호를 잊으셨나요?</button>
+    <p class="hint" style="margin-top:10px">섬김성장노트 › 리더성장에서 리더 등록할 때 쓴 이메일과 비밀번호입니다.</p></div>`;
   const go = async () => {
     $('#er').textContent = '';
     try{ await firebase.auth().signInWithEmailAndPassword($('#em').value.trim(), $('#pw').value); }
     catch(e){ $('#er').textContent = '이메일이나 비밀번호가 맞지 않습니다'; }
   };
   $('#go').onclick = go; $('#pw').onkeydown = e => { if(e.key === 'Enter') go(); };
+  $('#fg').onclick = async () => {
+    const em = $('#em').value.trim();
+    if(!em) return $('#er').textContent = '위 칸에 이메일을 먼저 넣고 다시 눌러 주세요';
+    try{ firebase.auth().languageCode = 'ko'; await firebase.auth().sendPasswordResetEmail(em);
+      $('#er').style.color = 'var(--acc2)'; $('#er').textContent = em + ' 로 비밀번호 새로 정하기 메일을 보냈습니다. 메일의 링크를 눌러 새 비밀번호를 정한 뒤 여기서 들어오세요. (안 보이면 스팸함 확인)'; }
+    catch(e){ $('#er').style.color = ''; $('#er').textContent = '메일을 보내지 못했습니다: ' + (e.code === 'auth/invalid-email' ? '이메일 형식을 확인해 주세요' : (e.code || e.message)); }
+  };
   if(msg) firebase.auth().signOut();
 }
 $('#out').onclick = () => firebase.auth().signOut();
