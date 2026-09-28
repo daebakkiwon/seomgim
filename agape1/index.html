@@ -831,7 +831,7 @@ const SYNC = (() => {
   }
   async function pull(){
     if(pulling) return pulling;
-    pulling = (async () => {
+    const job = (async () => {
       try{
         if(!FS || !UID || !S.profile) return 'none';
         UKEY = await ukey();
@@ -847,9 +847,9 @@ const SYNC = (() => {
         dirty = true;
         return ch ? 'merged' : 'same';
       }catch(e){ err = e.code === 'permission-denied' ? '서버 권한 설정이 아직 안 되었습니다' : (e.code || e.message); return 'error'; }
-      finally{ pulling = null; }
     })();
-    return pulling;
+    pulling = job; job.finally(() => { if(pulling === job) pulling = null; });   // 바로 끝난 결과가 남아 굳지 않게
+    return job;
   }
   function summary(){
     const done = LESSONS.filter(l => S.notes[l.id]?.done).map(l => l.id);
