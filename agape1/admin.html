@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>아가페 1권 관리</title>
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<style>
+:root{--bg:#f7f2e8;--paper:#fffdf8;--ink:#2b2621;--soft:#6b6259;--faint:#9c9287;--line:#e6ddcd;--acc:#7a4e2d;--acc2:#3f6b4f;--accbg:#f1e6d8;--warn:#b0602a;--rec:#c0392b;--cell0:#ece4d6;--cell1:#c9dccd;--cell2:#3f6b4f}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1b1916;--paper:#242120;--ink:#ece5da;--soft:#b3a999;--faint:#857b6f;--line:#3a3530;--acc:#d9a878;--acc2:#8fc0a0;--accbg:#352c24;--warn:#e0a070;--cell0:#322d28;--cell1:#3f5a48;--cell2:#8fc0a0}}
+:root[data-theme="dark"]{--bg:#1b1916;--paper:#242120;--ink:#ece5da;--soft:#b3a999;--faint:#857b6f;--line:#3a3530;--acc:#d9a878;--acc2:#8fc0a0;--accbg:#352c24;--warn:#e0a070;--cell0:#322d28;--cell1:#3f5a48;--cell2:#8fc0a0}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1000px;margin:0 auto;padding:0 16px}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+header .wrap{display:flex;align-items:center;gap:10px;height:56px}
+header h1{font-size:17px;margin:0;flex:1}
+.tabs{display:flex;gap:6px}
+.tab{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:7px 14px;cursor:pointer;position:relative}
+.tab.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.tab .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--rec);color:#fff;font-size:12px;text-align:center}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}
+.login{max-width:380px;margin:60px auto}
+.login h2{margin:0 0 6px;font-size:20px}
+.login p{color:var(--soft);margin:0 0 16px;font-size:14px}
+input[type=email],input[type=password],input[type=search],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);margin-bottom:10px}
+.btn{border:0;border-radius:10px;background:var(--acc);color:#fff;padding:11px 16px;font-weight:600;cursor:pointer}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--ink)}
+.btn:disabled{opacity:.5}
+.err{color:var(--rec);font-size:14px;min-height:20px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi b{display:block;font-size:26px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:13px;color:var(--soft)}
+@media (max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tools input,.tools select{width:auto;flex:1;min-width:140px;margin:0}
+table{width:100%;border-collapse:collapse;background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+th,td{padding:11px 12px;text-align:left;border-top:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;color:var(--soft);font-weight:600;background:var(--accbg);border-top:0;cursor:pointer;white-space:nowrap;user-select:none}
+td{font-variant-numeric:tabular-nums}
+tr.p{cursor:pointer}
+tr.p:hover td{background:var(--accbg)}
+.nm b{display:block}
+.nm small{color:var(--faint)}
+.bar{display:flex;align-items:center;gap:8px;min-width:120px}
+.bar i{flex:1;height:8px;border-radius:8px;background:var(--cell0);overflow:hidden;display:block}
+.bar i s{display:block;height:100%;background:var(--acc2)}
+.late{color:var(--warn);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin:10px 0;max-width:520px}
+.cell{aspect-ratio:1;border-radius:6px;background:var(--cell0);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--soft);position:relative}
+.cell.h{background:var(--cell1)}
+.cell.d{background:var(--cell2);color:#fff}
+.cell .w{position:absolute;top:1px;right:3px;font-size:9px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--soft);flex-wrap:wrap}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.q{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+.q.open{border-left:4px solid var(--warn)}
+.q .meta{font-size:13px;color:var(--soft);margin-bottom:6px}
+.q .txt{white-space:pre-wrap;font-size:16px}
+.q .ans{white-space:pre-wrap;background:var(--accbg);border-radius:10px;padding:10px 12px;margin-top:10px}
+.q textarea{min-height:90px;margin-top:10px;background:var(--bg)}
+.row{display:flex;gap:8px;justify-content:flex-end}
+.empty{text-align:center;color:var(--faint);padding:40px 0}
+.hint{font-size:13px;color:var(--faint)}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>아가페 1권 · 관리</h1>
+  <div class="tabs" id="tabs" hidden><button class="tab on" data-t="p">진도</button><button class="tab" data-t="q">질문<span class="cnt" id="qCnt" hidden></span></button><button class="tab" id="out">나가기</button></div>
+</div></header>
+<main class="wrap" id="view"><div class="empty">불러오는 중…</div></main>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script>window.FB_CONFIG = {"apiKey":"AIzaSyDT2snkVUWznnrRfCv50aLbLL8VRDKyR40","authDomain":"seomgim-growth.firebaseapp.com","projectId":"seomgim-growth","storageBucket":"seomgim-growth.firebasestorage.app","messagingSenderId":"479785468927","appId":"1:479785468927:web:4381a352eb691f6194ddca"};</script>
+<script>
+const LESSONS = [{"id": "02", "no": 1, "title": "나는 왜 아픈가"}, {"id": "03", "no": 2, "title": "유전자에는 스위치가 있습니다"}, {"id": "04", "no": 3, "title": "생기, 유전자를 켜는 힘"}, {"id": "05", "no": 4, "title": "마음이 몸을 바꿉니다"}, {"id": "06", "no": 5, "title": "선택이 유전자를 바꿉니다"}, {"id": "08", "no": 6, "title": "하나님은 사랑이십니다"}, {"id": "09", "no": 7, "title": "조건 있는 사랑, 조건 없는 사랑"}, {"id": "10", "no": 8, "title": "흙에 입 맞추신 분"}, {"id": "11", "no": 9, "title": "기다리는 아버지"}, {"id": "12", "no": 10, "title": "찾을 때까지 찾으시는 분"}, {"id": "14", "no": 11, "title": "오해의 시작"}, {"id": "15", "no": 12, "title": "\"네가 어디 있느냐\""}, {"id": "16", "no": 13, "title": "가죽옷을 지어 입히시다"}, {"id": "17", "no": 14, "title": "죄란 무엇일까요"}, {"id": "18", "no": 15, "title": "죽음은 벌일까요"}, {"id": "20", "no": 16, "title": "나를 본 사람은 아버지를 보았습니다"}, {"id": "21", "no": 17, "title": "\"나도 너를 정죄하지 않는다\""}, {"id": "22", "no": 18, "title": "우물가에서 만난 분"}, {"id": "23", "no": 19, "title": "병든 사람 곁에 서신 분"}, {"id": "24", "no": 20, "title": "무릎 꿇고 발을 씻기신 하나님"}, {"id": "26", "no": 21, "title": "왜 십자가였을까요"}, {"id": "27", "no": 22, "title": "\"아버지, 저들을 용서하여 주옵소서\""}, {"id": "28", "no": 23, "title": "곁에 달린 강도"}, {"id": "29", "no": 24, "title": "\"다 이루었다\""}, {"id": "30", "no": 25, "title": "빈 무덤, 생명이 이겼습니다"}, {"id": "32", "no": 26, "title": "믿음이란 무엇일까요"}, {"id": "33", "no": 27, "title": "값없이 받는 선물"}, {"id": "34", "no": 28, "title": "다시 태어난다는 것"}, {"id": "35", "no": 29, "title": "명령이 아니라 약속입니다"}, {"id": "36", "no": 30, "title": "\"너는 내 것이라\""}, {"id": "38", "no": 31, "title": "함께 계시는 분, 성령"}, {"id": "39", "no": 32, "title": "기도, 아버지와 나누는 이야기"}, {"id": "40", "no": 33, "title": "응어리를 푸는 힘, 용서"}, {"id": "41", "no": 34, "title": "감사가 몸을 살립니다"}, {"id": "42", "no": 35, "title": "\"내게로 와서 쉬십시오\""}, {"id": "44", "no": 36, "title": "누가 내 이웃입니까"}, {"id": "45", "no": 37, "title": "아플 때 하나님은 어디 계실까요"}, {"id": "46", "no": 38, "title": "사랑 안에는 두려움이 없습니다"}, {"id": "47", "no": 39, "title": "눈물을 닦아 주실 날"}, {"id": "48", "no": 40, "title": "이제, 사랑을 전하는 사람으로"}];
+const LBY = Object.fromEntries(LESSONS.map(l => [l.id, l]));
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const phoneF = p => String(p || '').replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3');
+const ms = x => x?.toMillis ? x.toMillis() : 0;
+const ago = t => { if(!t) return '-'; const d = Math.floor((Date.now() - t) / 86400000); return d <= 0 ? '오늘' : d === 1 ? '어제' : d + '일 전'; };
+let FS, TAB = 'p', PEOPLE = [], QS = [], SORT = {k:'last', d:-1}, FILTER = {g:'', q:''}, OPEN = null;
+
+firebase.initializeApp(window.FB_CONFIG);
+FS = firebase.firestore();
+firebase.auth().onAuthStateChanged(async u => {
+  if(!u || u.isAnonymous) return login();
+  try{
+    const d = await FS.collection('leaders').doc(u.uid).get();
+    const L = d.exists ? d.data() : null;
+    if(!L || !L.approved || L.role !== 'all') return login('관리 권한이 없는 계정입니다. 섬김성장노트의 총리더 계정으로 들어와 주세요.');
+  }catch(e){ return login('계정 정보를 확인하지 못했습니다: ' + (e.code || e.message)); }
+  $('#tabs').hidden = false;
+  load();
+});
+function login(msg){
+  $('#tabs').hidden = true;
+  $('#view').innerHTML = `<div class="card login"><h2>관리자 로그인</h2><p>섬김성장노트 총리더 계정(이메일·비밀번호)으로 들어옵니다.</p>
+    <input type="email" id="em" placeholder="이메일" autocomplete="username"><input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password">
+    <div class="err" id="er">${esc(msg || '')}</div><button class="btn" id="go" style="width:100%">들어가기</button></div>`;
+  const go = async () => {
+    $('#er').textContent = '';
+    try{ await firebase.auth().signInWithEmailAndPassword($('#em').value.trim(), $('#pw').value); }
+    catch(e){ $('#er').textContent = '이메일이나 비밀번호가 맞지 않습니다'; }
+  };
+  $('#go').onclick = go; $('#pw').onkeydown = e => { if(e.key === 'Enter') go(); };
+  if(msg) firebase.auth().signOut();
+}
+$('#out').onclick = () => firebase.auth().signOut();
+$('#tabs').onclick = e => { const t = e.target.closest('[data-t]'); if(!t) return; TAB = t.dataset.t; document.querySelectorAll('.tab[data-t]').forEach(b => b.classList.toggle('on', b === t)); draw(); };
+
+async function load(){
+  $('#view').innerHTML = '<div class="empty">불러오는 중…</div>';
+  try{
+    const [p, q] = await Promise.all([FS.collection('agape1').get(), FS.collection('agape1q').get()]);
+    // 같은 사람(이름+번호)이 여러 기기에서 쓰면 하나로 합친다
+    const by = {};
+    p.docs.forEach(d => {
+      const x = d.data(), k = (x.phone || '') + '|' + (x.name || '');
+      const cur = by[k];
+      if(!cur){ by[k] = Object.assign({devices:1}, x); return; }
+      cur.devices++;
+      cur.done = [...new Set([...(cur.done || []), ...(x.done || [])])]; cur.doneN = cur.done.length;
+      for(const f of ['heard', 'wrote', 'acts']){ cur[f] = Object.assign({}, cur[f]); for(const [id, v] of Object.entries(x[f] || {})) cur[f][id] = Math.max(cur[f][id] || 0, v); }
+      cur.heardN = LESSONS.filter(l => (cur.heard[l.id] || 0) >= 90).length;
+      for(const f of ['answers', 'memos', 'listenMin', 'days']) cur[f] = (cur[f] || 0) + (x[f] || 0);
+      if(ms(x.updated) > ms(cur.updated)) Object.assign(cur, {updated:x.updated, lastTitle:x.lastTitle, lastDay:x.lastDay, group:x.group || cur.group});
+    });
+    PEOPLE = Object.values(by);
+    QS = q.docs.map(d => Object.assign({id:d.id}, d.data())).sort((a, b) => (!a.answer - !b.answer) * -1 || ms(b.at) - ms(a.at));
+    const open = QS.filter(x => !x.answer).length;
+    $('#qCnt').hidden = !open; $('#qCnt').textContent = open;
+    draw();
+  }catch(e){
+    $('#view').innerHTML = `<div class="card">자료를 불러오지 못했습니다 (${esc(e.code || e.message)}).<br><span class="hint">Firebase 보안 규칙에 agape1 · agape1q 부분을 추가했는지 확인해 주세요.</span></div>`;
+  }
+}
+function draw(){ TAB === 'p' ? drawPeople() : drawQs(); }
+
+function drawPeople(){
+  const groups = [...new Set(PEOPLE.map(p => p.group).filter(Boolean))].sort();
+  const week = Date.now() - 7 * 86400000;
+  const active = PEOPLE.filter(p => ms(p.updated) > week).length;
+  const avg = PEOPLE.length ? Math.round(PEOPLE.reduce((a, p) => a + (p.doneN || 0), 0) / PEOPLE.length * 10) / 10 : 0;
+  const fin = PEOPLE.filter(p => (p.doneN || 0) >= LESSONS.length).length;
+  let rows = PEOPLE.filter(p => (!FILTER.g || p.group === FILTER.g) && (!FILTER.q || (p.name + p.phone).includes(FILTER.q)));
+  const key = {name:p => p.name, group:p => p.group || '', done:p => p.doneN || 0, heard:p => p.heardN || 0, ans:p => p.answers || 0, min:p => p.listenMin || 0, last:p => ms(p.updated)}[SORT.k];
+  rows.sort((a, b) => (key(a) > key(b) ? 1 : key(a) < key(b) ? -1 : 0) * SORT.d);
+  const th = (k, t) => `<th data-s="${k}">${t}${SORT.k === k ? (SORT.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  $('#view').innerHTML = `
+    <div class="kpis"><div class="kpi"><b>${PEOPLE.length}</b><span>등록한 분</span></div><div class="kpi"><b>${active}</b><span>최근 7일 공부</span></div>
+      <div class="kpi"><b>${avg}</b><span>평균 마친 과 (/${LESSONS.length})</span></div><div class="kpi"><b>${fin}</b><span>1권을 다 마친 분</span></div></div>
+    <div class="tools"><input type="search" id="fq" placeholder="이름·번호로 찾기" value="${esc(FILTER.q)}">
+      <select id="fg"><option value="">모든 모임</option>${groups.map(g => `<option${g === FILTER.g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>
+      <button class="btn ghost" id="rf">새로고침</button><button class="btn ghost" id="csv">엑셀(CSV) 받기</button></div>
+    <div class="scroll" style="margin-top:12px">${rows.length ? `<table><thead><tr>${th('name', '이름')}${th('group', '모임')}${th('done', '마친 과')}${th('heard', '끝까지 들은 과')}${th('ans', '적은 답')}${th('min', '들은 시간')}${th('last', '마지막 공부')}<th>공부 중인 과</th></tr></thead><tbody>
+      ${rows.map((p, i) => { const late = ms(p.updated) < week; return `<tr class="p" data-i="${PEOPLE.indexOf(p)}">
+        <td class="nm"><b>${esc(p.name)}</b><small>${esc(phoneF(p.phone))}${p.devices > 1 ? ` · 기기 ${p.devices}대` : ''}</small></td>
+        <td>${esc(p.group || '-')}</td>
+        <td><div class="bar"><i><s style="width:${(p.doneN || 0) / LESSONS.length * 100}%"></s></i>${p.doneN || 0}</div></td>
+        <td>${p.heardN || 0}</td><td>${p.answers || 0}</td><td>${p.listenMin || 0}분</td>
+        <td class="${late ? 'late' : ''}">${ago(ms(p.updated))}</td><td style="font-size:13px;color:var(--soft)">${esc(p.lastTitle || '-')}</td></tr>`; }).join('')}
+      </tbody></table>` : '<div class="empty">아직 등록한 분이 없습니다</div>'}</div>
+    <p class="hint">줄을 누르면 과별 진도를 볼 수 있습니다. 7일 넘게 공부하지 않은 분은 주황색으로 표시됩니다. 적은 글의 내용은 서버에 올라오지 않습니다.</p>
+    <div id="detail"></div>`;
+  $('#fq').oninput = e => { FILTER.q = e.target.value.trim(); const pos = e.target.selectionStart; drawPeople(); $('#fq').focus(); $('#fq').setSelectionRange(pos, pos); };
+  $('#fg').onchange = e => { FILTER.g = e.target.value; drawPeople(); };
+  $('#rf').onclick = load;
+  $('#csv').onclick = () => csv(rows);
+  document.querySelectorAll('th[data-s]').forEach(t => t.onclick = () => { const k = t.dataset.s; SORT = {k, d: SORT.k === k ? -SORT.d : (k === 'name' || k === 'group' ? 1 : -1)}; drawPeople(); });
+  document.querySelectorAll('tr.p').forEach(r => r.onclick = () => { OPEN = +r.dataset.i; detail(); });
+  if(OPEN != null) detail();
+}
+function detail(){
+  const p = PEOPLE[OPEN]; if(!p) return;
+  const done = new Set(p.done || []);
+  const myQ = QS.filter(q => q.phone === p.phone && q.name === p.name).length;
+  $('#detail').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start">
+      <div><b style="font-size:18px">${esc(p.name)}</b> <span class="hint">${esc(phoneF(p.phone))} · ${esc(p.group || '모임 없음')} · ${p.ua || ''}</span>
+      <div class="hint" style="margin-top:4px">공부한 날 ${p.days || 0}일 · 들은 시간 ${p.listenMin || 0}분 · 묵상 노트 ${p.memos || 0}개 · 보낸 질문 ${myQ}개 · 마지막 ${esc(p.lastDay || '-')}</div></div>
+      <button class="btn ghost" id="dx">닫기</button></div>
+    <div class="grid">${LESSONS.map(l => { const d = done.has(l.id), h = (p.heard?.[l.id] || 0) >= 90, w = p.wrote?.[l.id];
+      return `<div class="cell${d ? ' d' : h ? ' h' : ''}" title="제${l.no}과 ${esc(l.title)}${p.heard?.[l.id] ? ' · 들음 ' + p.heard[l.id] + '%' : ''}${w ? ' · 적은 답 ' + w : ''}">${l.no}${w ? '<span class="w">✎</span>' : ''}</div>`; }).join('')}</div>
+    <div class="legend"><span><i style="background:var(--cell2)"></i>마침</span><span><i style="background:var(--cell1)"></i>끝까지 들음</span><span><i style="background:var(--cell0)"></i>아직</span><span>✎ 답을 적음</span></div></div>`;
+  $('#dx').onclick = () => { OPEN = null; $('#detail').innerHTML = ''; };
+  $('#detail').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+function csv(rows){
+  const head = ['이름', '휴대폰', '모임', '마친 과', '끝까지 들은 과', '적은 답', '묵상 노트', '들은 시간(분)', '공부한 날', '마지막 공부', '공부 중인 과', ...LESSONS.map(l => '제' + l.no + '과')];
+  const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const lines = [head.map(q).join(',')].concat(rows.map(p => { const done = new Set(p.done || []);
+    return [p.name, phoneF(p.phone), p.group, p.doneN || 0, p.heardN || 0, p.answers || 0, p.memos || 0, p.listenMin || 0, p.days || 0, p.lastDay, p.lastTitle,
+      ...LESSONS.map(l => done.has(l.id) ? '마침' : (p.heard?.[l.id] || 0) >= 90 ? '들음' : '')].map(q).join(','); }));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], {type:'text/csv;charset=utf-8'}));
+  a.download = `아가페1권_진도_${new Date().toLocaleDateString('sv')}.csv`; a.click();
+}
+
+function drawQs(){
+  if(!QS.length){ $('#view').innerHTML = '<div class="empty">아직 들어온 질문이 없습니다</div>'; return; }
+  const open = QS.filter(x => !x.answer).length;
+  $('#view').innerHTML = `<div class="tools" style="margin-top:16px"><span style="flex:1">답을 기다리는 질문 <b>${open}</b>개 · 전체 ${QS.length}개</span><button class="btn ghost" id="rf">새로고침</button></div>
+    ${QS.map(x => { const at = x.at?.toDate?.(), aat = x.answeredAt?.toDate?.();
+      return `<div class="q${x.answer ? '' : ' open'}" data-id="${x.id}">
+        <div class="meta"><b>${esc(x.name)}</b> · ${esc(phoneF(x.phone))}${x.group ? ' · ' + esc(x.group) : ''} · ${esc(x.lessonTitle || '전체 질문')} · ${at ? at.toLocaleString('ko-KR', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}</div>
+        <div class="txt">${esc(x.text)}</div>
+        ${x.answer ? `<div class="ans">${esc(x.answer)}</div><div class="hint" style="margin-top:6px">${aat ? aat.toLocaleDateString('ko-KR') + ' 답변' : ''} · <a href="#" data-edit>고치기</a></div>` : ''}
+        <div class="rep"${x.answer ? ' hidden' : ''}><textarea placeholder="답변을 적어 주세요">${esc(x.answer || '')}</textarea>
+          <div class="row"><button class="btn ghost" data-del>질문 지우기</button><button class="btn" data-send>답변 보내기</button></div></div></div>`; }).join('')}`;
+  $('#rf').onclick = load;
+  document.querySelectorAll('.q').forEach(el => {
+    const id = el.dataset.id;
+    el.querySelector('[data-edit]')?.addEventListener('click', e => { e.preventDefault(); el.querySelector('.rep').hidden = false; });
+    el.querySelector('[data-send]').onclick = async e => {
+      const t = el.querySelector('textarea').value.trim(); if(!t) return;
+      e.target.disabled = true;
+      try{ await FS.collection('agape1q').doc(id).update({answer:t, answeredAt:firebase.firestore.FieldValue.serverTimestamp()}); await load(); }
+      catch(err){ alert('보내지 못했습니다: ' + (err.code || err.message)); e.target.disabled = false; }
+    };
+    el.querySelector('[data-del]').onclick = async () => {
+      if(!confirm('이 질문을 지울까요? 되돌릴 수 없습니다.')) return;
+      try{ await FS.collection('agape1q').doc(id).delete(); await load(); }catch(err){ alert('지우지 못했습니다: ' + (err.code || err.message)); }
+    };
+  });
+}
+</script>
+</body>
+</html>
