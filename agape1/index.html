@@ -277,7 +277,8 @@ let S = {notes:{}, last:null, lastAt:0, fs:19, rate:1, auto:false, theme:'', pos
 let FIRST = true;
 try{ const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if(j){ Object.assign(S, j); FIRST = false; } }catch(e){}
 if(FIRST && Math.min(screen.width, screen.height) >= 700) S.fs = 22;   // 패드는 처음부터 크게
-S.lastBy ||= {}; S.lastByAt ||= {}; if(S.last && !S.lastBy.b1 && BYID[S.last]){ S.lastBy[BYID[S.last].bk] = S.last; S.lastByAt[BYID[S.last].bk] = S.lastAt || 0; }
+S.lastBy ||= {}; S.lastByAt ||= {}; S.posAt ||= {};
+const setPos = (id, t) => { if(!id) return; S.pos[id] = t; S.posAt[id] = Date.now(); }; if(S.last && !S.lastBy.b1 && BYID[S.last]){ S.lastBy[BYID[S.last].bk] = S.last; S.lastByAt[BYID[S.last].bk] = S.lastAt || 0; }
 setBook(S.book);
 let saveT;
 const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast('저장 공간이 부족합니다'); } SYNC.later(); }, 250); };
@@ -650,7 +651,7 @@ function loadAudio(it){
     const playing = !aud.paused;
     if(playing && curAud) return setBar(true);     // 다른 과를 듣는 중이면 계속 듣게 둔다
     curAud = it.id; aud.src = it.audio; aud.playbackRate = S.rate;
-    aud.addEventListener('loadedmetadata', () => { const p = S.pos[it.id]; if(p && p < aud.duration - 3) aud.currentTime = p; }, {once:true});
+    aud.addEventListener('loadedmetadata', () => { const p = S.pos[it.id]; if(p && p < aud.duration - 3){ aud.currentTime = p; FOLLOW.resume(); } }, {once:true});
     $('#pTitle').textContent = `${blabel(it)} · ${it.title}`;
     if('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({title: `${label(it)} ${it.title}`, artist: bookOf(it).series, album: bookOf(it).title, artwork:[{src:'icon-512.png', sizes:'512x512', type:'image/png'}]});
   }
@@ -666,7 +667,7 @@ $('#pAuto').onclick = () => { S.auto = !S.auto; paintRate(); save(); toast(S.aut
 function paintRate(){ $('#pRate').textContent = S.rate.toFixed(1) + '×'; $('#pAuto').style.color = S.auto ? 'var(--acc)' : 'var(--faint)'; }
 paintRate();
 aud.onplay = () => { lastT = null; markDay(); paintPlay(); };
-aud.onpause = () => { lastT = null; paintPlay(); save(); };
+aud.onpause = () => { lastT = null; paintPlay(); if(curAud) setPos(curAud, aud.currentTime); save(); SYNC.later(); };
 aud.onloadedmetadata = () => { $('#tDur').textContent = fmt(aud.duration); };
 let posT = 0, lastT = null;
 aud.ontimeupdate = () => {
@@ -675,10 +676,10 @@ aud.ontimeupdate = () => {
   if(aud.duration && curAud){ const pc = Math.min(100, Math.round(t / aud.duration * 100)); if(pc > (S.heard[curAud] || 0)) S.heard[curAud] = pc; }
   if(!seeking) $('#pSeek').value = aud.duration ? aud.currentTime / aud.duration * 1000 : 0;
   $('#tCur').textContent = fmt(aud.currentTime);
-  if(Date.now() - posT > 3000){ posT = Date.now(); S.pos[curAud] = aud.currentTime; save(); }
+  if(Date.now() - posT > 3000){ posT = Date.now(); setPos(curAud, aud.currentTime); save(); }
 };
 aud.onended = () => {
-  S.pos[curAud] = 0; S.heard[curAud] = 100; lastT = null; markDay(); save(); SYNC.now();
+  setPos(curAud, 0); S.heard[curAud] = 100; lastT = null; markDay(); save(); SYNC.now();
   if(!S.auto) return paintPlay();
   const same = ALL.filter(x => x.bk === (BYID[curAud] || {}).bk), i = same.findIndex(x => x.id === curAud), nx = same.slice(i + 1).find(x => x.audio);
   if(!nx) return;
@@ -727,7 +728,16 @@ const FOLLOW = (() => {
     const t = it.tm[+el.dataset.g]; if(!t) return;
     aud.currentTime = t[0]; userAt = 0; cur = -1; paint();
   });
-  return {reset(){ cur = -1; paint(); }};
+  // 지난번 멈춘 곳: 그 문장을 칠하고 화면을 그리로 옮긴다 (재생 전이라도)
+  function resume(){
+    setTimeout(() => {
+      cur = -1; paint();
+      const el = document.querySelector('.sn.now'); if(!el || el.dataset.g === '0') return;
+      el.scrollIntoView({block:'center', behavior:'smooth'});
+      toast('지난번 멈춘 곳입니다 ▶ 누르면 여기서부터 들려 드려요');
+    }, 300);
+  }
+  return {reset(){ cur = -1; paint(); }, resume};
 })();
 
 /* 내가 쓴 글·암송 구절은 기기 목소리로 읽어 준다 */
@@ -839,7 +849,7 @@ const SYNC = (() => {
   }
   const stateOf = () => ({notes:S.notes, heard:S.heard, listenSec:S.listenSec || 0, days:S.days, last:S.last || null, lastAt:S.lastAt || 0,
     lastBy:S.lastBy || {}, lastByAt:S.lastByAt || {},
-    askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos});
+    askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos, posAt:S.posAt || {}});
   function merge(R){
     if(!R) return false;
     let ch = false;
@@ -870,7 +880,10 @@ const SYNC = (() => {
       if(BYID[id] && ((R.lastByAt || {})[b] || 0) > (S.lastByAt[b] || 0)){ S.lastBy[b] = id; S.lastByAt[b] = R.lastByAt[b]; ch = true; }
     if((R.askSeen || 0) > (S.askSeen || 0)) S.askSeen = R.askSeen;
     const q = [...new Set([...(S.qids || []), ...(R.qids || [])])]; if(q.length !== (S.qids || []).length){ S.qids = q; ch = true; }
-    for(const [id, t] of Object.entries(R.pos || {})) if(!(id in S.pos)) S.pos[id] = t;
+    for(const [id, t] of Object.entries(R.pos || {})){
+      const ra = (R.posAt || {})[id] || 0, la = S.posAt[id] || 0;
+      if(!(id in S.pos) || ra > la){ if(S.pos[id] !== t) ch = true; S.pos[id] = t; S.posAt[id] = ra; if(id === curAud && aud.paused && aud.duration && t < aud.duration - 3) aud.currentTime = t; }
+    }
     return ch;
   }
   async function pull(){
@@ -1072,14 +1085,14 @@ $('#bBack').onclick = () => { VOICE.stop(); location.hash = '/'; };
 $('#bNotes').onclick = () => { VOICE.stop(); location.hash = '/notes'; };
 $('#bAsk').onclick = () => { VOICE.stop(); location.hash = '/ask' + (location.hash.startsWith('#/l/') ? '/' + location.hash.slice(4) : ''); };
 $('#bSet').onclick = openSettings;
-addEventListener('pagehide', () => { if(curAud){ S.pos[curAud] = aud.currentTime; try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} } SYNC.now(); });
+addEventListener('pagehide', () => { if(curAud){ setPos(curAud, aud.currentTime); try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} } SYNC.now(); });
 route();
 addEventListener('load', () => SYNC.init());
 
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.09.28-2137';
+const BUILD = '2026.09.28-2147';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
