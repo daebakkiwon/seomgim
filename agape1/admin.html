@@ -130,21 +130,22 @@ $('#tabs').onclick = e => { const t = e.target.closest('[data-t]'); if(!t) retur
 async function load(){
   $('#view').innerHTML = '<div class="empty">불러오는 중…</div>';
   try{
-    const [p, q] = await Promise.all([FS.collection('agape1').get(), FS.collection('agape1q').get()]);
-    // 같은 사람(이름+번호)이 여러 기기에서 쓰면 하나로 합친다
-    const by = {};
-    p.docs.forEach(d => {
-      const x = d.data(), k = (x.phone || '') + '|' + (x.name || '');
+    const [p0, p1, q] = await Promise.all([FS.collection('agape1u').get().catch(() => ({docs:[]})), FS.collection('agape1').get(), FS.collection('agape1q').get()]);
+    // 같은 사람(이름+번호)은 기기가 여럿이어도 하나로 합친다 — agape1u(기기 공유, 새 방식)가 먼저, agape1(기기별, 예전 방식)은 보태기만
+    const by = {}, devs = {};
+    [...p0.docs, ...p1.docs].forEach(d => {
+      const x = d.data(), k = (x.phone || '') + '|' + (x.name || '').replace(/\s+/g, '');
+      (devs[k] ||= new Set());
+      Object.keys(x.devices || {}).forEach(u => devs[k].add(u)); if(!x.devices) devs[k].add(d.id);
       const cur = by[k];
-      if(!cur){ by[k] = Object.assign({devices:1}, x); return; }
-      cur.devices++;
+      if(!cur){ by[k] = Object.assign({}, x); return; }
       cur.done = [...new Set([...(cur.done || []), ...(x.done || [])])]; cur.doneN = cur.done.length;
       for(const f of ['heard', 'wrote', 'acts']){ cur[f] = Object.assign({}, cur[f]); for(const [id, v] of Object.entries(x[f] || {})) cur[f][id] = Math.max(cur[f][id] || 0, v); }
       cur.heardN = LESSONS.filter(l => (cur.heard[l.id] || 0) >= 90).length;
-      for(const f of ['answers', 'memos', 'listenMin', 'days']) cur[f] = (cur[f] || 0) + (x[f] || 0);
+      for(const f of ['answers', 'memos', 'listenMin', 'days']) cur[f] = Math.max(cur[f] || 0, x[f] || 0);   // 같은 기록이 겹치므로 더하지 않고 큰 값
       if(ms(x.updated) > ms(cur.updated)) Object.assign(cur, {updated:x.updated, lastTitle:x.lastTitle, lastDay:x.lastDay, group:x.group || cur.group});
     });
-    PEOPLE = Object.values(by);
+    PEOPLE = Object.entries(by).map(([k, x]) => Object.assign(x, {devices: devs[k].size}));
     QS = q.docs.map(d => Object.assign({id:d.id}, d.data())).sort((a, b) => (!a.answer - !b.answer) * -1 || ms(b.at) - ms(a.at));
     const open = QS.filter(x => !x.answer).length;
     $('#qCnt').hidden = !open; $('#qCnt').textContent = open;
@@ -204,8 +205,8 @@ function detail(){
   $('#ddel').onclick = async () => {
     if(!confirm(`${p.name}님의 진도 기록을 서버에서 지울까요? (보낸 질문도 함께 지웁니다)`)) return;
     try{
-      const [a, b] = await Promise.all([FS.collection('agape1').where('phone', '==', p.phone).get(), FS.collection('agape1q').where('phone', '==', p.phone).get()]);
-      await Promise.all([...a.docs.filter(d => d.data().name === p.name), ...b.docs.filter(d => d.data().name === p.name)].map(d => d.ref.delete()));
+      const [a, u, b] = await Promise.all([FS.collection('agape1').where('phone', '==', p.phone).get(), FS.collection('agape1u').where('phone', '==', p.phone).get().catch(() => ({docs:[]})), FS.collection('agape1q').where('phone', '==', p.phone).get()]);
+      await Promise.all([...a.docs, ...u.docs, ...b.docs].filter(d => d.data().name === p.name).map(d => d.ref.delete()));
       OPEN = null; load();
     }catch(e){ alert('지우지 못했습니다: ' + (e.code || e.message)); }
   };
