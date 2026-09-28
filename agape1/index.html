@@ -277,7 +277,7 @@ let S = {notes:{}, last:null, lastAt:0, fs:19, rate:1, auto:false, theme:'', pos
 let FIRST = true;
 try{ const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if(j){ Object.assign(S, j); FIRST = false; } }catch(e){}
 if(FIRST && Math.min(screen.width, screen.height) >= 700) S.fs = 22;   // 패드는 처음부터 크게
-S.lastBy ||= {}; if(S.last && !S.lastBy.b1 && BYID[S.last]) S.lastBy[BYID[S.last].bk] = S.last;
+S.lastBy ||= {}; S.lastByAt ||= {}; if(S.last && !S.lastBy.b1 && BYID[S.last]){ S.lastBy[BYID[S.last].bk] = S.last; S.lastByAt[BYID[S.last].bk] = S.lastAt || 0; }
 setBook(S.book);
 let saveT;
 const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ toast('저장 공간이 부족합니다'); } SYNC.later(); }, 250); };
@@ -407,7 +407,7 @@ function showSearch(){
 }
 
 function viewItem(it){
-  S.last = it.id; S.lastBy[it.bk] = it.id; S.lastAt = Date.now(); markDay(); save();
+  S.last = it.id; S.lastBy[it.bk] = it.id; S.lastAt = S.lastByAt[it.bk] = Date.now(); markDay(); save();
   $('#hTitle').textContent = blabel(it);
   $('#bBack').style.visibility = 'visible';
   const n = N(it.id), isL = it.kind === 'lesson';
@@ -838,6 +838,7 @@ const SYNC = (() => {
     }catch(e){ err = e.message; }
   }
   const stateOf = () => ({notes:S.notes, heard:S.heard, listenSec:S.listenSec || 0, days:S.days, last:S.last || null, lastAt:S.lastAt || 0,
+    lastBy:S.lastBy || {}, lastByAt:S.lastByAt || {},
     askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos});
   function merge(R){
     if(!R) return false;
@@ -860,7 +861,13 @@ const SYNC = (() => {
     if((R.listenSec || 0) > (S.listenSec || 0)){ S.listenSec = R.listenSec; ch = true; }
     const days = [...new Set([...(S.days || []), ...(R.days || [])])].sort();
     if(days.length !== S.days.length){ S.days = days.slice(-400); ch = true; }
-    if((R.lastAt || 0) > (S.lastAt || 0)){ S.last = R.last; S.lastAt = R.lastAt; ch = true; }
+    if((R.lastAt || 0) > (S.lastAt || 0)){
+      S.last = R.last; S.lastAt = R.lastAt; ch = true;
+      const rb = BYID[R.last] && BYID[R.last].bk;                      // 예전 버전 기록: 마지막 과만 있음
+      if(rb && !(R.lastByAt && R.lastByAt[rb]) && R.lastAt > (S.lastByAt[rb] || 0)){ S.lastBy[rb] = R.last; S.lastByAt[rb] = R.lastAt; }
+    }
+    for(const [b, id] of Object.entries(R.lastBy || {}))                // 권마다 '이어서 공부하기' 자리도 나중 것으로
+      if(BYID[id] && ((R.lastByAt || {})[b] || 0) > (S.lastByAt[b] || 0)){ S.lastBy[b] = id; S.lastByAt[b] = R.lastByAt[b]; ch = true; }
     if((R.askSeen || 0) > (S.askSeen || 0)) S.askSeen = R.askSeen;
     const q = [...new Set([...(S.qids || []), ...(R.qids || [])])]; if(q.length !== (S.qids || []).length){ S.qids = q; ch = true; }
     for(const [id, t] of Object.entries(R.pos || {})) if(!(id in S.pos)) S.pos[id] = t;
@@ -1072,7 +1079,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.09.28-2128';
+const BUILD = '2026.09.28-2137';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
