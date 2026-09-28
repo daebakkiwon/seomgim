@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>아가페 1권 관리</title>
+<title>아가페 성경공부 관리</title>
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
@@ -32,7 +32,7 @@ input[type=email],input[type=password],input[type=search],select,textarea{width:
 .btn.ghost{background:none;border:1px solid var(--line);color:var(--ink)}
 .btn:disabled{opacity:.5}
 .err{color:var(--rec);font-size:14px;min-height:20px}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
 .kpi{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px}
 .kpi b{display:block;font-size:26px;font-variant-numeric:tabular-nums}
 .kpi span{font-size:13px;color:var(--soft)}
@@ -71,7 +71,7 @@ tr.p:hover td{background:var(--accbg)}
 </style>
 </head>
 <body>
-<header><div class="wrap"><h1>아가페 1권 · 관리</h1>
+<header><div class="wrap"><h1>아가페 성경공부 · 관리</h1>
   <div class="tabs" id="tabs" hidden><button class="tab on" data-t="p">진도</button><button class="tab" data-t="q">질문<span class="cnt" id="qCnt" hidden></span></button><button class="tab" id="out">나가기</button></div>
 </div></header>
 <main class="wrap" id="view"><div class="empty">불러오는 중…</div></main>
@@ -81,8 +81,11 @@ tr.p:hover td{background:var(--accbg)}
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>window.FB_CONFIG = {"apiKey":"AIzaSyDT2snkVUWznnrRfCv50aLbLL8VRDKyR40","authDomain":"seomgim-growth.firebaseapp.com","projectId":"seomgim-growth","storageBucket":"seomgim-growth.firebasestorage.app","messagingSenderId":"479785468927","appId":"1:479785468927:web:4381a352eb691f6194ddca"};</script>
 <script>
-const LESSONS = [{"id": "02", "no": 1, "title": "나는 왜 아픈가"}, {"id": "03", "no": 2, "title": "유전자에는 스위치가 있습니다"}, {"id": "04", "no": 3, "title": "생기, 유전자를 켜는 힘"}, {"id": "05", "no": 4, "title": "마음이 몸을 바꿉니다"}, {"id": "06", "no": 5, "title": "선택이 유전자를 바꿉니다"}, {"id": "08", "no": 6, "title": "하나님은 사랑이십니다"}, {"id": "09", "no": 7, "title": "조건 있는 사랑, 조건 없는 사랑"}, {"id": "10", "no": 8, "title": "흙에 입 맞추신 분"}, {"id": "11", "no": 9, "title": "기다리는 아버지"}, {"id": "12", "no": 10, "title": "찾을 때까지 찾으시는 분"}, {"id": "14", "no": 11, "title": "오해의 시작"}, {"id": "15", "no": 12, "title": "\"네가 어디 있느냐\""}, {"id": "16", "no": 13, "title": "가죽옷을 지어 입히시다"}, {"id": "17", "no": 14, "title": "죄란 무엇일까요"}, {"id": "18", "no": 15, "title": "죽음은 벌일까요"}, {"id": "20", "no": 16, "title": "나를 본 사람은 아버지를 보았습니다"}, {"id": "21", "no": 17, "title": "\"나도 너를 정죄하지 않는다\""}, {"id": "22", "no": 18, "title": "우물가에서 만난 분"}, {"id": "23", "no": 19, "title": "병든 사람 곁에 서신 분"}, {"id": "24", "no": 20, "title": "무릎 꿇고 발을 씻기신 하나님"}, {"id": "26", "no": 21, "title": "왜 십자가였을까요"}, {"id": "27", "no": 22, "title": "\"아버지, 저들을 용서하여 주옵소서\""}, {"id": "28", "no": 23, "title": "곁에 달린 강도"}, {"id": "29", "no": 24, "title": "\"다 이루었다\""}, {"id": "30", "no": 25, "title": "빈 무덤, 생명이 이겼습니다"}, {"id": "32", "no": 26, "title": "믿음이란 무엇일까요"}, {"id": "33", "no": 27, "title": "값없이 받는 선물"}, {"id": "34", "no": 28, "title": "다시 태어난다는 것"}, {"id": "35", "no": 29, "title": "명령이 아니라 약속입니다"}, {"id": "36", "no": 30, "title": "\"너는 내 것이라\""}, {"id": "38", "no": 31, "title": "함께 계시는 분, 성령"}, {"id": "39", "no": 32, "title": "기도, 아버지와 나누는 이야기"}, {"id": "40", "no": 33, "title": "응어리를 푸는 힘, 용서"}, {"id": "41", "no": 34, "title": "감사가 몸을 살립니다"}, {"id": "42", "no": 35, "title": "\"내게로 와서 쉬십시오\""}, {"id": "44", "no": 36, "title": "누가 내 이웃입니까"}, {"id": "45", "no": 37, "title": "아플 때 하나님은 어디 계실까요"}, {"id": "46", "no": 38, "title": "사랑 안에는 두려움이 없습니다"}, {"id": "47", "no": 39, "title": "눈물을 닦아 주실 날"}, {"id": "48", "no": 40, "title": "이제, 사랑을 전하는 사람으로"}];
+const META = {"books": [{"id": "b1", "no": 1, "title": "사랑이 생명입니다", "series": "아가페 성경공부 제1권", "by": "이상구 박사 건강강의와 함께 읽는 40과"}, {"id": "b2", "no": 2, "title": "두려움 없는 복음", "series": "아가페 성경공부 제2권", "by": "아가페의 눈으로 다시 읽는 성경 40과"}], "lessons": [{"id": "02", "no": 1, "title": "나는 왜 아픈가", "bk": "b1"}, {"id": "03", "no": 2, "title": "유전자에는 스위치가 있습니다", "bk": "b1"}, {"id": "04", "no": 3, "title": "생기, 유전자를 켜는 힘", "bk": "b1"}, {"id": "05", "no": 4, "title": "마음이 몸을 바꿉니다", "bk": "b1"}, {"id": "06", "no": 5, "title": "선택이 유전자를 바꿉니다", "bk": "b1"}, {"id": "08", "no": 6, "title": "하나님은 사랑이십니다", "bk": "b1"}, {"id": "09", "no": 7, "title": "조건 있는 사랑, 조건 없는 사랑", "bk": "b1"}, {"id": "10", "no": 8, "title": "흙에 입 맞추신 분", "bk": "b1"}, {"id": "11", "no": 9, "title": "기다리는 아버지", "bk": "b1"}, {"id": "12", "no": 10, "title": "찾을 때까지 찾으시는 분", "bk": "b1"}, {"id": "14", "no": 11, "title": "오해의 시작", "bk": "b1"}, {"id": "15", "no": 12, "title": "\"네가 어디 있느냐\"", "bk": "b1"}, {"id": "16", "no": 13, "title": "가죽옷을 지어 입히시다", "bk": "b1"}, {"id": "17", "no": 14, "title": "죄란 무엇일까요", "bk": "b1"}, {"id": "18", "no": 15, "title": "죽음은 벌일까요", "bk": "b1"}, {"id": "20", "no": 16, "title": "나를 본 사람은 아버지를 보았습니다", "bk": "b1"}, {"id": "21", "no": 17, "title": "\"나도 너를 정죄하지 않는다\"", "bk": "b1"}, {"id": "22", "no": 18, "title": "우물가에서 만난 분", "bk": "b1"}, {"id": "23", "no": 19, "title": "병든 사람 곁에 서신 분", "bk": "b1"}, {"id": "24", "no": 20, "title": "무릎 꿇고 발을 씻기신 하나님", "bk": "b1"}, {"id": "26", "no": 21, "title": "왜 십자가였을까요", "bk": "b1"}, {"id": "27", "no": 22, "title": "\"아버지, 저들을 용서하여 주옵소서\"", "bk": "b1"}, {"id": "28", "no": 23, "title": "곁에 달린 강도", "bk": "b1"}, {"id": "29", "no": 24, "title": "\"다 이루었다\"", "bk": "b1"}, {"id": "30", "no": 25, "title": "빈 무덤, 생명이 이겼습니다", "bk": "b1"}, {"id": "32", "no": 26, "title": "믿음이란 무엇일까요", "bk": "b1"}, {"id": "33", "no": 27, "title": "값없이 받는 선물", "bk": "b1"}, {"id": "34", "no": 28, "title": "다시 태어난다는 것", "bk": "b1"}, {"id": "35", "no": 29, "title": "명령이 아니라 약속입니다", "bk": "b1"}, {"id": "36", "no": 30, "title": "\"너는 내 것이라\"", "bk": "b1"}, {"id": "38", "no": 31, "title": "함께 계시는 분, 성령", "bk": "b1"}, {"id": "39", "no": 32, "title": "기도, 아버지와 나누는 이야기", "bk": "b1"}, {"id": "40", "no": 33, "title": "응어리를 푸는 힘, 용서", "bk": "b1"}, {"id": "41", "no": 34, "title": "감사가 몸을 살립니다", "bk": "b1"}, {"id": "42", "no": 35, "title": "\"내게로 와서 쉬십시오\"", "bk": "b1"}, {"id": "44", "no": 36, "title": "누가 내 이웃입니까", "bk": "b1"}, {"id": "45", "no": 37, "title": "아플 때 하나님은 어디 계실까요", "bk": "b1"}, {"id": "46", "no": 38, "title": "사랑 안에는 두려움이 없습니다", "bk": "b1"}, {"id": "47", "no": 39, "title": "눈물을 닦아 주실 날", "bk": "b1"}, {"id": "48", "no": 40, "title": "이제, 사랑을 전하는 사람으로", "bk": "b1"}, {"id": "2-02", "no": 1, "title": "두 개의 렌즈", "bk": "b2"}, {"id": "2-03", "no": 2, "title": "하나님의 정의에서 시작하기", "bk": "b2"}, {"id": "2-04", "no": 3, "title": "약속인가 명령인가", "bk": "b2"}, {"id": "2-05", "no": 4, "title": "언약과 계약", "bk": "b2"}, {"id": "2-06", "no": 5, "title": "예수, 하나님을 해석하는 열쇠", "bk": "b2"}, {"id": "2-08", "no": 6, "title": "\"반드시 죽으리라\"", "bk": "b2"}, {"id": "2-09", "no": 7, "title": "숨은 자를 찾아오신 하나님", "bk": "b2"}, {"id": "2-10", "no": 8, "title": "가인에게 주신 표", "bk": "b2"}, {"id": "2-11", "no": 9, "title": "노아 홍수, 한탄하시는 하나님", "bk": "b2"}, {"id": "2-12", "no": 10, "title": "모리아 산의 아브라함", "bk": "b2"}, {"id": "2-14", "no": 11, "title": "열 가지 약속", "bk": "b2"}, {"id": "2-15", "no": 12, "title": "시내산의 두려움", "bk": "b2"}, {"id": "2-16", "no": 13, "title": "제사, 누구를 위한 것인가", "bk": "b2"}, {"id": "2-17", "no": 14, "title": "안식일, 쉼의 선물", "bk": "b2"}, {"id": "2-18", "no": 15, "title": "사랑은 율법의 완성", "bk": "b2"}, {"id": "2-20", "no": 16, "title": "\"내버려 두사\"", "bk": "b2"}, {"id": "2-21", "no": 17, "title": "누가 하는 일인가", "bk": "b2"}, {"id": "2-22", "no": 18, "title": "바로의 마음을 완악하게 하셨다는 말", "bk": "b2"}, {"id": "2-23", "no": 19, "title": "구약의 전쟁과 멸망 기사 앞에서", "bk": "b2"}, {"id": "2-24", "no": 20, "title": "심판이란 무엇인가", "bk": "b2"}, {"id": "2-26", "no": 21, "title": "누가 누구와 화목하는가", "bk": "b2"}, {"id": "2-27", "no": 22, "title": "형벌의 대가인가, 사랑의 확증인가", "bk": "b2"}, {"id": "2-28", "no": 23, "title": "\"어찌하여 나를 버리셨나이까\"", "bk": "b2"}, {"id": "2-29", "no": 24, "title": "피는 생명입니다", "bk": "b2"}, {"id": "2-30", "no": 25, "title": "\"다 이루었다\", 찢어진 휘장", "bk": "b2"}, {"id": "2-32", "no": 26, "title": "믿음으로 의롭다 하심", "bk": "b2"}, {"id": "2-33", "no": 27, "title": "믿음은 또 하나의 행위입니까", "bk": "b2"}, {"id": "2-34", "no": 28, "title": "회개, 돌아서는 기쁨", "bk": "b2"}, {"id": "2-35", "no": 29, "title": "열매는 맺히는 것입니다", "bk": "b2"}, {"id": "2-36", "no": 30, "title": "구원의 확신과 \"두렵고 떨림\"", "bk": "b2"}, {"id": "2-38", "no": 31, "title": "지옥과 영원한 불", "bk": "b2"}, {"id": "2-39", "no": 32, "title": "용서받지 못할 죄", "bk": "b2"}, {"id": "2-40", "no": 33, "title": "\"짐짓 죄를 범한즉\"", "bk": "b2"}, {"id": "2-41", "no": 34, "title": "양과 염소, 알곡과 가라지", "bk": "b2"}, {"id": "2-42", "no": 35, "title": "요한계시록의 어린양", "bk": "b2"}, {"id": "2-44", "no": 36, "title": "온전한 사랑이 두려움을 내쫓습니다", "bk": "b2"}, {"id": "2-45", "no": 37, "title": "고난 속에서 드리는 기도", "bk": "b2"}, {"id": "2-46", "no": 38, "title": "정죄하지 않는 공동체", "bk": "b2"}, {"id": "2-47", "no": 39, "title": "복음은 몸도 살립니다", "bk": "b2"}, {"id": "2-48", "no": 40, "title": "아가페를 전하는 사람", "bk": "b2"}]};
+const BOOKS = META.books, LESSONS = META.lessons;               // 1권·2권 … 의 과 목록
 const LBY = Object.fromEntries(LESSONS.map(l => [l.id, l]));
+const LB = b => LESSONS.filter(l => l.bk === b.id);
+const doneIn = (p, b) => (p.done || []).filter(id => LBY[id] && LBY[id].bk === b.id).length;
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const phoneF = p => String(p || '').replace(/^(\d{3})(\d{3,4})(\d{4})$/, '$1-$2-$3');
@@ -160,15 +163,14 @@ function drawPeople(){
   const groups = [...new Set(PEOPLE.map(p => p.group).filter(Boolean))].sort();
   const week = Date.now() - 7 * 86400000;
   const active = PEOPLE.filter(p => ms(p.updated) > week).length;
-  const avg = PEOPLE.length ? Math.round(PEOPLE.reduce((a, p) => a + (p.doneN || 0), 0) / PEOPLE.length * 10) / 10 : 0;
-  const fin = PEOPLE.filter(p => (p.doneN || 0) >= LESSONS.length).length;
+  const fins = BOOKS.map(b => ({b, n: PEOPLE.filter(p => doneIn(p, b) >= LB(b).length).length, on: PEOPLE.filter(p => doneIn(p, b) > 0).length}));
   let rows = PEOPLE.filter(p => (!FILTER.g || p.group === FILTER.g) && (!FILTER.q || (p.name + p.phone).includes(FILTER.q)));
   const key = {name:p => p.name, group:p => p.group || '', done:p => p.doneN || 0, heard:p => p.heardN || 0, ans:p => p.answers || 0, min:p => p.listenMin || 0, last:p => ms(p.updated)}[SORT.k];
   rows.sort((a, b) => (key(a) > key(b) ? 1 : key(a) < key(b) ? -1 : 0) * SORT.d);
   const th = (k, t) => `<th data-s="${k}">${t}${SORT.k === k ? (SORT.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
   $('#view').innerHTML = `
     <div class="kpis"><div class="kpi"><b>${PEOPLE.length}</b><span>등록한 분</span></div><div class="kpi"><b>${active}</b><span>최근 7일 공부</span></div>
-      <div class="kpi"><b>${avg}</b><span>평균 마친 과 (/${LESSONS.length})</span></div><div class="kpi"><b>${fin}</b><span>1권을 다 마친 분</span></div></div>
+      ${fins.map(f => `<div class="kpi"><b>${f.n}<small style="font-size:14px;color:var(--soft);font-weight:400"> / ${f.on}명</small></b><span>${f.b.no}권을 다 마친 분 / 공부 중</span></div>`).join('')}</div>
     <div class="tools"><input type="search" id="fq" placeholder="이름·번호로 찾기" value="${esc(FILTER.q)}">
       <select id="fg"><option value="">모든 모임</option>${groups.map(g => `<option${g === FILTER.g ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>
       <button class="btn ghost" id="rf">새로고침</button><button class="btn ghost" id="csv">엑셀(CSV) 받기</button></div>
@@ -176,7 +178,7 @@ function drawPeople(){
       ${rows.map((p, i) => { const late = ms(p.updated) < week; return `<tr class="p" data-i="${PEOPLE.indexOf(p)}">
         <td class="nm"><b>${esc(p.name)}</b><small>${esc(phoneF(p.phone))}${p.devices > 1 ? ` · 기기 ${p.devices}대` : ''}</small></td>
         <td>${esc(p.group || '-')}</td>
-        <td><div class="bar"><i><s style="width:${(p.doneN || 0) / LESSONS.length * 100}%"></s></i>${p.doneN || 0}</div></td>
+        <td>${BOOKS.map(b => { const d = doneIn(p, b), t = LB(b).length; return `<div class="bar" style="margin:2px 0"><small style="width:28px;color:var(--soft)">${b.no}권</small><i><s style="width:${d / t * 100}%"></s></i>${d}</div>`; }).join('')}</td>
         <td>${p.heardN || 0}</td><td>${p.answers || 0}</td><td>${p.listenMin || 0}분</td>
         <td class="${late ? 'late' : ''}">${ago(ms(p.updated))}</td><td style="font-size:13px;color:var(--soft)">${esc(p.lastTitle || '-')}</td></tr>`; }).join('')}
       </tbody></table>` : '<div class="empty">아직 등록한 분이 없습니다</div>'}</div>
@@ -198,8 +200,9 @@ function detail(){
       <div><b style="font-size:18px">${esc(p.name)}</b> <span class="hint">${esc(phoneF(p.phone))} · ${esc(p.group || '모임 없음')} · ${p.ua || ''}</span>
       <div class="hint" style="margin-top:4px">공부한 날 ${p.days || 0}일 · 들은 시간 ${p.listenMin || 0}분 · 묵상 노트 ${p.memos || 0}개 · 보낸 질문 ${myQ}개 · 마지막 ${esc(p.lastDay || '-')}</div></div>
       <div style="display:flex;gap:6px"><button class="btn ghost" id="ddel">기록 지우기</button><button class="btn ghost" id="dx">닫기</button></div></div>
-    <div class="grid">${LESSONS.map(l => { const d = done.has(l.id), h = (p.heard?.[l.id] || 0) >= 90, w = p.wrote?.[l.id];
-      return `<div class="cell${d ? ' d' : h ? ' h' : ''}" title="제${l.no}과 ${esc(l.title)}${p.heard?.[l.id] ? ' · 들음 ' + p.heard[l.id] + '%' : ''}${w ? ' · 적은 답 ' + w : ''}">${l.no}${w ? '<span class="w">✎</span>' : ''}</div>`; }).join('')}</div>
+    ${BOOKS.map(b => `<div style="margin-top:14px;font-weight:600">${b.no}권 · ${esc(b.title)} <span class="hint">${doneIn(p, b)}/${LB(b).length}과</span></div>
+    <div class="grid">${LB(b).map(l => { const d = done.has(l.id), h = (p.heard?.[l.id] || 0) >= 90, w = p.wrote?.[l.id];
+      return `<div class="cell${d ? ' d' : h ? ' h' : ''}" title="${b.no}권 제${l.no}과 ${esc(l.title)}${p.heard?.[l.id] ? ' · 들음 ' + p.heard[l.id] + '%' : ''}${w ? ' · 적은 답 ' + w : ''}">${l.no}${w ? '<span class="w">✎</span>' : ''}</div>`; }).join('')}</div>`).join('')}
     <div class="legend"><span><i style="background:var(--cell2)"></i>마침</span><span><i style="background:var(--cell1)"></i>끝까지 들음</span><span><i style="background:var(--cell0)"></i>아직</span><span>✎ 답을 적음</span></div></div>`;
   $('#dx').onclick = () => { OPEN = null; $('#detail').innerHTML = ''; };
   $('#ddel').onclick = async () => {
@@ -213,14 +216,14 @@ function detail(){
   $('#detail').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 function csv(rows){
-  const head = ['이름', '휴대폰', '모임', '마친 과', '끝까지 들은 과', '적은 답', '묵상 노트', '들은 시간(분)', '공부한 날', '마지막 공부', '공부 중인 과', ...LESSONS.map(l => '제' + l.no + '과')];
+  const head = ['이름', '휴대폰', '모임', ...BOOKS.map(b => b.no + '권 마친 과'), '끝까지 들은 과', '적은 답', '묵상 노트', '들은 시간(분)', '공부한 날', '마지막 공부', '공부 중인 과', ...LESSONS.map(l => (LBY[l.id] ? BOOKS.find(b => b.id === l.bk).no + '권 ' : '') + '제' + l.no + '과')];
   const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
   const lines = [head.map(q).join(',')].concat(rows.map(p => { const done = new Set(p.done || []);
-    return [p.name, phoneF(p.phone), p.group, p.doneN || 0, p.heardN || 0, p.answers || 0, p.memos || 0, p.listenMin || 0, p.days || 0, p.lastDay, p.lastTitle,
+    return [p.name, phoneF(p.phone), p.group, ...BOOKS.map(b => doneIn(p, b)), p.heardN || 0, p.answers || 0, p.memos || 0, p.listenMin || 0, p.days || 0, p.lastDay, p.lastTitle,
       ...LESSONS.map(l => done.has(l.id) ? '마침' : (p.heard?.[l.id] || 0) >= 90 ? '들음' : '')].map(q).join(','); }));
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\n')], {type:'text/csv;charset=utf-8'}));
-  a.download = `아가페1권_진도_${new Date().toLocaleDateString('sv')}.csv`; a.click();
+  a.download = `아가페성경공부_진도_${new Date().toLocaleDateString('sv')}.csv`; a.click();
 }
 
 function drawQs(){

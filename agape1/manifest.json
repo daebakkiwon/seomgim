@@ -1,6 +1,6 @@
 {
-  "name": "아가페 성경공부 1권 · 사랑이 생명입니다",
-  "short_name": "아가페 1권",
+  "name": "아가페 성경공부",
+  "short_name": "아가페 성경",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -26,5 +26,5 @@
   ],
   "id": "./",
   "orientation": "any",
-  "description": "이상구 박사 건강강의와 함께 읽는 아가페 성경공부 제1권"
+  "description": "이상구 박사와 함께하는 아가페 성경공부 (1권 사랑이 생명입니다 · 2권 두려움 없는 복음)"
 }
