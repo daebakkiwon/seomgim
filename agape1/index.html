@@ -272,9 +272,9 @@ function setBook(id){
   return b;
 }
 const BK = () => bookOf({bk: S.book});
-/* 1권은 누구나, 2권·심화편은 인도자 승인 후 (승인은 서버 agape1a/{열쇠} — 관리자만 쓸 수 있음) */
-const canUse = bk => { const b = BOOKS.find(x => x.id === bk); return !b || b.free || S.lockOff !== false || !!(S.access && S.access[bk]); };
-// S.lockOff: 서버에 승인 규칙이 아직 없으면(읽기 거절) 잠그지 않는다 — 규칙이 생기면 저절로 잠금이 켜진다
+/* 1권은 누구나, 2권·심화편은 인도자 승인 후 (승인은 기기 공유 기록 agape1u 의 access 칸 — 관리자 화면에서 적음) */
+const canUse = bk => { const b = BOOKS.find(x => x.id === bk); return !b || b.free || !!(S.access && S.access[bk]); };
+// 승인은 기기 공유 기록(agape1u)의 access 칸에 관리자 화면이 적는다
 const LOCK = '🔒';
 const KEY = 'agape1.v1';
 const $ = s => document.querySelector(s);
@@ -924,17 +924,15 @@ const SYNC = (() => {
       try{
         if(!FS || !UID || !S.profile) return 'none';
         UKEY = await ukey();
-        try{                                                 // 승인 상태 (관리자만 쓰는 칸)
-          const a = await FS.collection('agape1a').doc(UKEY).get();
-          const acc = a.exists ? a.data() : {};
-          if(S.lockOff !== false){ S.lockOff = false; setTimeout(route, 0); }   // 승인 규칙이 있다 → 잠금 켜기
+        const d = await FS.collection('agape1u').doc(UKEY).get();
+        {                                                    // 승인 상태 — 관리자 화면이 같은 문서의 access 칸에 적는다
+          const acc = (d.exists && d.data().access) || {};
           const newly = BOOKS.filter(b => !b.free && acc[b.id] && !(S.access || {})[b.id]);
           const changed = JSON.stringify(acc) !== JSON.stringify(S.access || {});
           S.access = acc;
-          if(changed){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} if(!(document.activeElement && /TEXTAREA|INPUT/.test(document.activeElement.tagName))) route(); }
+          if(changed){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} if(!(document.activeElement && /TEXTAREA|INPUT/.test(document.activeElement.tagName))) setTimeout(route, 0); }
           if(newly.length) toast(newly.map(b => b.short).join('·') + ' 공부가 승인되었습니다 🌿');
-        }catch(e){ if(e && e.code === 'permission-denied') S.lockOff = true; }
-        const d = await FS.collection('agape1u').doc(UKEY).get();
+        }
         pulled = true;
         if(!d.exists) return 'new';
         const ch = merge(d.data().state);
@@ -1139,7 +1137,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.09.29-0209';
+const BUILD = '2026.09.29-1026';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;

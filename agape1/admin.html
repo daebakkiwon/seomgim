@@ -134,8 +134,8 @@ $('#tabs').onclick = e => { const t = e.target.closest('[data-t]'); if(!t) retur
 async function load(){
   $('#view').innerHTML = '<div class="empty">불러오는 중…</div>';
   try{
-    const [p0, p1, q, ac] = await Promise.all([FS.collection('agape1u').get().catch(() => ({docs:[]})), FS.collection('agape1').get(), FS.collection('agape1q').get(), FS.collection('agape1a').get().catch(() => ({docs:[], denied:true}))]);
-    ACC = {}; ac.docs.forEach(d => ACC[d.id] = d.data()); ACC_DENIED = !!ac.denied;
+    const [p0, p1, q] = await Promise.all([FS.collection('agape1u').get().catch(() => ({docs:[]})), FS.collection('agape1').get(), FS.collection('agape1q').get()]);
+    ACC = {}; p0.docs.forEach(d => ACC[d.id] = d.data().access || {});     // 승인은 agape1u 문서의 access 칸
     // 같은 사람(이름+번호)은 기기가 여럿이어도 하나로 합친다 — agape1u(기기 공유, 새 방식)가 먼저, agape1(기기별, 예전 방식)은 보태기만
     const by = {}, devs = {};
     [...p0.docs.map(d => ({d, u:true})), ...p1.docs.map(d => ({d, u:false}))].forEach(({d, u}) => {
@@ -173,7 +173,6 @@ function drawAcc(){
     const w = p => LOCKED.some(bk => st(p, bk) === 'req') ? 0 : 1;
     return w(a) - w(b) || String(a.name).localeCompare(String(b.name), 'ko'); });
   $('#view').innerHTML = `
-    ${ACC_DENIED ? '<div class="card" style="border-color:var(--rec)">승인 정보를 읽을 수 없습니다. Firebase 규칙에 <b>agape1a</b> 부분(파이어베이스_규칙_추가3.txt)을 붙여 넣었는지 확인해 주세요.</div>' : ''}
     <p class="hint" style="margin-top:16px">1권은 누구나 공부할 수 있습니다. 2권과 심화편은 여기서 <b>승인</b>한 분만 열립니다. 주황 표시는 승인을 요청한 분입니다.</p>
     <div class="scroll"><table><thead><tr><th>이름</th><th>모임</th>${LOCKED.map(b => `<th>${esc(b.short)}</th>`).join('')}<th></th></tr></thead><tbody>
     ${rows.map(p => `<tr><td class="nm"><b>${esc(p.name)}</b><small>${esc(phoneF(p.phone))}</small></td><td>${esc(p.group || '-')}</td>
@@ -185,7 +184,7 @@ function drawAcc(){
   const who = key => PEOPLE.find(p => p.ukey === key);
   const write = async (key, patch) => {
     const p = who(key);
-    await FS.collection('agape1a').doc(key).set(Object.assign({name: p.name, phone: p.phone, updated: firebase.firestore.FieldValue.serverTimestamp()}, patch), {merge:true});
+    await FS.collection('agape1u').doc(key).set({access: patch, accessAt: firebase.firestore.FieldValue.serverTimestamp()}, {merge:true});
     ACC[key] = Object.assign({}, ACC[key], patch);
   };
   document.querySelectorAll('[data-acc]').forEach(b => b.onclick = async () => {
