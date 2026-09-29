@@ -260,8 +260,14 @@ body.playing .sn{cursor:pointer}
 .vs .vn{flex:0 0 26px;font:600 13px var(--sans);color:var(--acc);padding-top:.35em}
 .vs .vt{font:var(--fs)/1.9 var(--serif);word-break:keep-all}
 .vs.mk{background:var(--mark)}
-.vc{margin:0 0 22px 36px;padding:0 0 0 12px;border-left:3px solid var(--line);font:calc(var(--fs) * .88)/1.8 var(--sans);color:var(--soft);word-break:keep-all}
-.vc .chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;margin:0 6px 4px 0;vertical-align:middle;background:var(--line);color:var(--soft)}
+.vtog{display:inline-flex;align-items:center;gap:4px;margin:-2px 0 10px 36px;padding:3px 10px 3px 4px;border:1px solid var(--line);border-radius:999px;background:var(--paper);font:12px var(--sans);color:var(--soft)}
+.vtog .chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--line);color:var(--soft)}
+.vtog.lecture .chip{background:var(--acc);color:#fff} .vtog.reread .chip{background:var(--warn);color:#fff}
+.vtog .arr{font-size:12px;color:var(--faint)}
+.vtog[aria-expanded="true"]{background:var(--accbg);border-color:var(--acc2)}
+.vvtools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;font-size:12px;color:var(--faint)}
+.chip2{border:1px solid var(--acc2);background:none;color:var(--acc);border-radius:999px;padding:6px 12px;font:600 13px var(--sans);white-space:nowrap}
+.vc{margin:-4px 0 22px 36px;padding:0 0 0 12px;border-left:3px solid var(--line);font:calc(var(--fs) * .88)/1.8 var(--sans);color:var(--soft);word-break:keep-all}
 .vc.lecture{border-left-color:var(--acc)} .vc.lecture .chip{background:var(--acc);color:#fff}
 .vc.reread{border-left-color:var(--warn)} .vc.reread .chip{background:var(--warn);color:#fff}
 .vc small{display:block;font-size:12px;color:var(--faint);margin-top:6px}
@@ -681,9 +687,13 @@ const VV = (() => {
     const marks = new Set(S.vv.marks[k] || []);
     return list.map(v => `${v.heading ? `<div class="vh">${esc(v.heading)}</div>` : ''}
       <div class="vs${marks.has(String(v.verse)) ? ' mk' : ''}" data-v="${esc(String(v.verse))}"><span class="vn">${esc(v.label || v.verse)}</span><span class="vt">${esc(v.text)}</span></div>
-      <div class="vc ${esc(v.tag || 'added')}"><span class="chip">${esc(v.tag_label || TAGN[v.tag] || '')}</span>${esc(v.commentary || '')}${v.lecture_sessions ? `<small>강의 ${esc(v.lecture_sessions)}</small>` : ''}</div>`).join('');
+      <button class="vtog ${esc(v.tag || 'added')}" aria-expanded="false"><span class="chip">${esc(v.tag_label || TAGN[v.tag] || '')}</span><span class="arr">▸</span></button>
+      <div class="vc ${esc(v.tag || 'added')}" hidden>${esc(v.commentary || '')}${v.lecture_sessions ? `<small>강의 ${esc(v.lecture_sessions)}</small>` : ''}</div>`).join('');
   }
+  function setOpen(btn, open){ const box = btn.nextElementSibling; box.hidden = !open; btn.setAttribute('aria-expanded', open); btn.querySelector('.arr').textContent = open ? '▾' : '▸'; }
   function bindMarks(k){
+    $('#view').querySelectorAll('.vtog').forEach(b => b.onclick = () => setOpen(b, b.nextElementSibling.hidden));
+    const all = $('#vvAll'); if(all) all.onclick = () => { const open = all.dataset.open !== '1'; all.dataset.open = open ? '1' : '0'; all.textContent = open ? '해설 모두 접기' : '해설 모두 펼치기'; $('#view').querySelectorAll('.vtog').forEach(b => setOpen(b, open)); };
     $('#view').querySelectorAll('.vs').forEach(el => el.onclick = () => {
       const arr = S.vv.marks[k] || (S.vv.marks[k] = []), v = el.dataset.v, i = arr.indexOf(v);
       i < 0 ? arr.push(v) : arr.splice(i, 1); el.classList.toggle('mk', i < 0); save();
@@ -712,6 +722,7 @@ const VV = (() => {
     const nx = ch < b.ch ? `#/vv/${code}/${ch + 1}` : nb ? `#/vv/${nb.code}/1` : null;
     $('#view').innerHTML = `<section class="lhead"><div class="kicker">절별 대조 · ${esc(b.name)}</div><h2>${ch}${b.unit} · ${esc(c.title || '')}</h2></section>
       ${c.key ? `<div class="vkey"><b>이 장을 읽는 열쇠</b>${esc(c.key)}</div>` : ''}
+      <div class="vvtools"><span>절 옆의 표시를 누르면 그 절의 해설이 펼쳐집니다</span><button class="chip2" id="vvAll">해설 모두 펼치기</button></div>
       <div class="body">${verses(c.verses, k, b.unit)}</div>
       ${foot(k)}
       <div class="nav2">${pv ? `<button data-href="${pv}"><small>이전</small>${ch - 1}${b.unit}</button>` : '<span></span>'}${nx ? `<button data-href="${nx}" style="text-align:right"><small>다음</small>${ch < b.ch ? (ch + 1) + b.unit : nb.name + ' 1' + nb.unit}</button>` : ''}</div>
@@ -722,7 +733,8 @@ const VV = (() => {
     const P = M.prologue || {sections:[]}, k = 'intro';
     $('#hTitle').textContent = '서막'; back('#/');
     S.vv.last = k; S.vv.lastAt = Date.now(); save();
-    let h = `<section class="lhead"><div class="kicker">절별 대조 · 서막</div><h2>${esc(P.title || '서막')}</h2></section>`;
+    let h = `<section class="lhead"><div class="kicker">절별 대조 · 서막</div><h2>${esc(P.title || '서막')}</h2></section>
+      <div class="vvtools"><span>절 옆의 표시를 누르면 그 절의 해설이 펼쳐집니다</span><button class="chip2" id="vvAll">해설 모두 펼치기</button></div>`;
     for(const sec of P.sections){
       h += `<h2 style="font:700 1.15em var(--sans);color:var(--acc);margin:2em 0 .4em">${esc(sec.title)}</h2>${sec.key ? `<div class="vkey"><b>이 본문을 읽는 열쇠</b>${esc(sec.key)}</div>` : ''}<div class="body">${verses(sec.verses || [], k)}</div>`;
     }
@@ -1336,7 +1348,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.09.29-1818';
+const BUILD = '2026.09.29-1842';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
