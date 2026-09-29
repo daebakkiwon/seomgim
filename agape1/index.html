@@ -154,6 +154,9 @@ textarea:focus{border-color:var(--acc)}
 .seg button{flex:1;border:0;background:none;padding:11px 4px;font-size:15px;border-left:1px solid var(--line)}
 .seg button:first-child{border-left:0}
 .seg button.on{background:var(--acc);color:#fff}
+.seg.g3{display:grid;grid-template-columns:repeat(3,1fr)}
+.seg.g3 button:nth-child(3n+1){border-left:0}
+.seg.g3 button:nth-child(n+4){border-top:1px solid var(--line)}
 .sheet input[type=text],.sheet input[type=password]{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:15px var(--sans)}
 .sheet .hint{font-size:13px;color:var(--faint);margin-top:6px;line-height:1.6}
 .btn{display:block;width:100%;padding:14px;border-radius:12px;border:0;background:var(--acc);color:#fff;font:600 15px var(--sans);margin-top:10px}
@@ -300,7 +303,9 @@ const markDay = () => { const d = new Date().toLocaleDateString('sv'); if(!S.day
 const N = id => (S.notes[id] ||= {q:{}, act:{}, copy:'', memo:'', marks:[], done:false});
 const hasNote = n => n && (Object.values(n.q||{}).some(v => v.trim()) || (n.copy||'').trim() || (n.memo||'').trim());
 function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 2400); }
+const FS_STEPS = [13, 15, 17, 19, 22, 26], FS_NAMES = ['아주 작게', '작게', '조금 작게', '보통', '크게', '아주 크게'];
 function applyPrefs(){
+  if(!FS_STEPS.includes(S.fs)) S.fs = FS_STEPS.reduce((a, b) => Math.abs(b - S.fs) < Math.abs(a - S.fs) ? b : a);   // 예전 값은 가장 가까운 단계로
   document.documentElement.style.setProperty('--fs', S.fs + 'px');
   if(S.theme) document.documentElement.setAttribute('data-theme', S.theme); else document.documentElement.removeAttribute('data-theme');
 }
@@ -632,7 +637,7 @@ function openSettings(){
   const bg = document.createElement('div'); bg.className = 'sheetBg';
   const key = (localStorage.getItem('voice.sttKey') || '');
   bg.innerHTML = `<div class="sheet" role="dialog" aria-label="설정"><h3>보기 · 듣기 설정</h3>
-    <div class="grp"><label class="t">글자 크기</label><div class="seg" id="sFs">${[16,19,22,26].map((v,i) => `<button data-v="${v}" class="${S.fs===v?'on':''}">${['작게','보통','크게','아주 크게'][i]}</button>`).join('')}</div></div>
+    <div class="grp"><label class="t">글자 크기</label><div class="seg g3" id="sFs">${FS_STEPS.map((v,i) => `<button data-v="${v}" class="${S.fs===v?'on':''}">${FS_NAMES[i]}</button>`).join('')}</div></div>
     <div class="grp"><label class="t">화면</label><div class="seg" id="sTh">${[['','기기 따라'],['light','밝게'],['dark','어둡게']].map(([v,l]) => `<button data-v="${v}" class="${S.theme===v?'on':''}">${l}</button>`).join('')}</div></div>
     <div class="grp"><label class="t">내 등록 정보</label>
       <div style="font-size:15px">${esc(S.profile?.name || '')} · ${esc(phoneFmt(S.profile?.phone))}${S.profile?.group ? ' · ' + esc(S.profile.group) : ''}</div>
@@ -644,6 +649,9 @@ function openSettings(){
     <div class="grp"><label class="t">음성으로 적기 — 아이폰 홈 화면 앱용 (선택)</label>
       <input type="password" id="sKey" placeholder="음성 인식 키 (gsk_… 또는 sk-…)" value="${esc(key)}" autocomplete="off">
       <div class="hint">사파리·크롬 브라우저에서는 키 없이 🎤가 바로 됩니다. 아이폰 <b>홈 화면에 추가한 앱</b>에서는 애플이 음성 인식을 막아 두었기 때문에, 키가 없으면 키보드의 🎤(받아쓰기)를 쓰시면 됩니다. 섬김성장노트에서 쓰던 Groq/OpenAI 키를 넣으면 앱 안의 🎤도 됩니다.</div></div>
+    <div class="grp"><label class="t">인도자 · 관리자</label>
+      <button class="btn ghost" id="sAdmin">🗂 관리자 화면 열기 — 진도 · 질문 · 승인</button>
+      <div class="hint">총리더 이메일과 비밀번호로 로그인해야 열립니다. 학습자분들은 쓰실 일이 없습니다.</div></div>
     <div class="grp"><label class="t">백업</label>
       <button class="btn ghost" id="sBk">내 기록 백업 파일 저장</button>
       <button class="btn ghost" id="sRs">백업 파일에서 불러오기</button><input type="file" id="sFile" accept=".json,application/json" hidden>
@@ -658,6 +666,7 @@ function openSettings(){
   $('#sEdit').onclick = () => { bg.remove(); const p = S.profile; S.profile = null; viewRegister(); $('#rName').value = p.name; $('#rPhone').value = phoneFmt(p.phone); $('#rGroup').value = p.group || ''; };
   $('#sInst') && ($('#sInst').onclick = () => { bg.remove(); INSTALL.open(); });
   $('#sSyncNow').onclick = async () => { $('#sSync').textContent = '맞추는 중…'; const r = await SYNC.relink(); $('#sSync').textContent = SYNC.status(); toast(r === 'merged' ? '다른 기기의 기록을 불러와 합쳤습니다 📱' : r === 'error' ? '서버에 연결하지 못했습니다' : '이미 같은 기록입니다'); route(); };
+  $('#sAdmin').onclick = () => { const w = window.open('admin.html', '_blank'); if(!w) location.href = 'admin.html'; };
   $('#sBk').onclick = () => download(`아가페성경공부_백업_${today()}.json`, JSON.stringify({app:'agape1', at:new Date().toISOString(), data:S}), 'application/json');
   $('#sRs').onclick = () => $('#sFile').click();
   $('#sFile').onchange = async e => {
@@ -1137,7 +1146,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.09.29-1026';
+const BUILD = '2026.09.29-1032';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
