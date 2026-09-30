@@ -272,6 +272,21 @@ body.playing .sn{cursor:pointer}
 .vc.reread{border-left-color:var(--warn)} .vc.reread .chip{background:var(--warn);color:#fff}
 .vc small{display:block;font-size:12px;color:var(--faint);margin-top:6px}
 .vh{font:600 calc(var(--fs) * .84) var(--sans);color:var(--acc2);margin:26px 0 8px}
+.homeTools{flex-wrap:wrap} .homeTools button{flex:1 1 40%}
+.dcard{margin:14px 0;padding:18px 18px 16px;border-radius:16px;background:var(--verse);border:1px solid var(--line)}
+.dcard .dk{font:600 13px var(--sans);color:var(--acc);letter-spacing:.04em}
+.dcard .dref{font:600 15px var(--sans);margin:10px 0 6px}
+.dcard .dv{font:calc(var(--fs) * 1.05)/1.85 var(--serif);word-break:keep-all}
+.dcard .dc{margin-top:12px;font:calc(var(--fs) * .86)/1.8 var(--sans);color:var(--soft);word-break:keep-all}
+.dcard .dc small{display:block;color:var(--faint);font-size:12px;margin-top:6px}
+.dlist button{display:flex;gap:12px;align-items:flex-start;width:100%;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left}
+.dlist .dd{flex:0 0 46px;font:600 13px var(--sans);color:var(--acc)}
+.dlist .dt{flex:1;min-width:0}
+.dlist .dt b{display:block;font:500 14px var(--sans);color:var(--soft);margin-bottom:2px}
+.dlist .dt span{display:block;font:calc(var(--fs) * .84)/1.6 var(--serif);word-break:keep-all;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mnav{display:flex;align-items:center;justify-content:space-between;margin:16px 0 6px}
+.mnav b{font:600 17px var(--sans)}
+.mnav button{border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:8px 14px;font-size:14px}
 .toast{position:fixed;left:50%;bottom:calc(var(--barH) + 24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);
   padding:11px 18px;border-radius:999px;font-size:14px;z-index:60;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
@@ -367,6 +382,7 @@ function route(){
   ['#bAsk', '#bNotes', '#bSet'].forEach(s => $(s).hidden = false);
   if(h.startsWith('/l/') && BYID[h.slice(3)]){ const it = BYID[h.slice(3)]; if(it.bk !== S.book) setBook(it.bk); if(!canUse(it.bk)) return viewHome(); return viewItem(it); }
   if(h.startsWith('/vv')){ if(S.book !== 'b5') setBook('b5'); if(!canUse('b5')) return viewHome(); return VV.route(h.slice(3)); }
+  if(h.startsWith('/daily')) return DAILY.view(h.slice(7));
   if(h === '/notes') return viewNotes();
   if(h.startsWith('/ask')) return viewAsk(h.slice(5));
   viewHome();
@@ -446,7 +462,7 @@ function viewHome(){
   </section>
   <button class="cont" data-go="${nextUp.id}">${IC.play}<div><b>${last ? '이어서 공부하기' : '처음부터 시작하기'}</b><span>${esc(label(nextUp))} · ${esc(nextUp.title)}</span></div></button>
   ${INSTALL.card()}
-  <div class="homeTools"><button data-href="#/notes">✏️ 내 노트</button><button data-href="#/ask">💬 질문하기</button><button id="hSearch">🔍 본문 찾기</button></div>
+  <div class="homeTools"><button data-href="#/daily">🌅 오늘의 말씀</button><button data-href="#/notes">✏️ 내 노트</button><button data-href="#/ask">💬 질문하기</button><button id="hSearch">🔍 본문 찾기</button></div>
   <div id="searchArea"></div><div class="parts">`;
   let cur = null, rows = '';
   const flush = () => { if(cur !== null) html += `<div class="list">${rows}</div></div>`; rows = ''; };
@@ -662,7 +678,7 @@ const VV = (() => {
       <div class="prog"><div class="bar"><i style="width:${read / tot * 100}%"></i></div><div class="lbl"><span>읽은 장 ${read} / ${tot}</span><span>${Math.round(read / tot * 100)}%</span></div></div></section>
       <button class="cont" data-href="#/vv/${last || 'intro'}">📖<div><b>${last ? '이어서 읽기' : '서막부터 읽기'}</b><span>${esc(last ? name(last) : '서막 — 요한계시록의 하늘 전쟁에서 창세기 1:2까지')}</span></div></button>
       ${INSTALL.card()}
-      <div class="homeTools"><button data-href="#/notes">✏️ 내 노트</button><button data-href="#/ask">💬 질문하기</button><button data-href="#/vv/intro">🌌 서막</button></div>
+      <div class="homeTools"><button data-href="#/daily">🌅 오늘의 말씀</button><button data-href="#/notes">✏️ 내 노트</button><button data-href="#/ask">💬 질문하기</button><button data-href="#/vv/intro">🌌 서막</button></div>
       <p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">음성 없이 생각하며 읽는 편입니다. 절을 톡 누르면 밑줄이 그어지고, 장 끝에서 묵상 노트를 적고 “읽었어요”를 누를 수 있습니다.</p>`;
     for(const t of ['구약', '신약']){
       h += `<div class="part"><h3>${t}</h3><div class="list">`;
@@ -750,6 +766,68 @@ const VV = (() => {
     return book(code);
   }
   return {home, route, name, load};
+})();
+
+/* ---------- 오늘의 말씀 (강의에서 다룬 절 하나 + 짧은 해설 · 날짜마다 정해진 순서) ---------- */
+const DAILY = (() => {
+  const cache = {};
+  const iso = d => d.toLocaleDateString('sv');                                  // YYYY-MM-DD (기기 시간대)
+  async function table(year){
+    if(cache[year]) return cache[year];
+    const r = await fetch(`daily/${year}.json`); if(!r.ok) throw new Error('오늘의 말씀을 불러오지 못했습니다');
+    return cache[year] = await r.json();
+  }
+  async function entry(dateStr){ const t = await table(dateStr.slice(0, 4)); return t[dateStr]; }
+  const pretty = ds => { const d = new Date(ds + 'T00:00:00'); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${'일월화수목금토'[d.getDay()]})`; };
+  function card(ds, e){
+    return `<div class="dcard"><div class="dk">🌅 오늘의 말씀 · ${pretty(ds)}</div>
+      <div class="dref">${esc(e.bk)} ${e.ch}${e.unit} ${esc(e.label)}절</div>
+      <div class="dv">${esc(e.text)}</div>
+      <div class="dc">${esc(e.com)}${e.ss ? `<small>이상구 박사 강의 ${esc(e.ss)}</small>` : ''}</div></div>`;
+  }
+  async function popup(){                                                        // 하루 한 번, 등록한 뒤에
+    if(!S.profile) return;
+    const ds = iso(new Date()); if(S.dailySeen === ds) return;
+    let e; try{ e = await entry(ds); }catch(err){ return; }
+    if(!e || document.querySelector('.sheetBg')) return;
+    S.dailySeen = ds; save();
+    const bg = document.createElement('div'); bg.className = 'sheetBg';
+    bg.innerHTML = `<div class="sheet" role="dialog" aria-label="오늘의 말씀">${card(ds, e)}
+      <button class="btn" data-href="#/vv/${e.code}/${e.ch}">📖 절별대조에서 이 장 읽기</button>
+      <button class="btn ghost" data-href="#/daily">지난 날짜의 말씀 보기</button>
+      <button class="btn ghost" data-x>닫기</button></div>`;
+    document.body.appendChild(bg);
+    bg.onclick = ev => { if(ev.target === bg || ev.target.closest('[data-x]') || ev.target.closest('[data-href]')) bg.remove(); };
+  }
+  async function view(arg){                                                      // '' → 이번 달, '/2026-09' → 그 달
+    $('#hTitle').textContent = '오늘의 말씀'; $('#bBack').style.visibility = 'visible';
+    const today = iso(new Date());
+    const ym = (arg || '').replace('/', '') || today.slice(0, 7);
+    const [y, m] = ym.split('-').map(Number);
+    $('#view').innerHTML = '<div class="empty" style="padding:60px 0">불러오는 중…</div>';
+    let t; try{ t = await table(y); }catch(err){ $('#view').innerHTML = `<div class="empty" style="padding:60px 0">${esc(err.message)}</div>`; return; }
+    const first = new Date(y, m - 1, 1), prev = new Date(y, m - 2, 1), next = new Date(y, m, 1);
+    const nextOk = iso(next) <= today;
+    let h = '';
+    if(ym === today.slice(0, 7)){ const e = t[today]; if(e) h += card(today, e) + `<button class="btn" data-href="#/vv/${e.code}/${e.ch}" style="margin-bottom:8px">📖 절별대조에서 이 장 읽기</button>`; }
+    h += `<div class="mnav"><button data-href="#/daily/${iso(prev).slice(0, 7)}">‹ 지난달</button><b>${y}년 ${m}월</b>${nextOk ? `<button data-href="#/daily/${iso(next).slice(0, 7)}">다음달 ›</button>` : '<span></span>'}</div><div class="list dlist">`;
+    const days = [];
+    for(let d = new Date(first); d.getMonth() === m - 1; d.setDate(d.getDate() + 1)){ const ds = iso(d); if(ds <= today && ds !== today) days.push(ds); }
+    for(const ds of days.reverse()){ const e = t[ds]; if(!e) continue; h += `<button data-day="${ds}"><span class="dd">${ds.slice(5).replace('-', '/')}</span><span class="dt"><b>${esc(e.bk)} ${e.ch}${e.unit} ${esc(e.label)}절</b><span>${esc(e.text)}</span></span></button>`; }
+    if(!days.length) h += '<div class="empty" style="padding:24px 0">이 달에는 아직 지난 날짜가 없습니다</div>';
+    h += '</div><div style="height:40px"></div>';
+    $('#view').innerHTML = h;
+    $('#view').querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
+      const ds = b.dataset.day, e = t[ds];
+      const bg = document.createElement('div'); bg.className = 'sheetBg';
+      bg.innerHTML = `<div class="sheet" role="dialog">${card(ds, e)}<button class="btn" data-href="#/vv/${e.code}/${e.ch}">📖 절별대조에서 이 장 읽기</button><button class="btn ghost" data-x>닫기</button></div>`;
+      document.body.appendChild(bg); bg.onclick = ev => { if(ev.target === bg || ev.target.closest('[data-x]') || ev.target.closest('[data-href]')) bg.remove(); };
+    });
+    hidePlayerIfIdle();
+  }
+  addEventListener('load', () => setTimeout(popup, 1200));
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') popup(); });
+  return {view, popup, entry};
 })();
 
 /* ---------- 내 노트 ---------- */
@@ -1348,7 +1426,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.09.29-1842';
+const BUILD = '2026.10.01-0722';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
