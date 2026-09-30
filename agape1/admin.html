@@ -239,7 +239,7 @@ function detail(){
   const myQ = QS.filter(q => q.phone === p.phone && q.name === p.name).length;
   $('#detail').innerHTML = `<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start">
       <div><b style="font-size:18px">${esc(p.name)}</b> <span class="hint">${esc(phoneF(p.phone))} · ${esc(p.group || '모임 없음')} · ${p.ua || ''}</span>
-      <div class="hint" style="margin-top:4px">공부한 날 ${p.days || 0}일 · 들은 시간 ${p.listenMin || 0}분 · 묵상 노트 ${p.memos || 0}개 · 보낸 질문 ${myQ}개 · 마지막 ${esc(p.lastDay || '-')}</div></div>
+      <div class="hint" style="margin-top:4px">공부한 날 ${p.days || 0}일 · 오늘의 말씀 ${p.todayRead || 0}일 · 들은 시간 ${p.listenMin || 0}분 · 묵상 노트 ${p.memos || 0}개 · 보낸 질문 ${myQ}개 · 마지막 ${esc(p.lastDay || '-')}</div></div>
       <div style="display:flex;gap:6px"><button class="btn ghost" id="ddel">기록 지우기</button><button class="btn ghost" id="dx">닫기</button></div></div>
     ${BOOKS.map(b => b.vv ? `<div style="margin-top:14px;font-weight:600">${esc(b.title)} <span class="hint">읽은 장 ${p.vvRead || 0}/${b.total}${p.vvLast ? ' · 마지막 ' + esc(p.vvLast) : ''}</span></div>` : `<div style="margin-top:14px;font-weight:600">${esc(b.title)} <span class="hint">${doneIn(p, b)}/${LB(b).length}과</span></div>
     <div class="grid">${LB(b).map(l => { const d = done.has(l.id), h = (p.heard?.[l.id] || 0) >= 90, w = p.wrote?.[l.id];

@@ -355,6 +355,7 @@ let FIRST = true;
 try{ const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if(j){ Object.assign(S, j); FIRST = false; } }catch(e){}
 if(FIRST && Math.min(screen.width, screen.height) >= 700) S.fs = 22;   // 패드는 처음부터 크게
 S.lastBy ||= {}; S.lastByAt ||= {}; S.posAt ||= {};
+S.daily = Object.assign({read:{}}, S.daily || {});                    // 오늘의 말씀 읽음 표시
 S.vv = Object.assign({read:{}, memo:{}, memoAt:{}, marks:{}, last:'', lastAt:0}, S.vv || {});   // 절별 대조 학습 기록
 const setPos = (id, t) => { if(!id) return; S.pos[id] = t; S.posAt[id] = Date.now(); }; if(S.last && !S.lastBy.b1 && BYID[S.last]){ S.lastBy[BYID[S.last].bk] = S.last; S.lastByAt[BYID[S.last].bk] = S.lastAt || 0; }
 setBook(S.book);
@@ -786,18 +787,20 @@ const DAILY = (() => {
       <div class="dc">${esc(e.com)}${e.ss ? `<small>이상구 박사 강의 ${esc(e.ss)}</small>` : ''}</div></div>`;
   }
   async function popup(){                                                        // 하루 한 번, 등록한 뒤에
-    if(!S.profile) return;
+    if(!S.profile || S.dailyOff) return;
     const ds = iso(new Date()); if(S.dailySeen === ds) return;
     let e; try{ e = await entry(ds); }catch(err){ return; }
     if(!e || document.querySelector('.sheetBg')) return;
     S.dailySeen = ds; save();
     const bg = document.createElement('div'); bg.className = 'sheetBg';
     bg.innerHTML = `<div class="sheet" role="dialog" aria-label="오늘의 말씀">${card(ds, e)}
-      <button class="btn" data-href="#/vv/${e.code}/${e.ch}">📖 절별대조에서 이 장 읽기</button>
+      ${canUse('b5') ? `<button class="btn" data-href="#/vv/${e.code}/${e.ch}">📖 절별대조에서 이 장 읽기</button>` : ''}
+      <button class="btn ghost" id="dRead">${S.daily.read[ds] ? '✓ 읽었습니다' : '읽었어요 ✓'}</button>
       <button class="btn ghost" data-href="#/daily">지난 날짜의 말씀 보기</button>
       <button class="btn ghost" data-x>닫기</button></div>`;
     document.body.appendChild(bg);
     bg.onclick = ev => { if(ev.target === bg || ev.target.closest('[data-x]') || ev.target.closest('[data-href]')) bg.remove(); };
+    bg.querySelector('#dRead').onclick = () => { S.daily.read[ds] = Date.now(); save(); SYNC.now(); bg.remove(); toast('오늘의 말씀을 읽었습니다 🌿'); };
   }
   async function view(arg){                                                      // '' → 이번 달, '/2026-09' → 그 달
     $('#hTitle').textContent = '오늘의 말씀'; $('#bBack').style.visibility = 'visible';
@@ -809,19 +812,21 @@ const DAILY = (() => {
     const first = new Date(y, m - 1, 1), prev = new Date(y, m - 2, 1), next = new Date(y, m, 1);
     const nextOk = iso(next) <= today;
     let h = '';
-    if(ym === today.slice(0, 7)){ const e = t[today]; if(e) h += card(today, e) + `<button class="btn" data-href="#/vv/${e.code}/${e.ch}" style="margin-bottom:8px">📖 절별대조에서 이 장 읽기</button>`; }
+    if(ym === today.slice(0, 7)){ const e = t[today]; if(e) h += card(today, e) + (canUse('b5') ? `<button class="btn" data-href="#/vv/${e.code}/${e.ch}" style="margin-bottom:8px">📖 절별대조에서 이 장 읽기</button>` : '') + `<button class="btn ghost" id="dRead2" style="margin-bottom:8px">${S.daily.read[today] ? '✓ 오늘 말씀을 읽었습니다' : '오늘 말씀을 읽었어요 ✓'}</button>`; }
     h += `<div class="mnav"><button data-href="#/daily/${iso(prev).slice(0, 7)}">‹ 지난달</button><b>${y}년 ${m}월</b>${nextOk ? `<button data-href="#/daily/${iso(next).slice(0, 7)}">다음달 ›</button>` : '<span></span>'}</div><div class="list dlist">`;
     const days = [];
     for(let d = new Date(first); d.getMonth() === m - 1; d.setDate(d.getDate() + 1)){ const ds = iso(d); if(ds <= today && ds !== today) days.push(ds); }
-    for(const ds of days.reverse()){ const e = t[ds]; if(!e) continue; h += `<button data-day="${ds}"><span class="dd">${ds.slice(5).replace('-', '/')}</span><span class="dt"><b>${esc(e.bk)} ${e.ch}${e.unit} ${esc(e.label)}절</b><span>${esc(e.text)}</span></span></button>`; }
+    for(const ds of days.reverse()){ const e = t[ds]; if(!e) continue; h += `<button data-day="${ds}"><span class="dd">${ds.slice(5).replace('-', '/')}${S.daily.read[ds] ? '<br>✓' : ''}</span><span class="dt"><b>${esc(e.bk)} ${e.ch}${e.unit} ${esc(e.label)}절</b><span>${esc(e.text)}</span></span></button>`; }
     if(!days.length) h += '<div class="empty" style="padding:24px 0">이 달에는 아직 지난 날짜가 없습니다</div>';
     h += '</div><div style="height:40px"></div>';
     $('#view').innerHTML = h;
+    const dr = $('#dRead2'); if(dr) dr.onclick = () => { if(S.daily.read[today]) delete S.daily.read[today]; else S.daily.read[today] = Date.now(); save(); SYNC.now(); view(arg); };
     $('#view').querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
       const ds = b.dataset.day, e = t[ds];
       const bg = document.createElement('div'); bg.className = 'sheetBg';
-      bg.innerHTML = `<div class="sheet" role="dialog">${card(ds, e)}<button class="btn" data-href="#/vv/${e.code}/${e.ch}">📖 절별대조에서 이 장 읽기</button><button class="btn ghost" data-x>닫기</button></div>`;
+      bg.innerHTML = `<div class="sheet" role="dialog">${card(ds, e)}${canUse('b5') ? `<button class="btn" data-href="#/vv/${e.code}/${e.ch}">📖 절별대조에서 이 장 읽기</button>` : ''}<button class="btn ghost" id="dRead3">${S.daily.read[ds] ? '✓ 읽었습니다' : '읽었어요 ✓'}</button><button class="btn ghost" data-x>닫기</button></div>`;
       document.body.appendChild(bg); bg.onclick = ev => { if(ev.target === bg || ev.target.closest('[data-x]') || ev.target.closest('[data-href]')) bg.remove(); };
+      bg.querySelector('#dRead3').onclick = () => { if(S.daily.read[ds]) delete S.daily.read[ds]; else S.daily.read[ds] = Date.now(); save(); SYNC.now(); bg.remove(); view(arg); };
     });
     hidePlayerIfIdle();
   }
@@ -887,6 +892,8 @@ function openSettings(){
   const key = (localStorage.getItem('voice.sttKey') || '');
   bg.innerHTML = `<div class="sheet" role="dialog" aria-label="설정"><h3>보기 · 듣기 설정</h3>
     <div class="grp"><label class="t">글자 크기</label><div class="seg g3" id="sFs">${FS_STEPS.map((v,i) => `<button data-v="${v}" class="${S.fs===v?'on':''}">${FS_NAMES[i]}</button>`).join('')}</div></div>
+    <div class="grp"><label class="t">오늘의 말씀</label><div class="seg" id="sDaily"><button data-v="1" class="${!S.dailyOff ? 'on' : ''}">앱을 열 때 보여 주기</button><button data-v="0" class="${S.dailyOff ? 'on' : ''}">보여 주지 않기</button></div>
+      <div class="hint">꺼 두어도 첫 화면의 🌅 오늘의 말씀에서 언제든 볼 수 있습니다.</div></div>
     <div class="grp"><label class="t">듣는 동안 화면</label><div class="seg" id="sFollow"><button data-v="1" class="${S.follow !== false ? 'on' : ''}">읽는 곳 따라 내리기</button><button data-v="0" class="${S.follow === false ? 'on' : ''}">화면 그대로 두기</button></div>
       <div class="hint">따라 내리기를 끄면 읽는 문장에 색만 칠하고 화면은 움직이지 않습니다.</div></div>
     <div class="grp"><label class="t">화면</label><div class="seg" id="sTh">${[['','기기 따라'],['light','밝게'],['dark','어둡게']].map(([v,l]) => `<button data-v="${v}" class="${S.theme===v?'on':''}">${l}</button>`).join('')}</div></div>
@@ -912,6 +919,7 @@ function openSettings(){
   const close = () => { localStorage.setItem('voice.sttKey', $('#sKey').value.trim()); bg.remove(); };
   bg.onclick = e => { if(e.target === bg) close(); };
   $('#sClose').onclick = close;
+  $('#sDaily').onclick = e => { const v = e.target.dataset.v; if(!v) return; S.dailyOff = v === '0'; save(); $('#sDaily').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target)); };
   $('#sFollow').onclick = e => { const v = e.target.dataset.v; if(!v) return; S.follow = v === '1'; save(); $('#sFollow').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target)); };
   $('#sFs').onclick = e => { const v = e.target.dataset.v; if(!v) return; S.fs = +v; save(); applyPrefs(); $('#sFs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target)); };
   $('#sTh').onclick = e => { if(!e.target.matches('button')) return; S.theme = e.target.dataset.v; save(); applyPrefs(); $('#sTh').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === e.target)); };
@@ -1162,7 +1170,7 @@ const SYNC = (() => {
   }
   const stateOf = () => ({notes:S.notes, heard:S.heard, listenSec:S.listenSec || 0, days:S.days, last:S.last || null, lastAt:S.lastAt || 0,
     lastBy:S.lastBy || {}, lastByAt:S.lastByAt || {},
-    askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos, posAt:S.posAt || {}, vv:S.vv});
+    askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos, posAt:S.posAt || {}, vv:S.vv, daily:S.daily});
   function merge(R){
     if(!R) return false;
     let ch = false;
@@ -1193,6 +1201,7 @@ const SYNC = (() => {
       if(BYID[id] && ((R.lastByAt || {})[b] || 0) > (S.lastByAt[b] || 0)){ S.lastBy[b] = id; S.lastByAt[b] = R.lastByAt[b]; ch = true; }
     if((R.askSeen || 0) > (S.askSeen || 0)) S.askSeen = R.askSeen;
     const q = [...new Set([...(S.qids || []), ...(R.qids || [])])]; if(q.length !== (S.qids || []).length){ S.qids = q; ch = true; }
+    if(R.daily) for(const [k, t] of Object.entries(R.daily.read || {})) if(!S.daily.read[k]){ S.daily.read[k] = t; ch = true; }
     if(R.vv){                                                          // 절별 대조: 읽음·밑줄은 합치고, 메모는 나중 것
       const V = S.vv, W = R.vv;
       for(const [k, t] of Object.entries(W.read || {})) if(!V.read[k]){ V.read[k] = t; ch = true; }
@@ -1252,7 +1261,7 @@ const SYNC = (() => {
       done, doneN:done.length, heard, heardN:ALL_LESSONS.filter(l => (S.heard[l.id] || 0) >= 90).length,
       wrote, answers, memos, acts, listenMin:Math.round((S.listenSec || 0) / 60), days:S.days.length, lastDay:S.days[S.days.length - 1] || '',
       lastId:S.last || '', lastTitle:lastIt ? blabel(lastIt) + ' ' + lastIt.title : '',
-      vvRead:Object.keys(S.vv.read).length, vvLast:S.vv.last ? VV.name(S.vv.last) : '',
+      vvRead:Object.keys(S.vv.read).length, vvLast:S.vv.last ? VV.name(S.vv.last) : '', dailyRead:Object.keys(S.daily.read).length,
       ua, ['devices.' + UID]: ua, by:UID,
       updated:firebase.firestore.FieldValue.serverTimestamp()};
   }
@@ -1426,7 +1435,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.01-0722';
+const BUILD = '2026.10.01-0725';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
