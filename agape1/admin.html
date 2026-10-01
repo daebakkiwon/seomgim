@@ -217,7 +217,7 @@ function drawPeople(){
       <button class="btn ghost" id="rf">새로고침</button><button class="btn ghost" id="csv">엑셀(CSV) 받기</button></div>
     <div class="scroll" style="margin-top:12px">${rows.length ? `<table><thead><tr>${th('name', '이름')}${th('group', '모임')}${th('done', '마친 과')}${th('heard', '끝까지 들은 과')}${th('ans', '적은 답')}${th('min', '들은 시간')}${th('last', '마지막 공부')}<th>공부 중인 과</th></tr></thead><tbody>
       ${rows.map((p, i) => { const late = ms(p.updated) < week; return `<tr class="p" data-i="${PEOPLE.indexOf(p)}">
-        <td class="nm"><b>${esc(p.name)}</b><small>${esc(phoneF(p.phone))}${p.devices > 1 ? ` · 기기 ${p.devices}대` : ''}</small></td>
+        <td class="nm"><b>${esc(p.name)}</b><small>${esc(phoneF(p.phone))}${p.devices > 1 ? ` · 기기 ${p.devices}대` : ''}${p.ed === 'agape' ? ' · 말씀판' : ''}</small></td>
         <td>${esc(p.group || '-')}</td>
         <td>${BOOKS.map(b => { const d = doneIn(p, b), t = TOT(b) || 1; return `<div class="bar" style="margin:2px 0"><small style="width:62px;color:var(--soft)">${esc(b.short || b.no + '권')}</small><i><s style="width:${d / t * 100}%"></s></i>${d}</div>`; }).join('')}</td>
         <td>${p.heardN || 0}</td><td>${p.answers || 0}</td><td>${p.listenMin || 0}분</td>
