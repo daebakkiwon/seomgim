@@ -246,6 +246,11 @@ body.playing .sn{cursor:pointer}
 @media (min-width:768px){ .books{max-width:720px;margin-left:auto;margin-right:auto;grid-template-columns:repeat(4,minmax(0,1fr))} }
 .bk.locked{opacity:.75}
 .bk.daily{background:#fff4dc;border-color:#e2b65a}.bk.daily small{color:#a4651a}.bk.daily b{color:#6b4512}
+.bk.lec{background:#e9f0f7;border-color:#8fb0d6}.bk.lec small{color:#2f5a86}.bk.lec b{color:#1f3d5c}
+.lecbook{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left}.lecbook .n{flex:0 0 30px;font-size:12px;color:var(--faint);text-align:right}.lecbook b{flex:1;font-weight:500;font-size:calc(var(--fs) * .84)}.lecbook span{font-size:12px;color:var(--faint)}.lecbook.none{opacity:.5}
+.chgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px;margin:12px 0 24px}.chgrid button{padding:10px 0;border-radius:10px;border:1px solid var(--line);background:var(--paper);font-size:14px}.chgrid button.has{border-color:#8fb0d6;background:#e9f0f7;font-weight:700}.chgrid button.vs{border-style:dashed}
+.lecrow{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}.lecrow .no{flex:0 0 58px;font:700 12px var(--sans);color:#2f5a86;padding-top:3px}.lecrow .tt{flex:1;min-width:0}.lecrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.4}.lecrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:3px}.lecrow .act{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}.lecrow .act a,.lecrow .act button{display:block;padding:7px 10px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font:12px var(--sans);color:var(--soft);text-decoration:none;text-align:center}.lecrow .act a{border-color:#c33;color:#c33;font-weight:700}.lecrow .act button.on{border-color:var(--acc);background:var(--accbg);color:var(--acc)}.lecrow.done .tt b{color:var(--faint);text-decoration:line-through}
+.lechead{font:700 calc(var(--fs) * .85) var(--sans);color:#2f5a86;margin:22px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--line)}
 .lockbox{text-align:center;padding:26px 20px;margin:10px 0;border:1px dashed var(--line);border-radius:16px;background:var(--paper)}
 .lockbox .big{font-size:40px;margin-bottom:6px}
 .lockbox b{display:block;font-size:17px;line-height:1.5}
@@ -370,7 +375,8 @@ if(FIRST && Math.min(screen.width, screen.height) >= 700) S.fs = 22;   // 패드
 S.lastBy ||= {}; S.lastByAt ||= {}; S.posAt ||= {};
 S.daily = Object.assign({read:{}}, S.daily || {});                    // 오늘의 말씀 읽음 표시
 S.vv = Object.assign({read:{}, memo:{}, memoAt:{}, marks:{}, last:'', lastAt:0}, S.vv || {});   // 절별 대조 학습 기록
-S.verses = S.verses || {}; S.versesDel = S.versesDel || {};                                      // 나의 성경구절 (키 → {ref,text,src,at}), 지운 것은 시각만 남겨 기기끼리 맞춘다
+S.verses = S.verses || {}; S.versesDel = S.versesDel || {};
+S.lec = Object.assign({done:{}, last:''}, S.lec || {});                                            // 강의듣기: 들은 강의(유튜브 id → 시각)                                      // 나의 성경구절 (키 → {ref,text,src,at}), 지운 것은 시각만 남겨 기기끼리 맞춘다
 const setPos = (id, t) => { if(!id) return; S.pos[id] = t; S.posAt[id] = Date.now(); }; if(S.last && !S.lastBy.b1 && BYID[S.last]){ S.lastBy[BYID[S.last].bk] = S.last; S.lastByAt[BYID[S.last].bk] = S.lastAt || 0; }
 setBook(S.book);
 let saveT;
@@ -400,6 +406,7 @@ function route(){
   if(h.startsWith('/daily')) return DAILY.view(h.slice(7));
   if(h === '/notes') return viewNotes();
   if(h === '/verses') return MYV.view();
+  if(h.startsWith('/lec') && ED === 'isg') return LEC.route(h.slice(4));
   if(h.startsWith('/ask')) return viewAsk(h.slice(5));
   viewHome();
 }
@@ -453,7 +460,7 @@ function viewHome(){
       const ls = ALL_LESSONS.filter(l => l.bk === b.id), d = ls.filter(l => S.notes[l.id]?.done).length;
       const prog = b.vv ? Object.keys(S.vv.read).length + '/' + b.total + '장' : d + '/' + ls.length + '과';
       const lock = !canUse(b.id), req = S.req && S.req[b.id];
-      return `<button class="bk${b.id === B.id ? ' on' : ''}${lock ? ' locked' : ''}" data-href="#/b/${b.id}"><small>${esc(b.short || b.no + '권')}${lock ? ' ' + LOCK : ''}</small><b>${esc(b.title)}</b><span>${lock ? (req ? '승인 기다리는 중' : '승인 후 공부') : prog}</span></button>`; }).join('')}<button class="bk daily" data-href="#/daily"><small>🌅 오늘</small><b>오늘의 말씀</b><span>${Object.keys(S.daily?.read || {}).length ? '읽은 날 ' + Object.keys(S.daily.read).length : '하루 한 절'}</span></button></div>` : '';
+      return `<button class="bk${b.id === B.id ? ' on' : ''}${lock ? ' locked' : ''}" data-href="#/b/${b.id}"><small>${esc(b.short || b.no + '권')}${lock ? ' ' + LOCK : ''}</small><b>${esc(b.title)}</b><span>${lock ? (req ? '승인 기다리는 중' : '승인 후 공부') : prog}</span></button>`; }).join('')}<button class="bk daily" data-href="#/daily"><small>🌅 오늘</small><b>오늘의 말씀</b><span>${Object.keys(S.daily?.read || {}).length ? '읽은 날 ' + Object.keys(S.daily.read).length : '하루 한 절'}</span></button>${ED === 'isg' ? `<button class="bk lec" data-href="#/lec"><small>🎧 유튜브</small><b>강의듣기</b><span>${Object.keys(S.lec.done).length ? '들은 강의 ' + Object.keys(S.lec.done).length : '성경 순서로 찾아 듣기'}</span></button>` : ''}</div>` : '';
   if(!canUse(B.id)){                                           // 잠긴 권: 목차 대신 승인 안내
     const req = S.req && S.req[B.id];
     $('#view').innerHTML = `${shelf}<section class="hero"><div class="series">${esc(B.series)}</div><h2>${esc(B.title)}</h2><div class="by">${esc(B.by || '')}</div></section>
@@ -861,6 +868,109 @@ const MYV = (() => {
   return {key, parse, toggle, view, text, sorted};
 })();
 
+/* ---------- 강의듣기 (유튜브 뉴스타트 성경강의 · 성경 순서로 찾기 + 정주행 코스) — 강의판에만 ---------- */
+const LEC = (() => {
+  let D = null, loading = null;
+  const back = (href) => { $('#bBack').style.visibility = 'visible'; $('#bBack').dataset.href = href; };
+  const PRO = {name:'서막 · 하늘의 전쟁', keys:[['요한계시록', 12], ['이사야', 14], ['에스겔', 28], ['욥기', 1], ['욥기', 2]]};
+  async function load(){
+    if(D) return D; if(loading) return loading;
+    loading = fetch('lectures.json?d=' + new Date().toISOString().slice(0, 10)).then(r => { if(!r.ok) throw new Error('강의 목록을 불러오지 못했습니다'); return r.json(); }).then(j => { D = j; index(); return D; }).finally(() => loading = null);
+    return loading;
+  }
+  let BYCH = {}, BYBOOK = {}, BYVID = {};
+  function index(){
+    BYCH = {}; BYBOOK = {}; BYVID = {};
+    for(const x of D.vids){ BYVID[x.v] = x; for(const [b, c, w] of x.r){ (BYCH[b + '|' + c] ||= []).push([x, w]); (BYBOOK[b] ||= new Set()).add(x.v); } }
+    for(const k in BYCH) BYCH[k].sort((a, b) => b[0].g - a[0].g || b[1] - a[1] || a[0].l - b[0].l);
+  }
+  const yt = x => `https://www.youtube.com/watch?v=${x.v}${D.pl[x.g] ? '&list=' + D.pl[x.g] : ''}`;
+  const plUrl = g => D.pl[g] ? `https://www.youtube.com/playlist?list=${D.pl[g]}` : '';
+  const head = (title, kicker) => `<section class="lhead"><div class="kicker">${esc(kicker)}</div><h2>${esc(title)}</h2></section>`;
+  function row(x, extra){
+    const done = S.lec.done[x.v];
+    const t = x.t || `${x.g}기 ${x.l}강`;
+    return `<div class="lecrow${done ? ' done' : ''}" data-v="${esc(x.v)}"><div class="no">${x.g}기${x.l ? '<br>' + x.l + '강' : ''}</div>
+      <div class="tt"><b>${esc(t)}</b><small>${[x.dt, x.d, extra].filter(Boolean).map(esc).join(' · ')}</small></div>
+      <div class="act"><a href="${yt(x)}" target="_blank" rel="noopener">▶ 유튜브</a><button data-done="${esc(x.v)}" class="${done ? 'on' : ''}">${done ? '✓ 들었어요' : '들었어요'}</button></div></div>`;
+  }
+  function bind(){
+    $('#view').querySelectorAll('[data-done]').forEach(b => b.onclick = () => { const v = b.dataset.done; if(S.lec.done[v]) delete S.lec.done[v]; else { S.lec.done[v] = Date.now(); S.lec.last = v; } save(); SYNC.now();
+      const on = !!S.lec.done[v]; b.classList.toggle('on', on); b.textContent = on ? '✓ 들었어요' : '들었어요'; b.closest('.lecrow').classList.toggle('done', on); if(on) toast('들은 강의로 표시했습니다 🎧'); });
+    $('#view').querySelectorAll('a[target=_blank]').forEach(a => a.onclick = () => { const v = a.closest('.lecrow')?.dataset.v; if(v){ S.lec.last = v; save(); } });
+  }
+  function fail(e){ $('#view').innerHTML = `<div class="empty" style="padding:60px 0">${esc(e.message)}<br><span class="hint">인터넷에 연결되어 있는지 확인해 주세요</span></div>`; }
+  async function home(){
+    $('#hTitle').textContent = '강의듣기'; back('#/');
+    $('#view').innerHTML = '<div class="empty" style="padding:60px 0">강의 목록을 불러오는 중…</div>';
+    try{ await load(); }catch(e){ return fail(e); }
+    const done = Object.keys(S.lec.done).length, cl = D.course.length, cd = D.course.filter(v => S.lec.done[v]).length;
+    const next = D.course.find(v => !S.lec.done[v]), nx = next && BYVID[next];
+    let h = head('강의듣기', '이상구 박사 뉴스타트 성경강의 · 유튜브') + `
+      <p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">강의 영상은 유튜브(뉴스타트 채널)에서 열립니다. 들은 강의는 “들었어요”로 표시해 두면 기기끼리 함께 기억합니다.</p>
+      <button class="cont" data-href="#/lec/course">🎧<div><b>정주행 코스 ${cd}/${cl}</b><span>${nx ? `다음: ${nx.g}기 ${nx.l ? nx.l + '강 ' : ''}${esc(nx.t)}` : '서막부터 요한계시록까지 고른 강의를 순서대로'}</span></div></button>
+      <div class="part"><h3>성경 순서로 찾기</h3><div class="list">
+      <button class="lecbook" data-href="#/lec/b/pro"><span class="n">🌌</span><b>${esc(PRO.name)}</b><span>${proList().length}강</span></button>`;
+    D.books.forEach((b, i) => { const n = (BYBOOK[b] || new Set()).size, vs = Object.keys(D.vs).filter(k => k.startsWith(b + '|')).length;
+      h += `<button class="lecbook${n || vs ? '' : ' none'}" data-href="#/lec/b/${i}"><span class="n">${i + 1}</span><b>${esc(b)}</b><span>${n ? n + '강' : vs ? '기수 안내' : '-'}</span></button>`; });
+    h += '</div></div><div style="height:40px"></div>';
+    $('#view').innerHTML = h; hidePlayerIfIdle();
+  }
+  function proList(){ const seen = new Set(), out = []; for(const [b, c] of PRO.keys) for(const [x] of (BYCH[b + '|' + c] || [])) if(!seen.has(x.v)){ seen.add(x.v); out.push(x); } return out.sort((a, b) => b.g - a.g || a.l - b.l); }
+  async function book(bi){
+    try{ await load(); }catch(e){ return fail(e); }
+    if(bi === 'pro'){
+      $('#hTitle').textContent = PRO.name; back('#/lec');
+      $('#view').innerHTML = head(PRO.name, '강의듣기 · 요한계시록 12장의 하늘 전쟁에서 시작합니다') + `<p class="hint" style="font-size:13px;color:var(--faint)">최근 기수가 먼저 나옵니다.</p>` + proList().map(x => row(x)).join('') + '<div style="height:40px"></div>';
+      bind(); window.scrollTo(0, 0); return;
+    }
+    const b = D.books[+bi]; if(!b) return home();
+    $('#hTitle').textContent = b; back('#/lec');
+    const chs = {}; for(const k in BYCH) if(k.startsWith(b + '|')) chs[+k.split('|')[1]] = BYCH[k].length;
+    const vsch = {}; for(const k in D.vs) if(k.startsWith(b + '|')) vsch[+k.split('|')[1]] = D.vs[k];
+    const max = Math.max(0, ...Object.keys(chs).map(Number), ...Object.keys(vsch).map(Number));
+    let h = head(b, '강의듣기 · 장을 고르세요') + `<p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">진한 칸은 그 장을 다룬 강의가 있는 장, 점선 칸은 어느 기수에서 다뤘는지만 아는 장입니다.</p><div class="chgrid">`;
+    for(let c = 1; c <= max; c++) h += `<button data-href="#/lec/b/${bi}/${c}" class="${chs[c] ? 'has' : vsch[c] ? 'vs' : ''}">${c}</button>`;
+    h += '</div>';
+    if(!max) h += '<div class="empty">이 책을 다룬 강의를 아직 찾지 못했습니다.</div>';
+    const all = [...(BYBOOK[b] || [])].map(v => BYVID[v]).sort((x, y) => y.g - x.g || x.l - y.l);
+    if(all.length) h += `<div class="lechead">${esc(b)}을(를) 다룬 강의 전체 · 최근 기수부터</div>` + all.map(x => row(x, (x.r.filter(r => r[0] === b).map(r => b + ' ' + r[1] + '장').slice(0, 3).join(', ')))).join('');
+    h += '<div style="height:40px"></div>';
+    $('#view').innerHTML = h; bind(); window.scrollTo(0, 0);
+  }
+  async function chapter(bi, c){
+    try{ await load(); }catch(e){ return fail(e); }
+    const b = D.books[+bi]; if(!b) return home();
+    $('#hTitle').textContent = `${b} ${c}장`; back('#/lec/b/' + bi);
+    const L = (BYCH[b + '|' + c] || []).map(x => x[0]);
+    const vs = (D.vs[b + '|' + c] || []).slice().sort((x, y) => y - x);
+    let h = head(`${b} ${c}장`, '강의듣기 · 최근 기수부터');
+    h += L.length ? L.map(x => row(x)).join('') : '<div class="empty">이 장을 본문으로 다룬 강의(정리본 기준)는 아직 찾지 못했습니다.</div>';
+    if(vs.length) h += `<div class="lechead">절별대조에서 이 장을 인용한 기수</div><p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">몇 강인지는 정리본이 없어 알 수 없습니다. 기수 재생목록을 열어 보세요.</p><div class="homeTools">` + vs.map(g => plUrl(g) ? `<a class="chip2" style="text-decoration:none;text-align:center;padding:10px" href="${plUrl(g)}" target="_blank" rel="noopener">▶ ${g}기 재생목록</a>` : `<span class="chip2" style="text-align:center;padding:10px;opacity:.6">${g}기 (영상 없음)</span>`).join('') + '</div>';
+    h += '<div style="height:40px"></div>';
+    $('#view').innerHTML = h; bind(); window.scrollTo(0, 0);
+  }
+  async function course(){
+    try{ await load(); }catch(e){ return fail(e); }
+    $('#hTitle').textContent = '정주행 코스'; back('#/lec');
+    const list = D.course.map(v => BYVID[v]).filter(Boolean), done = list.filter(x => S.lec.done[x.v]).length;
+    let h = head('정주행 코스', `강의듣기 · ${list.length}강 · 들은 강의 ${done}`) + `<p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">서막부터 요한계시록까지 책마다 그 본문을 가장 많이 다룬 최근 강의를 골라 성경 순서로 늘어놓았습니다. 한 강이 여러 책을 넘나드는 경우 가장 많이 다룬 책에 두었습니다.</p>`;
+    let cur = '';
+    for(const x of list){ const mb = mainBook(x); if(mb !== cur){ cur = mb; h += `<div class="lechead">${esc(mb)}</div>`; } h += row(x, x.r.filter(r => r[0] === mb).slice(0, 3).map(r => mb + ' ' + r[1] + '장').join(', ')); }
+    h += '<div style="height:40px"></div>';
+    $('#view').innerHTML = h; bind(); window.scrollTo(0, 0);
+  }
+  function mainBook(x){ const s = {}; for(const [b, c, w] of x.r) s[b] = (s[b] || 0) + w; return Object.entries(s).sort((a, b) => b[1] - a[1])[0]?.[0] || ''; }
+  function route(h){                                   // '' | '/course' | '/b/3' | '/b/3/12' | '/b/pro'
+    const m = h.match(/^\/?(course|b)?\/?([a-z0-9]+)?\/?(\d+)?/);
+    if(!m || !m[1]) return home();
+    if(m[1] === 'course') return course();
+    if(m[3]) return chapter(m[2], +m[3]);
+    return book(m[2]);
+  }
+  return {route, load};
+})();
+
 /* ---------- 오늘의 말씀 (강의에서 다룬 절 하나 + 짧은 해설 · 날짜마다 정해진 순서) ---------- */
 const DAILY = (() => {
   const cache = {};
@@ -1262,7 +1372,7 @@ const SYNC = (() => {
   }
   const stateOf = () => ({notes:S.notes, heard:S.heard, listenSec:S.listenSec || 0, days:S.days, last:S.last || null, lastAt:S.lastAt || 0,
     lastBy:S.lastBy || {}, lastByAt:S.lastByAt || {},
-    askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos, posAt:S.posAt || {}, vv:S.vv, daily:S.daily, verses:S.verses, versesDel:S.versesDel});
+    askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos, posAt:S.posAt || {}, vv:S.vv, daily:S.daily, verses:S.verses, versesDel:S.versesDel, lec:S.lec});
   function merge(R){
     if(!R) return false;
     let ch = false;
@@ -1294,6 +1404,7 @@ const SYNC = (() => {
     if((R.askSeen || 0) > (S.askSeen || 0)) S.askSeen = R.askSeen;
     const q = [...new Set([...(S.qids || []), ...(R.qids || [])])]; if(q.length !== (S.qids || []).length){ S.qids = q; ch = true; }
     if(R.daily) for(const [k, t] of Object.entries(R.daily.read || {})) if(!S.daily.read[k]){ S.daily.read[k] = t; ch = true; }
+    if(R.lec){ for(const [k, t] of Object.entries(R.lec.done || {})) if(!S.lec.done[k]){ S.lec.done[k] = t; ch = true; } if(!S.lec.last && R.lec.last){ S.lec.last = R.lec.last; ch = true; } }
     for(const [k, t] of Object.entries(R.versesDel || {})){                 // 나의 성경구절: 다른 기기에서 지운 것은 여기서도 지우고
       if((S.versesDel[k] || 0) < t){ S.versesDel[k] = t; if(S.verses[k] && S.verses[k].at <= t){ delete S.verses[k]; ch = true; } }
     }
@@ -1533,7 +1644,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.01-1411';
+const BUILD = '2026.10.01-1437';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
