@@ -88,7 +88,16 @@ header.top h1{font:600 17px var(--sans);margin:0;flex:1;min-width:0;white-space:
 .body h3{font:600 1.02em/1.5 var(--sans);margin:1.7em 0 .5em}
 .body p{margin:0 0 1em;border-radius:6px;transition:background .2s}
 .body p.mk{background:var(--mark);box-shadow:0 0 0 4px var(--mark)}
-.verse{margin:1.2em 0;padding:14px 18px;border-left:3px solid var(--acc);background:var(--verse);border-radius:0 10px 10px 0}
+.verse{margin:1.2em 0;padding:14px 18px 14px 18px;border-left:3px solid var(--acc);background:var(--verse);border-radius:0 10px 10px 0;position:relative}
+.verse .vsave{display:block;margin:10px 0 0 auto;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font:12px var(--sans);color:var(--soft)}
+.verse .vsave.on,.vs .vstar.on{border-color:#c9972b;background:#fff4dc;color:#8a5a12}
+.vs .vstar{flex:0 0 auto;margin-left:auto;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font:13px var(--sans);color:var(--soft);line-height:1.5}
+.myv .bookh{font:700 calc(var(--fs) * .85) var(--sans);color:var(--acc);margin:22px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.myv .vitem{position:relative;margin:0 0 10px;padding:12px 14px;border-left:3px solid #c9972b;background:var(--verse);border-radius:0 10px 10px 0}
+.myv .vitem cite{display:block;font:700 calc(var(--fs) * .82) var(--sans);color:var(--acc);font-style:normal;margin-bottom:4px}
+.myv .vitem .vx{font:var(--fs)/1.8 var(--serif);word-break:keep-all}
+.myv .vitem .vsrc{display:flex;gap:8px;margin-top:8px;font:12px var(--sans);color:var(--faint);align-items:center}
+.myv .vitem .vsrc button{padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font:12px var(--sans);color:var(--soft)}
 details.lead{margin:2em 0 1em;border:1px solid var(--line);border-radius:12px;padding:0 16px;background:var(--paper)}
 details.lead summary{font:600 calc(var(--fs) * .79) var(--sans);padding:14px 0;cursor:pointer;color:var(--soft)}
 details.lead p{font-size:.92em}
@@ -361,6 +370,7 @@ if(FIRST && Math.min(screen.width, screen.height) >= 700) S.fs = 22;   // 패드
 S.lastBy ||= {}; S.lastByAt ||= {}; S.posAt ||= {};
 S.daily = Object.assign({read:{}}, S.daily || {});                    // 오늘의 말씀 읽음 표시
 S.vv = Object.assign({read:{}, memo:{}, memoAt:{}, marks:{}, last:'', lastAt:0}, S.vv || {});   // 절별 대조 학습 기록
+S.verses = S.verses || {}; S.versesDel = S.versesDel || {};                                      // 나의 성경구절 (키 → {ref,text,src,at}), 지운 것은 시각만 남겨 기기끼리 맞춘다
 const setPos = (id, t) => { if(!id) return; S.pos[id] = t; S.posAt[id] = Date.now(); }; if(S.last && !S.lastBy.b1 && BYID[S.last]){ S.lastBy[BYID[S.last].bk] = S.last; S.lastByAt[BYID[S.last].bk] = S.lastAt || 0; }
 setBook(S.book);
 let saveT;
@@ -389,6 +399,7 @@ function route(){
   if(h.startsWith('/vv')){ if(S.book !== 'b5') setBook('b5'); if(!canUse('b5')) return viewHome(); return VV.route(h.slice(3)); }
   if(h.startsWith('/daily')) return DAILY.view(h.slice(7));
   if(h === '/notes') return viewNotes();
+  if(h === '/verses') return MYV.view();
   if(h.startsWith('/ask')) return viewAsk(h.slice(5));
   viewHome();
 }
@@ -467,7 +478,7 @@ function viewHome(){
   </section>
   <button class="cont" data-go="${nextUp.id}">${IC.play}<div><b>${last ? '이어서 공부하기' : '처음부터 시작하기'}</b><span>${esc(label(nextUp))} · ${esc(nextUp.title)}</span></div></button>
   ${INSTALL.card()}
-  <div class="homeTools"><button data-href="#/notes">✏️ 내 노트</button><button data-href="#/ask">💬 질문하기</button><button id="hSearch">🔍 본문 찾기</button></div>
+  <div class="homeTools"><button data-href="#/verses">📖 나의 성경구절</button><button data-href="#/notes">✏️ 내 노트</button><button data-href="#/ask">💬 질문하기</button><button id="hSearch">🔍 본문 찾기</button></div>
   <div id="searchArea"></div><div class="parts">`;
   let cur = null, rows = '';
   const flush = () => { if(cur !== null) html += `<div class="list">${rows}</div></div>`; rows = ''; };
@@ -538,7 +549,7 @@ function viewItem(it){
       continue;
     }
     if(b.t === 'h3'){ h += `<h3>${sp(b.text)}</h3>`; continue; }
-    if(b.t === 'verse'){ h += `<div class="verse"><cite>${sp(b.ref)}</cite>${sps(b)}</div>`; continue; }
+    if(b.t === 'verse'){ const vk = MYV.key(b.ref), on = vk && S.verses[vk]; h += `<div class="verse"><cite>${sp(b.ref)}</cite>${sps(b)}${vk ? `<button class="vsave${on ? ' on' : ''}" data-vb="${it.blocks.indexOf(b)}">${on ? '★ 저장됨' : '☆ 나의 성경구절에 저장'}</button>` : ''}</div>`; continue; }
     if(b.t === 'q'){
       h += `<div class="note"><div class="qt">${sps(b)}</div>${box('q' + b.i, n.q[b.i] || '', '나의 생각')}</div>`; continue;
     }
@@ -575,6 +586,7 @@ function box(key, val, ph, minH){
     <button class="mic" data-mic="${key}" aria-label="말로 적기">${IC.mic}</button></div><div class="interim" data-int="${key}"></div>`;
 }
 function bindItem(it){
+  $('#view').querySelectorAll('.vsave').forEach(b => b.onclick = () => { const blk = it.blocks[+b.dataset.vb]; const on = MYV.toggle(blk.ref, blk.text, {t:'l', id:it.id}); b.classList.toggle('on', on); b.textContent = on ? '★ 저장됨' : '☆ 나의 성경구절에 저장'; toast(on ? '나의 성경구절에 저장했습니다 📖' : '나의 성경구절에서 뺐습니다'); });
   const n = N(it.id);
   const mem = it.blocks.find(b => b.t === 'memory');
   $('#view').querySelectorAll('textarea[data-k]').forEach(ta => {
@@ -683,7 +695,7 @@ const VV = (() => {
       <div class="prog"><div class="bar"><i style="width:${read / tot * 100}%"></i></div><div class="lbl"><span>읽은 장 ${read} / ${tot}</span><span>${Math.round(read / tot * 100)}%</span></div></div></section>
       <button class="cont" data-href="#/vv/${last || 'intro'}">📖<div><b>${last ? '이어서 읽기' : '서막부터 읽기'}</b><span>${esc(last ? name(last) : '서막 — 요한계시록의 하늘 전쟁에서 창세기 1:2까지')}</span></div></button>
       ${INSTALL.card()}
-      <div class="homeTools"><button data-href="#/notes">✏️ 내 노트</button><button data-href="#/ask">💬 질문하기</button><button data-href="#/vv/${last || 'intro'}">📖 이어서 읽기</button></div>
+      <div class="homeTools"><button data-href="#/verses">📖 나의 성경구절</button><button data-href="#/notes">✏️ 내 노트</button><button data-href="#/ask">💬 질문하기</button><button data-href="#/vv/${last || 'intro'}">📖 이어서 읽기</button></div>
       <p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">음성 없이 생각하며 읽는 편입니다. 절을 톡 누르면 밑줄이 그어지고, 장 끝에서 묵상 노트를 적고 “읽었어요”를 누를 수 있습니다.</p>`;
     h += `<div class="part"><h3>시작하며</h3><div class="list"><button class="vvbook${S.vv.read.intro ? ' done' : ''}" data-href="#/vv/intro"><span class="n">🌌</span><b>서막</b><span>${S.vv.read.intro ? '읽음' : '요한계시록의 하늘 전쟁에서 창세기 1:2까지'}</span></button></div></div>`;   // 서막은 구약 위에 한 줄로
     for(const t of ['구약', '신약']){
@@ -705,18 +717,26 @@ const VV = (() => {
     h += '</div>';
     $('#view').innerHTML = h; hidePlayerIfIdle();
   }
-  function verses(list, k, unit){
+  function vref(k, v, sec){                                  // 절별대조의 한 절 → '창세기 1장 1절' 꼴 참조
+    const code = sec ? sec.book_code : k.split('/')[0], ch = sec ? sec.chapter : +k.split('/')[1], b = byCode[code];
+    if(!b || !ch) return '';
+    const vn = String(v.verse).match(/\d+/); if(!vn) return '';
+    return `${b.name} ${ch}${b.unit || '장'} ${vn[0]}절`;
+  }
+  function verses(list, k, unit, sec){
     const marks = new Set(S.vv.marks[k] || []);
-    return list.map(v => `${v.heading ? `<div class="vh">${esc(v.heading)}</div>` : ''}
-      <div class="vs${marks.has(String(v.verse)) ? ' mk' : ''}" data-v="${esc(String(v.verse))}"><span class="vn">${esc(v.label || v.verse)}</span><span class="vt">${esc(v.text)}</span></div>
+    return list.map(v => { const r = vref(k, v, sec), vk = r && MYV.key(r), on = vk && S.verses[vk]; return `${v.heading ? `<div class="vh">${esc(v.heading)}</div>` : ''}
+      <div class="vs${marks.has(String(v.verse)) ? ' mk' : ''}" data-v="${esc(String(v.verse))}"><span class="vn">${esc(v.label || v.verse)}</span><span class="vt">${esc(v.text)}</span>${vk ? `<button class="vstar${on ? ' on' : ''}" data-vr="${esc(r)}" title="나의 성경구절에 저장">${on ? '★' : '☆'}</button>` : ''}</div>
       <button class="vtog ${esc(v.tag || 'added')}" aria-expanded="false"><span class="chip">${esc(v.tag_label || TAGN[v.tag] || '')}</span><span class="arr">▸</span></button>
-      <div class="vc ${esc(v.tag || 'added')}" hidden>${esc(v.commentary || '')}${v.lecture_sessions && ED !== 'agape' ? `<small>강의 ${esc(v.lecture_sessions)}</small>` : ''}</div>`).join('');
+      <div class="vc ${esc(v.tag || 'added')}" hidden>${esc(v.commentary || '')}${v.lecture_sessions && ED !== 'agape' ? `<small>강의 ${esc(v.lecture_sessions)}</small>` : ''}</div>`; }).join('');
   }
   function setOpen(btn, open){ const box = btn.nextElementSibling; box.hidden = !open; btn.setAttribute('aria-expanded', open); btn.querySelector('.arr').textContent = open ? '▾' : '▸'; }
   function bindMarks(k){
     $('#view').querySelectorAll('.vtog').forEach(b => b.onclick = () => setOpen(b, b.nextElementSibling.hidden));
     const all = $('#vvAll'); if(all) all.onclick = () => { const open = all.dataset.open !== '1'; all.dataset.open = open ? '1' : '0'; all.textContent = open ? '해설 모두 접기' : '해설 모두 펼치기'; $('#view').querySelectorAll('.vtog').forEach(b => setOpen(b, open)); };
-    $('#view').querySelectorAll('.vs').forEach(el => el.onclick = () => {
+    $('#view').querySelectorAll('.vs').forEach(el => el.onclick = (ev) => {
+      const st = ev.target.closest('.vstar');
+      if(st){ ev.stopPropagation(); const on = MYV.toggle(st.dataset.vr, el.querySelector('.vt').textContent, {t:'vv', k}); st.classList.toggle('on', on); st.textContent = on ? '★' : '☆'; toast(on ? '나의 성경구절에 저장했습니다 📖' : '나의 성경구절에서 뺐습니다'); return; }
       const arr = S.vv.marks[k] || (S.vv.marks[k] = []), v = el.dataset.v, i = arr.indexOf(v);
       i < 0 ? arr.push(v) : arr.splice(i, 1); el.classList.toggle('mk', i < 0); save();
     });
@@ -761,7 +781,7 @@ const VV = (() => {
     let h = `<section class="lhead"><div class="kicker">절별 대조 · 서막</div><h2>${esc(P.title || '서막')}</h2></section>
       <div class="vvtools"><span>절 옆의 표시를 누르면 그 절의 해설이 펼쳐집니다</span><button class="chip2" id="vvAll">해설 모두 펼치기</button></div>`;
     for(const sec of P.sections){
-      h += `<h2 style="font:700 1.15em var(--sans);color:var(--acc);margin:2em 0 .4em">${esc(sec.title)}</h2>${sec.key ? `<div class="vkey"><b>이 본문을 읽는 열쇠</b>${esc(sec.key)}</div>` : ''}<div class="body">${verses(sec.verses || [], k)}</div>`;
+      h += `<h2 style="font:700 1.15em var(--sans);color:var(--acc);margin:2em 0 .4em">${esc(sec.title)}</h2>${sec.key ? `<div class="vkey"><b>이 본문을 읽는 열쇠</b>${esc(sec.key)}</div>` : ''}<div class="body">${verses(sec.verses || [], k, '', sec)}</div>`;
     }
     h += foot(k) + '<div style="height:40px"></div>';
     $('#view').innerHTML = h; bindMarks(k); bindFoot(k); hidePlayerIfIdle(); window.scrollTo(0, 0);
@@ -775,6 +795,70 @@ const VV = (() => {
     return book(code);
   }
   return {home, route, name, load};
+})();
+
+/* ---------- 나의 성경구절 (공부하다 저장한 성구 · 창세기→요한계시록 순) ---------- */
+const MYV = (() => {
+  const B66 = ['창세기','출애굽기','레위기','민수기','신명기','여호수아','사사기','룻기','사무엘상','사무엘하','열왕기상','열왕기하','역대상','역대하','에스라','느헤미야','에스더','욥기','시편','잠언','전도서','아가','이사야','예레미야애가','예레미야','에스겔','다니엘','호세아','요엘','아모스','오바댜','요나','미가','나훔','하박국','스바냐','학개','스가랴','말라기','마태복음','마가복음','누가복음','요한복음','사도행전','로마서','고린도전서','고린도후서','갈라디아서','에베소서','빌립보서','골로새서','데살로니가전서','데살로니가후서','디모데전서','디모데후서','디도서','빌레몬서','히브리서','야고보서','베드로전서','베드로후서','요한일서','요한이서','요한삼서','유다서','요한계시록'];
+  const ORDER = {}; B66.forEach((b, i) => ORDER[b] = i); ORDER['예레미야애가'] = 24; ORDER['예레미야'] = 23;   // 목록은 '애가'를 먼저 찾으려고 앞에 두었고, 순서는 성경대로
+  const ALIAS = {'창':'창세기','출':'출애굽기','레':'레위기','민':'민수기','신':'신명기','수':'여호수아','삿':'사사기','룻':'룻기','삼상':'사무엘상','삼하':'사무엘하','왕상':'열왕기상','왕하':'열왕기하','대상':'역대상','대하':'역대하','스':'에스라','느':'느헤미야','에':'에스더','욥':'욥기','시':'시편','잠':'잠언','전':'전도서','사':'이사야','렘':'예레미야','애':'예레미야애가','겔':'에스겔','단':'다니엘','호':'호세아','욜':'요엘','암':'아모스','옵':'오바댜','욘':'요나','미':'미가','나':'나훔','합':'하박국','습':'스바냐','학':'학개','슥':'스가랴','말':'말라기','마':'마태복음','막':'마가복음','눅':'누가복음','요':'요한복음','행':'사도행전','롬':'로마서','고전':'고린도전서','고후':'고린도후서','갈':'갈라디아서','엡':'에베소서','빌':'빌립보서','골':'골로새서','살전':'데살로니가전서','살후':'데살로니가후서','딤전':'디모데전서','딤후':'디모데후서','딛':'디도서','몬':'빌레몬서','히':'히브리서','약':'야고보서','벧전':'베드로전서','벧후':'베드로후서','요일':'요한일서','요이':'요한이서','요삼':'요한삼서','유':'유다서','계':'요한계시록'};
+  function parse(ref){                                            // '잠언 17장 22절' · '요한복음 3:16-17' · '시편 23편 1절에서 2절' · '요 3:16'
+    ref = String(ref || '').trim(); let book = B66.find(b => ref.startsWith(b)), used = book;
+    if(!book){ const m = ref.match(/^([가-힣]+)/); if(m && ALIAS[m[1]]){ book = ALIAS[m[1]]; used = m[1]; } }
+    if(!book) return null;
+    const rest = ref.slice(used.length);
+    const m = rest.match(/(\d+)\s*[장편:]\s*(\d+)(?:\s*[-~–]\s*(\d+)|\s*절?\s*에서\s*(\d+))?/);
+    if(!m) return null;
+    return {book, bi:ORDER[book], ch:+m[1], v:+m[2], v2:+(m[3] || m[4] || 0) || 0};
+  }
+  const key = ref => { const p = parse(ref); return p ? `${p.book} ${p.ch}:${p.v}${p.v2 ? '-' + p.v2 : ''}` : ''; };
+  const disp = p => `${p.book} ${p.ch}${p.book === '시편' ? '편' : '장'} ${p.v}절${p.v2 ? '~' + p.v2 + '절' : ''}`;
+  function toggle(ref, text, src){
+    const k = key(ref); if(!k) return false;
+    if(S.verses[k]){ delete S.verses[k]; S.versesDel[k] = Date.now(); save(); SYNC.now(); return false; }
+    S.verses[k] = {ref:String(ref), text:String(text || '').trim(), src, at:Date.now()}; delete S.versesDel[k]; save(); SYNC.now(); return true;
+  }
+  function sorted(){
+    return Object.entries(S.verses).map(([k, v]) => ({k, ...v, p:parse(k)})).filter(x => x.p)
+      .sort((a, b) => a.p.bi - b.p.bi || a.p.ch - b.p.ch || a.p.v - b.p.v || a.p.v2 - b.p.v2);
+  }
+  function srcLabel(src){
+    if(!src) return '';
+    if(src.t === 'l'){ const it = BYID[src.id]; return it ? `${blabel(it)} ${it.title}` : ''; }
+    if(src.t === 'vv') return '절별대조 · ' + VV.name(src.k);
+    return '';
+  }
+  function srcHref(src){ if(!src) return ''; if(src.t === 'l') return '#/l/' + src.id; if(src.t === 'vv') return '#/vv/' + src.k; return ''; }
+  function text(){
+    let t = `${APPNAME} — 나의 성경구절 (${today()})\n`;
+    let cur = '';
+    for(const x of sorted()){ if(x.p.book !== cur){ cur = x.p.book; t += `\n[${cur}]\n`; } t += `${disp(x.p)}\n${x.text}\n\n`; }
+    return t;
+  }
+  function view(){
+    $('#hTitle').textContent = '나의 성경구절'; $('#bBack').style.visibility = 'visible';
+    const list = sorted();
+    let h = `<section class="lhead"><div class="kicker">공부하며 저장한 성구 · 창세기부터 요한계시록 순서</div><h2>나의 성경구절</h2>${list.length ? `<div class="sub">${list.length}구절</div>` : ''}</section>
+      <div class="homeTools" style="margin-top:6px"><button id="vExport">📄 글로 내보내기</button><button id="vShare">📤 보내기·공유</button></div>
+      <p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">각 과의 성구 아래 “☆ 나의 성경구절에 저장”, 절별대조의 절 옆 ☆ 를 누르면 여기에 모입니다. 화면을 캡처해 두고 복습해 보세요.</p><div class="myv">`;
+    let cur = '';
+    for(const x of list){
+      if(x.p.book !== cur){ cur = x.p.book; h += `<div class="bookh">${esc(cur)}</div>`; }
+      const sl = srcLabel(x.src), sh = srcHref(x.src);
+      h += `<div class="vitem"><cite>${esc(disp(x.p))}</cite><div class="vx">${esc(x.text)}</div>
+        <div class="vsrc">${sl ? `<span>${esc(sl)}</span>${sh ? `<button data-href="${sh}">열기 ›</button>` : ''}` : ''}<button data-vdel="${esc(x.k)}" style="margin-left:auto">빼기</button></div></div>`;
+    }
+    if(!list.length) h += '<div class="empty">아직 저장한 성구가 없습니다.<br>본문의 성구 아래 “☆ 나의 성경구절에 저장”을 눌러 보세요.</div>';
+    h += '</div><div style="height:40px"></div>';
+    $('#view').innerHTML = h;
+    $('#view').querySelectorAll('[data-vdel]').forEach(b => b.onclick = () => { const k = b.dataset.vdel; delete S.verses[k]; S.versesDel[k] = Date.now(); save(); SYNC.now(); view(); });
+    $('#vExport').onclick = () => download(`${APPNAME}_나의성경구절_${today()}.txt`, text(), 'text/plain');
+    $('#vShare').onclick = async () => { const t = text();
+      if(navigator.share){ try{ await navigator.share({title:APPNAME + ' 나의 성경구절', text:t}); }catch(e){} }
+      else { try{ await navigator.clipboard.writeText(t); toast('복사했습니다. 붙여넣어 보내세요'); }catch(e){ toast('이 기기에서는 공유가 안 됩니다'); } } };
+    hidePlayerIfIdle();
+  }
+  return {key, parse, toggle, view, text, sorted};
 })();
 
 /* ---------- 오늘의 말씀 (강의에서 다룬 절 하나 + 짧은 해설 · 날짜마다 정해진 순서) ---------- */
@@ -1178,7 +1262,7 @@ const SYNC = (() => {
   }
   const stateOf = () => ({notes:S.notes, heard:S.heard, listenSec:S.listenSec || 0, days:S.days, last:S.last || null, lastAt:S.lastAt || 0,
     lastBy:S.lastBy || {}, lastByAt:S.lastByAt || {},
-    askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos, posAt:S.posAt || {}, vv:S.vv, daily:S.daily});
+    askSeen:S.askSeen || 0, qids:S.qids || [], pos:S.pos, posAt:S.posAt || {}, vv:S.vv, daily:S.daily, verses:S.verses, versesDel:S.versesDel});
   function merge(R){
     if(!R) return false;
     let ch = false;
@@ -1210,6 +1294,12 @@ const SYNC = (() => {
     if((R.askSeen || 0) > (S.askSeen || 0)) S.askSeen = R.askSeen;
     const q = [...new Set([...(S.qids || []), ...(R.qids || [])])]; if(q.length !== (S.qids || []).length){ S.qids = q; ch = true; }
     if(R.daily) for(const [k, t] of Object.entries(R.daily.read || {})) if(!S.daily.read[k]){ S.daily.read[k] = t; ch = true; }
+    for(const [k, t] of Object.entries(R.versesDel || {})){                 // 나의 성경구절: 다른 기기에서 지운 것은 여기서도 지우고
+      if((S.versesDel[k] || 0) < t){ S.versesDel[k] = t; if(S.verses[k] && S.verses[k].at <= t){ delete S.verses[k]; ch = true; } }
+    }
+    for(const [k, v] of Object.entries(R.verses || {})){                    // 더한 것은 지운 시각보다 나중이면 받아들인다
+      if(!S.verses[k] && (v.at || 0) > (S.versesDel[k] || 0)){ S.verses[k] = v; ch = true; }
+    }
     if(R.vv){                                                          // 절별 대조: 읽음·밑줄은 합치고, 메모는 나중 것
       const V = S.vv, W = R.vv;
       for(const [k, t] of Object.entries(W.read || {})) if(!V.read[k]){ V.read[k] = t; ch = true; }
@@ -1443,7 +1533,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.01-1236';
+const BUILD = '2026.10.01-1411';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
