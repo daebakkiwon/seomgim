@@ -26,5 +26,41 @@
   ],
   "id": "./",
   "orientation": "any",
-  "description": "아가페의 눈으로 읽는 성경 (1권 사랑이 생명입니다 · 2권 두려움 없는 복음 · 심화편 · 절별 대조)"
+  "description": "아가페의 눈으로 읽는 성경 (1권 사랑이 생명입니다 · 2권 두려움 없는 복음 · 심화편 · 절별 대조)",
+  "shortcuts": [
+    {
+      "name": "오늘의 말씀",
+      "url": "./index.html#/daily",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "나의 성경구절",
+      "url": "./index.html#/verses",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "강의듣기",
+      "url": "./index.html#/lec",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ]
 }
