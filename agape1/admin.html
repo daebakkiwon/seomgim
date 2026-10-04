@@ -73,7 +73,7 @@ tr.p:hover td{background:var(--accbg)}
 </head>
 <body>
 <header><div class="wrap"><h1>아가페 성경공부 · 관리 <a class="backApp" id="backApp" href="./index.html">← 성경공부 화면으로</a></h1>
-  <div class="tabs" id="tabs" hidden><button class="tab on" data-t="p">진도</button><button class="tab" data-t="q">질문<span class="cnt" id="qCnt" hidden></span></button><button class="tab" data-t="a">승인<span class="cnt" id="aCnt" hidden></span></button><button class="tab" id="out">나가기</button></div>
+  <div class="tabs" id="tabs" hidden><button class="tab on" data-t="p">진도</button><button class="tab" data-t="q">질문<span class="cnt" id="qCnt" hidden></span></button><button class="tab" data-t="a">승인<span class="cnt" id="aCnt" hidden></span></button><button class="tab" id="out">나가기 → 성경공부</button></div>
 </div></header>
 <main class="wrap" id="view"><div class="empty">불러오는 중…</div></main>
 
@@ -136,7 +136,7 @@ function login(msg){
   };
   if(msg) firebase.auth().signOut();
 }
-$('#out').onclick = () => firebase.auth().signOut();
+$('#out').onclick = () => { location.href = document.getElementById('backApp').href; };   // 나가기 = 공부 화면으로 (로그인은 유지해 다음에 바로 들어오게)
 $('#tabs').onclick = e => { const t = e.target.closest('[data-t]'); if(!t) return; TAB = t.dataset.t; document.querySelectorAll('.tab[data-t]').forEach(b => b.classList.toggle('on', b === t)); draw(); };
 
 async function load(){
