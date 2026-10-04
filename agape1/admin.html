@@ -68,14 +68,21 @@ tr.p:hover td{background:var(--accbg)}
 .empty{text-align:center;color:var(--faint);padding:40px 0}
 .hint{font-size:13px;color:var(--faint)}
 .scroll{overflow-x:auto}
+.backApp{display:inline-block;margin-left:10px;padding:5px 12px;border:1px solid var(--line,#d8d0c0);border-radius:999px;font:500 13px/1.4 -apple-system,system-ui,sans-serif;color:#4a6b3d;text-decoration:none;vertical-align:middle;background:#fff}
 </style>
 </head>
 <body>
-<header><div class="wrap"><h1>아가페 성경공부 · 관리</h1>
+<header><div class="wrap"><h1>아가페 성경공부 · 관리 <a class="backApp" id="backApp" href="./index.html">← 성경공부 화면으로</a></h1>
   <div class="tabs" id="tabs" hidden><button class="tab on" data-t="p">진도</button><button class="tab" data-t="q">질문<span class="cnt" id="qCnt" hidden></span></button><button class="tab" data-t="a">승인<span class="cnt" id="aCnt" hidden></span></button><button class="tab" id="out">나가기</button></div>
 </div></header>
 <main class="wrap" id="view"><div class="empty">불러오는 중…</div></main>
 
+<script>
+  // 관리 화면에서 공부 화면으로 돌아가기 — 말씀판에서 왔으면 말씀판으로
+  (function(){ const a = document.getElementById('backApp'); const from = sessionStorage.getItem('adminFrom') || (document.referrer.includes('/agape/') ? 'agape' : '');
+    if(document.referrer.includes('/agape/')) sessionStorage.setItem('adminFrom', 'agape');
+    if(from === 'agape') a.href = '../agape/index.html'; })();
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
