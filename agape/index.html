@@ -749,7 +749,7 @@ const VV = (() => {
     $('#view').querySelectorAll('.vtog').forEach(b => b.onclick = () => setOpen(b, b.nextElementSibling.hidden));
     const all = $('#vvAll'); if(all) all.onclick = () => { const open = all.dataset.open !== '1'; all.dataset.open = open ? '1' : '0'; all.textContent = open ? '해설 모두 접기' : '해설 모두 펼치기'; $('#view').querySelectorAll('.vtog').forEach(b => setOpen(b, open)); };
     $('#view').querySelectorAll('.vs').forEach(el => el.onclick = (ev) => {
-      if(ev.target.closest('.vn') && VVP.seekTo(el.dataset.v)) return;
+      if(ev.target.closest('.vn') && VVP.seekTo(el.dataset.v, el)) return;
       const st = ev.target.closest('.vstar');
       if(st){ ev.stopPropagation(); const on = MYV.toggle(st.dataset.vr, el.querySelector('.vt').textContent, {t:'vv', k}); st.classList.toggle('on', on); st.textContent = on ? '★' : '☆'; toast(on ? '나의 성경구절에 저장했습니다 📖' : '나의 성경구절에서 뺐습니다'); return; }
       const arr = S.vv.marks[k] || (S.vv.marks[k] = []), v = el.dataset.v, i = arr.indexOf(v);
@@ -797,11 +797,14 @@ const VV = (() => {
     S.vv.last = k; S.vv.lastAt = Date.now(); save();
     let h = `<section class="lhead"><div class="kicker">절별 대조 · 서막</div><h2>${esc(P.title || '서막')}</h2></section>
       <div class="vvtools"><span>절 옆의 표시를 누르면 그 절의 해설이 펼쳐집니다</span><button class="chip2" id="vvAll">해설 모두 펼치기</button></div>`;
-    for(const sec of P.sections){
-      h += `<h2 style="font:700 1.15em var(--sans);color:var(--acc);margin:2em 0 .4em">${esc(sec.title)}</h2>${sec.key ? `<div class="vkey"><b>이 본문을 읽는 열쇠</b>${esc(sec.key)}</div>` : ''}<div class="body">${verses(sec.verses || [], k, '', sec)}</div>`;
-    }
+    P.sections.forEach((sec, i) => {
+      h += `<div class="psec" data-sec="${i + 1}"><h2 style="font:700 1.15em var(--sans);color:var(--acc);margin:2em 0 .4em">${esc(sec.title)}</h2>${sec.key ? `<div class="vkey"><b>이 본문을 읽는 열쇠</b>${esc(sec.key)}</div>` : ''}<div class="vvtools"><button class="vvlisten" data-sec="${i + 1}">🎧 이 부분 듣기</button></div><div class="body">${verses(sec.verses || [], k, '', sec)}</div></div>`;
+    });
     h += foot(k) + '<div style="height:40px"></div>';
     $('#view').innerHTML = h; bindMarks(k); bindFoot(k); hidePlayerIfIdle(); window.scrollTo(0, 0);
+    const PB = {code:'intro', name:'서막', testament:'구약', chapter_unit:''};   // 서막 녹음은 구약 저장소에 intro_1.m4a … 로 올라가 있다 (부분 하나가 한 장)
+    const secs = [...$('#view').querySelectorAll('.psec')];
+    secs.forEach((root, i) => VVP.attach(PB, i + 1, null, null, {btn: root.querySelector('.vvlisten'), root, nextBtn: secs[i + 1] && secs[i + 1].querySelector('.vvlisten'), title: '절별대조 · 서막 · ' + P.sections[i].title}));
   }
   function route(h){                                  // '' | '/intro' | '/gen' | '/gen/3'
     const m = h.match(/^\/?([a-z0-9]+)?\/?(\d+)?/);
@@ -1306,29 +1309,30 @@ const VVP = (() => {
     return TMS[code];
   }
   const vkey = (code, ch) => 'vv:' + code + '/' + ch;
-  function attach(book, ch, c, nx){
-    const btn = $('#vvListen'); if(!btn) return;
-    const key = vkey(book.code, ch);
-    if(A && A.key === key){ paintVerse(true); if(!aud.paused || !aud2.paused) setBar(true); }
+  function attach(book, ch, c, nx, o){
+    o = o || {}; const btn = o.btn || $('#vvListen'); if(!btn) return;
+    const key = vkey(book.code, ch), label = btn.textContent;
+    if(A && A.key === key){ A.o = o; paintVerse(true); if(!aud.paused || !aud2.paused) setBar(true); }
     btn.onclick = async () => {
       if(A && A.key === key){ $('#pPlay').click(); return; }
       if((!aud.paused || !aud2.paused)) { if(!confirm('듣고 있는 것을 멈추고 이 장을 들을까요?')) return; stopAll(); }
       btn.textContent = '불러오는 중…';
       const tm = await tmOf(book);
-      if(!tm || !tm[ch]){ btn.textContent = '🎧 이 장 듣기'; return toast('이 책의 녹음은 아직 올라오지 않았습니다'); }
-      start(book, ch, tm[ch], nx); btn.textContent = '🎧 듣는 중';
+      if(!tm || !tm[ch]){ btn.textContent = label; return toast('이 책의 녹음은 아직 올라오지 않았습니다'); }
+      start(book, ch, tm[ch], nx, o); btn.textContent = '🎧 듣는 중';
     };
     if(A && A.key === key) btn.textContent = '🎧 듣는 중';
   }
-  function start(book, ch, tm, nx){
-    const base = REPO(book.testament);
-    A = {code:book.code, ch, book, tm, key:vkey(book.code, ch), cSrc: base + CDIR + '/' + fname(book.code, ch) + '.m4a', nx, lastC:null, inC:false};
+  function start(book, ch, tm, nx, o){
+    const base = REPO(book.testament); o = o || {};
+    A = {code:book.code, ch, book, tm, key:vkey(book.code, ch), cSrc: base + CDIR + '/' + fname(book.code, ch) + '.m4a', nx, o, lastC:null, inC:false,
+         title: o.title || `절별대조 · ${book.name} ${ch}${book.chapter_unit || '장'}`};
     const src = base + 'v/' + fname(book.code, ch) + '.m4a', p0 = S.pos[A.key] || 0;
     curAud = A.key; aud.playbackRate = S.rate; aud2.playbackRate = S.rate;
     if(aud.src === src){ aud.currentTime = (p0 && p0 < (aud.duration || 1e9) - 3) ? p0 : 0; }
     else { aud.src = src; aud.addEventListener('loadedmetadata', () => { if(p0 && p0 < aud.duration - 3) aud.currentTime = p0; }, {once:true}); }
-    $('#pTitle').textContent = `절별대조 · ${book.name} ${ch}${book.chapter_unit || '장'}`; $('#mTitle').textContent = $('#pTitle').textContent;
-    if('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({title:`${book.name} ${ch}장`, artist:'절별 대조 학습', album:APPNAME, artwork:[{src:'icon-512.png', sizes:'512x512', type:'image/png'}]});
+    $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
+    if('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({title: o.title ? o.title.replace(/^절별대조 · /, '') : `${book.name} ${ch}장`, artist:'절별 대조 학습', album:APPNAME, artwork:[{src:'icon-512.png', sizes:'512x512', type:'image/png'}]});
     $('#pComm').hidden = false; paintComm(); setBar(true); paintPlay();
     aud.play().catch(() => toast('녹음 파일을 열 수 없습니다'));
   }
@@ -1337,11 +1341,12 @@ const VVP = (() => {
   function paintVerse(force){
     if(!A) return;
     const cur = A.inC ? A.lastC : (verseAt(aud.currentTime) || [])[0];
+    const scope = (A.o && A.o.root && document.contains(A.o.root)) ? A.o.root : document;
     const el = document.querySelector('.vs.now');
-    if(el && el.dataset.v === String(cur) && !force) return;
+    if(el && el.dataset.v === String(cur) && !force && scope.contains(el)) return;
     document.querySelectorAll('.vs.now').forEach(e => e.classList.remove('now'));
     if(cur == null || cur === 0) return;
-    const row = document.querySelector(`.vs[data-v="${cur}"]`); if(!row) return;
+    const row = scope.querySelector(`.vs[data-v="${cur}"]`); if(!row) return;
     row.classList.add('now');
     if(S.follow !== false && (!aud.paused || !aud2.paused)){ const r = row.getBoundingClientRect(), bar = $('#player').offsetHeight; if(r.top < 70 || r.bottom > innerHeight - bar - 40) row.scrollIntoView({block:'center', behavior:'smooth'}); }
   }
@@ -1356,12 +1361,12 @@ const VVP = (() => {
       if(aud2.src !== A.cSrc) aud2.src = A.cSrc; aud2.playbackRate = S.rate;
       const go = () => { aud2.currentTime = c[1]; aud2.play().catch(() => { A.inC = false; aud.play(); }); };
       if(aud2.readyState >= 1) go(); else aud2.addEventListener('loadedmetadata', go, {once:true});
-      $('#pTitle').textContent = `절별대조 · ${A.book.name} ${A.ch}장 · ${v[0]}절 해설`; $('#mTitle').textContent = $('#pTitle').textContent; paintVerse(true); paintPlay2(); }
+      $('#pTitle').textContent = A.title + ` · ${v[0]}절 해설`; $('#mTitle').textContent = $('#pTitle').textContent; paintVerse(true); paintPlay2(); }
   });
   aud2.addEventListener('timeupdate', () => {
     if(!A || !A.inC) return;
     const c = A.tm.c.find(x => x[0] === A.lastC); if(!c) return;
-    if(aud2.currentTime >= c[2] - 0.05){ aud2.pause(); A.inC = false; $('#pTitle').textContent = `절별대조 · ${A.book.name} ${A.ch}장`; $('#mTitle').textContent = $('#pTitle').textContent;
+    if(aud2.currentTime >= c[2] - 0.05){ aud2.pause(); A.inC = false; $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
       const v = A.tm.v.find(x => x[0] === A.lastC); if(v) aud.currentTime = Math.min(aud.duration || v[2], v[2] + 0.1);
       aud.play().catch(() => {}); paintPlay2(); }
   });
@@ -1369,7 +1374,9 @@ const VVP = (() => {
   aud.addEventListener('seeked', () => { if(!A || curAud !== A.key) return; const v = verseAt(aud.currentTime); if(v && A.lastC !== v[0]) A.lastC = null; paintVerse(true); });
   aud.addEventListener('ended', () => {
     if(!A || curAud !== A.key) return;
-    if(!S.auto || !A.nx) return;
+    if(!S.auto) return;
+    if(A.o && A.o.nextBtn){ const b = A.o.nextBtn; A = null; curAud = null; setTimeout(() => { if(document.contains(b)) b.click(); }, 600); return; }
+    if(!A.nx) return;
     const nx = A.nx; A = null; curAud = null; location.hash = nx.slice(1);
     setTimeout(() => { const b = $('#vvListen'); if(b) b.click(); }, 900);
   });
@@ -1385,8 +1392,9 @@ const VVP = (() => {
   $('#pRate').addEventListener('click', () => { aud2.playbackRate = S.rate; });
   function paintComm(){ $('#pComm').textContent = S.vvComm ? '해설 포함' : '성구만'; $('#pComm').classList.toggle('on', !!S.vvComm); }
   $('#pComm').onclick = () => { S.vvComm = !S.vvComm; save(); paintComm(); toast(S.vvComm ? '절마다 강의 해설도 읽어 드립니다' : '성구만 읽어 드립니다'); if(!S.vvComm && A && A.inC){ aud2.pause(); A.inC = false; aud.play().catch(() => {}); } };
-  function seekTo(v){
+  function seekTo(v, el){
     if(!A || curAud !== A.key || (aud.paused && aud2.paused)) return false;
+    if(el && A.o && A.o.root && document.contains(A.o.root) && !A.o.root.contains(el)) return false;
     const x = A.tm.v.find(y => String(y[0]) === String(v)); if(!x) return false;
     if(A.inC){ aud2.pause(); A.inC = false; }
     A.lastC = null; aud.currentTime = x[1]; aud.play().catch(() => {}); paintVerse(true); return true;
@@ -1799,7 +1807,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.06-2207';
+const BUILD = '2026.10.07-0533';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
