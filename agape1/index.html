@@ -142,7 +142,7 @@ textarea:focus{border-color:var(--acc)}
 .nav2 button:disabled{visibility:hidden}
 
 /* 재생 막대 */
-.player{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--paper);border-top:1px solid var(--line);
+.player{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--paper);border-top:1px solid var(--line);transform:translateZ(0);will-change:transform;
   padding:8px 0 calc(8px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(0,0,0,.06)}
 .player.hide{display:none}
 .player .mini{display:none;align-items:center;gap:8px;padding:2px 0}
@@ -1177,6 +1177,13 @@ function openSettings(){
 const aud = $('#aud'); let curAud = null;
 const RATES = [0.8, 0.9, 1, 1.2, 1.5];
 const fmt = s => isFinite(s) ? `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}` : '0:00';
+// 읽는 줄이 보이도록 화면을 내린다. 아이폰(홈 화면 앱)에서 scrollIntoView({behavior:'smooth'})를 쓰면 고정된 플레이어가 조금씩 위로 밀리는 웹킷 결함이 있어 window.scrollTo 로 옮긴다.
+function scrollRowIntoView(el){
+  const r = el.getBoundingClientRect(), bar = $('#player').offsetHeight;
+  if(r.top >= 70 && r.bottom <= innerHeight - bar - 40) return;
+  const top = window.scrollY + r.top - (innerHeight - bar) / 2 + r.height / 2;
+  window.scrollTo({top: Math.max(0, top), behavior: 'smooth'});
+}
 function setBar(on){ $('#player').classList.toggle('hide', !on); document.documentElement.style.setProperty('--barH', on ? $('#player').offsetHeight + 'px' : '0px'); }
 function loadAudio(it){
   if(!it.audio){ if(aud.paused) setBar(false); return; }
@@ -1268,8 +1275,7 @@ const FOLLOW = (() => {
     el.classList.add('now');
     const det = el.closest('details'); if(det && !det.open) det.open = true;
     if(!aud.paused && S.follow !== false && Date.now() - userAt > 4000){
-      const r = el.getBoundingClientRect(), bar = $('#player').offsetHeight, top = 70;
-      if(r.top < top || r.bottom > innerHeight - bar - 40) el.scrollIntoView({block:'center', behavior:'smooth'});
+      scrollRowIntoView(el);
     }
   }
   function loop(){ paint(); raf = aud.paused ? 0 : requestAnimationFrame(loop); }
@@ -1352,7 +1358,7 @@ const VVP = (() => {
     if(cur == null || cur === 0) return;
     const row = scope.querySelector(`.vs[data-v="${cur}"]`); if(!row) return;
     row.classList.add('now');
-    if(S.follow !== false && (!aud.paused || !aud2.paused)){ const r = row.getBoundingClientRect(), bar = $('#player').offsetHeight; if(r.top < 70 || r.bottom > innerHeight - bar - 40) row.scrollIntoView({block:'center', behavior:'smooth'}); }
+    if(S.follow !== false && (!aud.paused || !aud2.paused)) scrollRowIntoView(row);
   }
   // 성구가 한 절 끝에 닿으면, 그 절의 해설이 있고 켜져 있으면 해설을 끼운다
   aud.addEventListener('timeupdate', () => {
@@ -1811,7 +1817,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.07-0740';
+const BUILD = '2026.10.07-0844';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
