@@ -1295,6 +1295,7 @@ const FOLLOW = (() => {
 const VVP = (() => {
   const REPO = t => window.VV_REPO || `https://daebakkiwon.github.io/agape-vv-${t === '신약' ? 'nt' : 'ot'}/`;
   const CDIR = ED === 'agape' ? 'c2' : 'c';
+  const fname = (code, ch) => code === 'gen' ? code + '/' + ch : code + '_' + ch;   // 창세기만 먼저 폴더 방식으로 올렸고, 나머지는 평평한 이름(exo_1.m4a)
   const aud2 = $('#aud2'); const TMS = {};
   let A = null;                                   // {code, ch, book, tm, key, cSrc, nx, lastC, inC}
   S.vvComm = S.vvComm !== false;                  // 해설 포함 듣기 (기본 켬)
@@ -1321,8 +1322,8 @@ const VVP = (() => {
   }
   function start(book, ch, tm, nx){
     const base = REPO(book.testament);
-    A = {code:book.code, ch, book, tm, key:vkey(book.code, ch), cSrc: base + CDIR + '/' + book.code + '/' + ch + '.m4a', nx, lastC:null, inC:false};
-    const src = base + 'v/' + book.code + '/' + ch + '.m4a', p0 = S.pos[A.key] || 0;
+    A = {code:book.code, ch, book, tm, key:vkey(book.code, ch), cSrc: base + CDIR + '/' + fname(book.code, ch) + '.m4a', nx, lastC:null, inC:false};
+    const src = base + 'v/' + fname(book.code, ch) + '.m4a', p0 = S.pos[A.key] || 0;
     curAud = A.key; aud.playbackRate = S.rate; aud2.playbackRate = S.rate;
     if(aud.src === src){ aud.currentTime = (p0 && p0 < (aud.duration || 1e9) - 3) ? p0 : 0; }
     else { aud.src = src; aud.addEventListener('loadedmetadata', () => { if(p0 && p0 < aud.duration - 3) aud.currentTime = p0; }, {once:true}); }
@@ -1798,7 +1799,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.06-2128';
+const BUILD = '2026.10.06-2207';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
