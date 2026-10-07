@@ -1201,7 +1201,7 @@ function loadAudio(it){
   }
   setBar(true); paintPlay();
 }
-const audioIdle = () => aud.paused && $('#aud2').paused;            // 절별대조 해설(aud2)을 읽는 동안은 성구 쪽(aud)이 멈춰 있어도 듣는 중이다
+const audioIdle = () => aud.paused && $('#aud2').paused && !(window.VVP && VVP.active());   // 해설(aud2)을 읽는 동안·절별대조 장이 열려 있는 동안은 플레이어를 숨기지 않는다 (장이 넘어가는 순간 사라지던 문제)
 function hidePlayerIfIdle(){ if(audioIdle()) setBar(false); else setBar(true); }
 /* 작게 접기 — 한 줄(재생·제목·타이머)만 남긴다 */
 function paintMin(){ $('#player').classList.toggle('min', !!S.pmin); $('#mTitle').textContent = $('#pTitle').textContent; setBar(!$('#player').classList.contains('hide')); }
@@ -1441,9 +1441,9 @@ const VVP = (() => {
     start(nb, ch, tm[ch], nextOf(nb, ch), {});
   }
   function paintPlay2(){ const playing = !aud.paused || !aud2.paused; document.body.classList.toggle('vvplaying', !!A && playing); paintPlay(); }
-  aud2.addEventListener('play', () => { document.body.classList.add('vvplaying'); paintPlay(); $('#pPlay').innerHTML = IC.pause; $('#mPlay').innerHTML = IC.pause; });
+  aud2.addEventListener('play', () => { document.body.classList.add('vvplaying'); setBar(true); paintPlay(); $('#pPlay').innerHTML = IC.pause; $('#mPlay').innerHTML = IC.pause; });
   aud2.addEventListener('pause', () => { paintPlay(); });
-  aud.addEventListener('play', () => { if(A && curAud === A.key) document.body.classList.add('vvplaying'); });
+  aud.addEventListener('play', () => { if(A && curAud === A.key){ document.body.classList.add('vvplaying'); setBar(true); } });
   aud.addEventListener('pause', () => { if(!(A && A.inC)) document.body.classList.remove('vvplaying'); });
   // 재생 버튼: 해설을 읽는 중이면 해설 쪽을 멈추고 켠다
   $('#pPlay').addEventListener('click', e => { if(A && A.inC){ e.stopImmediatePropagation(); aud2.paused ? aud2.play() : aud2.pause(); paintPlay(); $('#pPlay').innerHTML = aud2.paused ? IC.play : IC.pause; $('#mPlay').innerHTML = $('#pPlay').innerHTML; } }, true);
@@ -1886,7 +1886,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.07-2123';
+const BUILD = '2026.10.08-0605';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
