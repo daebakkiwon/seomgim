@@ -785,8 +785,8 @@ const VV = (() => {
     const pv = ch > 1 ? `#/vv/${code}/${ch - 1}` : null, nb = M.books.find(x => x.n === b.n + 1);
     const nx = ch < b.ch ? `#/vv/${code}/${ch + 1}` : nb ? `#/vv/${nb.code}/1` : null;
     $('#view').innerHTML = `${dback}<section class="lhead"><div class="kicker">절별 대조 · ${esc(b.name)}${fromDaily ? ' · 오늘의 말씀에서' : ''}</div><h2>${ch}${b.unit} · ${esc(c.title || '')}</h2></section>
-      ${c.key ? `<div class="vkey"><b>이 장을 읽는 열쇠</b>${esc(c.key)}</div>` : ''}
       <div class="vvtools"><button class="vvlisten" id="vvListen">🎧 이 장 듣기</button><button class="chip2" id="vvAll">해설 모두 펼치기</button></div>
+      ${c.key ? `<div class="vkey"><b>이 장을 읽는 열쇠</b>${esc(c.key)}</div>` : ''}
       <p class="hint" style="font-size:12px;color:var(--faint);margin:-4px 0 10px">절 옆의 표시를 누르면 해설이 펼쳐집니다. 듣는 중에는 절 번호를 누르면 그 절부터 들립니다.</p>
       <div class="body" data-vvkey="${code}/${ch}">${verses(c.verses, k, b.unit)}</div>
       ${foot(k)}${dback}
@@ -1886,7 +1886,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.07-2118';
+const BUILD = '2026.10.07-2123';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
