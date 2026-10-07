@@ -1347,7 +1347,7 @@ const VVP = (() => {
     const m = nx && nx.match(/^#\/vv\/([a-z0-9]+)\/(\d+)/); if(!m) return;
     const nb = BOOKS().find(b => b.code === m[1]); if(!nb) return;
     const tm = await tmOf(nb); if(!tm || !tm[m[2]]) return;
-    const f = filesOf(nb, +m[2]); await prefetch(f.v); if(S.vvComm){ if(tm[m[2]][HDIR]) await prefetch(f.h); await prefetch(f.c); }
+    const f = filesOf(nb, +m[2]); if(tm[m[2]][HDIR]) await prefetch(f.h); await prefetch(f.v); if(S.vvComm) await prefetch(f.c);
   }
   function attach(book, ch, c, nx, o){
     o = o || {}; const btn = o.btn || $('#vvListen'); if(!btn) return;
@@ -1378,7 +1378,7 @@ const VVP = (() => {
     if('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({title: o.title ? o.title.replace(/^절별대조 · /, '') : `${book.name} ${ch}장`, artist:'절별 대조 학습', album:APPNAME, artwork:[{src:'icon-512.png', sizes:'512x512', type:'image/png'}]});
     $('#pComm').hidden = false; paintComm(); setBar(true); paintPlay();
     setTimeout(() => prefetchNext(nx), 4000);                                               // 다음 장 파일은 조금 뒤에 미리 받아 둔다
-    const H = tm[HDIR]; const playH = S.vvComm && H && H.length && !pv;                     // 처음부터 들을 때는 장 소개(제목 + 읽는 열쇠)부터
+    const H = tm[HDIR]; const playH = H && H.length && !pv;                                 // 처음부터 들을 때는 장 소개(제목 + 읽는 열쇠)부터 — '성구만'일 때도 읽는다
     if(playH) playComm([0, 0, 0], H[0], null, A.hSrc);
     else aud.play().catch(() => toast('녹음 파일을 열 수 없습니다'));
   }
@@ -1886,7 +1886,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.07-1638';
+const BUILD = '2026.10.07-2118';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
