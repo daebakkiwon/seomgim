@@ -156,6 +156,7 @@ textarea:focus{border-color:var(--acc)}
 .player .pcomm{font-size:12px;font-weight:600;min-width:0;height:26px;padding:0 9px;border-radius:999px;border:1px solid var(--line);color:var(--faint);white-space:nowrap;flex:0 0 auto}
 .player .pcomm.on{border-color:var(--acc);background:var(--accbg);color:var(--acc)}
 .ctrls .ib{min-width:0;padding:0 6px;white-space:nowrap}
+.ctrls #pAuto.on{border:1px solid var(--acc);border-radius:999px;background:var(--accbg)}
 .player.min .mini{display:flex}
 .player.min .ptitle,.player.min .seek,.player.min .ctrls{display:none}
 #pSleep.on{color:var(--acc);font-weight:600}
@@ -380,6 +381,7 @@ const IC = {
 let S = {notes:{}, last:null, lastAt:0, fs:19, rate:1, auto:false, theme:'', pos:{}, heard:{}, listenSec:0, days:[], profile:null, qids:[]};
 let FIRST = true;
 try{ const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if(j){ Object.assign(S, j); FIRST = false; } }catch(e){}
+if(!S.autoOn2){ S.auto = true; S.autoOn2 = 1; }        // 2026-10-07: 다 들으면 다음 장(과)으로 이어 듣기를 기본으로 켠다 (한 번만)
 if(FIRST && Math.min(screen.width, screen.height) >= 700) S.fs = 22;   // 패드는 처음부터 크게
 S.lastBy ||= {}; S.lastByAt ||= {}; S.posAt ||= {};
 S.daily = Object.assign({read:{}}, S.daily || {});                    // 오늘의 말씀 읽음 표시
@@ -1228,8 +1230,8 @@ $('#pFwd').onclick = () => aud.currentTime = Math.min(aud.duration || 0, aud.cur
 $('#pRate').onclick = () => { S.rate = RATES[(RATES.indexOf(S.rate) + 1) % RATES.length]; aud.playbackRate = S.rate; paintRate(); save(); };
 // 아이폰(iOS)은 새 녹음 파일을 열 때마다 재생 속도를 1.0으로 되돌리므로, 파일을 열거나 재생을 시작할 때마다 고른 속도로 다시 맞춘다 (장이 바뀔 때·해설 파일로 넘어갈 때 속도가 달라지던 문제)
 for(const a of [aud, $('#aud2')]) for(const ev of ['loadedmetadata', 'play', 'playing']) a.addEventListener(ev, () => { a.defaultPlaybackRate = S.rate; if(Math.abs(a.playbackRate - S.rate) > 0.01) a.playbackRate = S.rate; });
-$('#pAuto').onclick = () => { S.auto = !S.auto; paintRate(); save(); toast(S.auto ? '다 들으면 다음 과로 이어집니다' : '이어 듣기를 껐습니다'); };
-function paintRate(){ $('#pRate').textContent = S.rate.toFixed(1) + '×'; $('#pAuto').style.color = S.auto ? 'var(--acc)' : 'var(--faint)'; }
+$('#pAuto').onclick = () => { S.auto = !S.auto; paintRate(); save(); toast(S.auto ? '다 들으면 다음 장(과)으로 이어집니다' : '이어 듣기를 껐습니다 — 이 장(과)만 듣고 멈춥니다'); };
+function paintRate(){ $('#pRate').textContent = S.rate.toFixed(1) + '×'; $('#pAuto').style.color = S.auto ? 'var(--acc)' : 'var(--faint)'; $('#pAuto').classList.toggle('on', !!S.auto); $('#pAuto').textContent = S.auto ? '이어듣기' : '이어듣기 끔'; }
 paintRate(); paintMin();
 aud.onplay = () => { lastT = null; markDay(); paintPlay(); };
 aud.onpause = () => { lastT = null; paintPlay(); if(curAud) setPos(curAud, aud.currentTime); save(); SYNC.later(); };
@@ -1255,7 +1257,7 @@ aud.onended = () => {
 };
 let seeking = false;
 $('#pSeek').oninput = () => { seeking = true; $('#tCur').textContent = fmt($('#pSeek').value / 1000 * (aud.duration || 0)); };
-$('#pSeek').onchange = () => { aud.currentTime = $('#pSeek').value / 1000 * (aud.duration || 0); seeking = false; };
+$('#pSeek').onchange = () => { aud.currentTime = $('#pSeek').value / 1000 * (aud.duration || 0); seeking = false; if(window.VVP) VVP.userSeek(); };
 if('mediaSession' in navigator){
   navigator.mediaSession.setActionHandler('seekbackward', () => $('#pBack').click());
   navigator.mediaSession.setActionHandler('seekforward', () => $('#pFwd').click());
@@ -1349,6 +1351,7 @@ const VVP = (() => {
     $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
     if('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({title: o.title ? o.title.replace(/^절별대조 · /, '') : `${book.name} ${ch}장`, artist:'절별 대조 학습', album:APPNAME, artwork:[{src:'icon-512.png', sizes:'512x512', type:'image/png'}]});
     $('#pComm').hidden = false; paintComm(); setBar(true); paintPlay();
+    const nxm = nx && nx.match(/^#\/vv\/([a-z0-9]+)\//); if(nxm && nxm[1] !== book.code){ const nb = ((DATA.vv && DATA.vv.books) || []).find(b => b.code === nxm[1]); if(nb) tmOf(nb); }   // 다음 책 타이밍 미리 받기
     const H = tm[HDIR]; const playH = S.vvComm && H && H.length && !pv && !(p0 > 3);   // 처음부터 들을 때는 장 소개(제목 + 읽는 열쇠)부터
     if(playH) playComm([0, 0, 0], H[0], null, A.hSrc);
     else aud.play().catch(() => toast('녹음 파일을 열 수 없습니다'));
@@ -1431,7 +1434,12 @@ const VVP = (() => {
   }
   // 과 녹음으로 바뀌면 절별대조 상태를 접는다
   const _load = loadAudio; loadAudio = function(it){ if(A && curAud !== A.key){ A = null; $('#pComm').hidden = true; document.body.classList.remove('vvplaying'); } return _load(it); };
-  return {attach, seekTo, active: () => !!A, inComm: () => !!(A && A.inC)};
+  function userSeek(){                                // 재생 위치 슬라이더를 옮기면 읽던 해설을 접고 그 자리부터 성구를 읽는다
+    if(!A || curAud !== A.key || !A.inC) return;
+    aud2.pause(); A.inC = false; A.resumeAt = null; A.lastC = null; $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
+    aud.play().catch(() => {}); paintVerse(true); paintPlay2();
+  }
+  return {attach, seekTo, userSeek, active: () => !!A, inComm: () => !!(A && A.inC)};
 })();
 
 
@@ -1837,7 +1845,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.07-1339';
+const BUILD = '2026.10.07-1357';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
