@@ -1241,7 +1241,7 @@ aud.ontimeupdate = () => {
   const t = aud.currentTime, d = t - (lastT ?? t); lastT = t;
   if(!aud.paused && d > 0 && d < 3) S.listenSec += d;
   if(aud.duration && curAud){ const pc = Math.min(100, Math.round(t / aud.duration * 100)); if(pc > (S.heard[curAud] || 0)) S.heard[curAud] = pc; }
-  if(!seeking) $('#pSeek').value = aud.duration ? aud.currentTime / aud.duration * 1000 : 0;
+  { const D = aud.duration || (window.VVP && VVP.dur()) || 0; if(!seeking) $('#pSeek').value = D ? aud.currentTime / D * 1000 : 0; if(!aud.duration && D) $('#tDur').textContent = fmt(D); }
   $('#tCur').textContent = fmt(aud.currentTime);
   if(Date.now() - posT > 3000){ posT = Date.now(); setPos(curAud, aud.currentTime); save(); }
 };
@@ -1257,7 +1257,8 @@ aud.onended = () => {
 };
 let seeking = false;
 $('#pSeek').oninput = () => { seeking = true; $('#tCur').textContent = fmt($('#pSeek').value / 1000 * (aud.duration || 0)); };
-$('#pSeek').onchange = () => { aud.currentTime = $('#pSeek').value / 1000 * (aud.duration || 0); seeking = false; if(window.VVP) VVP.userSeek(); };
+$('#pSeek').onchange = () => { seeking = false; const D = aud.duration || (window.VVP && VVP.dur()) || 0, t = $('#pSeek').value / 1000 * D;
+  if(window.VVP && VVP.active()) VVP.seekTime(t); else aud.currentTime = t; };
 if('mediaSession' in navigator){
   navigator.mediaSession.setActionHandler('seekbackward', () => $('#pBack').click());
   navigator.mediaSession.setActionHandler('seekforward', () => $('#pFwd').click());
@@ -1353,8 +1354,19 @@ const VVP = (() => {
     o = o || {}; const btn = o.btn || $('#vvListen'); if(!btn) return;
     const key = vkey(book.code, ch), label = btn.textContent;
     if(A && A.key === key){ A.o = o; paintVerse(true); if(!aud.paused || !aud2.paused) setBar(true); }
+    // 지난번에 이 장을 듣다가 멈췄으면(앱을 닫았어도) 멈춘 절부터 이어 들을 수 있게 — 플레이어를 미리 보이고 버튼 글도 바꾼다
+    const L = S.vvLast, canResume = !o.btn && !(A && A.key === key) && L && L.code === book.code && L.ch === ch && L.v > 1;
+    RES = null; const old = $('#vvFromStart'); if(old) old.remove();
+    if(canResume){
+      RES = {btn, v: L.v}; btn.textContent = `🎧 ${L.v}절부터 이어 듣기`;
+      btn.insertAdjacentHTML('afterend', '<button class="chip2" id="vvFromStart">처음부터</button>');
+      $('#vvFromStart').onclick = () => { pendingV = '__start__'; btn.click(); };
+      const t = `절별대조 · ${book.name} ${ch}${UNIT(book)} · ${L.v}절에서 이어 듣기`;
+      if(audioIdle() || !curAud){ $('#pTitle').textContent = t; $('#mTitle').textContent = t; $('#tCur').textContent = fmt(L.t || 0); $('#tDur').textContent = L.d ? fmt(L.d) : '--:--'; $('#pSeek').value = L.d ? (L.t || 0) / L.d * 1000 : 0; $('#pComm').hidden = false; paintComm(); setBar(true); paintPlay(); }
+    }
     btn.onclick = async () => {
       if(A && A.key === key){ $('#pPlay').click(); return; }
+      if(pendingV === '__start__') pendingV = null; else if(canResume && pendingV == null) pendingV = String(L.v);
       if((!aud.paused || !aud2.paused)) { if(pendingV == null && !confirm('듣고 있는 것을 멈추고 이 장을 들을까요?')) return; stopAll(); }
       btn.textContent = '불러오는 중…';
       const tm = await tmOf(book);
@@ -1369,7 +1381,8 @@ const VVP = (() => {
          title: o.title || `절별대조 · ${book.name} ${ch}${UNIT(book)}`};
     const pv = pendingV != null && tm.v.find(y => String(y[0]) === pendingV); pendingV = null;
     const src = base + 'v/' + fname(book.code, ch) + '.m4a', p0 = pv ? pv[1] : 0;     // 새 장은 늘 1절부터 (절 번호를 눌러 시작했을 때만 그 절부터)
-    A.lastC = null; setPos(A.key, 0);
+    A.lastC = null; setPos(A.key, 0); RES = null; const fs = $('#vvFromStart'); if(fs) fs.remove();
+    A.vUrl = src; A.dur = tm.v.length ? tm.v[tm.v.length - 1][2] : 0; $('#tDur').textContent = fmt(A.dur); $('#pSeek').value = p0 && A.dur ? p0 / A.dur * 1000 : 0;
     curAud = A.key; aud.playbackRate = S.rate; aud2.playbackRate = S.rate;
     if(!setSrc(aud, src) && aud.readyState >= 1){ aud.currentTime = p0; }
     else { aud.addEventListener('loadedmetadata', () => { if(p0) aud.currentTime = p0; }, {once:true}); }
@@ -1397,8 +1410,11 @@ const VVP = (() => {
     if(S.follow !== false && (!aud.paused || !aud2.paused)) scrollRowIntoView(row);
   }
   // 성구가 한 절 끝에 닿으면, 그 절의 해설이 있고 켜져 있으면 해설을 끼운다
+  function remember(){ if(!A || curAud !== A.key) return; const v = A.inC ? A.lastC : (verseAt(aud.currentTime) || [0])[0]; S.vvLast = {code:A.code, ch:A.ch, v: +v || 0, t: aud.currentTime, d: aud.duration || 0, at: Date.now()}; }
+  let remT = 0;
   aud.addEventListener('timeupdate', () => {
     if(!A || curAud !== A.key || A.inC) return;
+    if(Date.now() - remT > 2500){ remT = Date.now(); remember(); }
     paintVerse();
     if(!S.vvComm) return;
     const t = aud.currentTime, v = verseAt(t); if(!v || v[0] === 0) return;
@@ -1427,7 +1443,7 @@ const VVP = (() => {
   aud.addEventListener('seeked', () => { if(!A || curAud !== A.key) return; const v = verseAt(aud.currentTime); if(v && A.lastC !== v[0]) A.lastC = null; paintVerse(true); });
   aud.addEventListener('ended', () => { if(A && curAud === A.key && !A.inC) chapterDone(); });
   async function chapterDone(){                      // 한 장을 다 들었다 → 이어듣기면 다음 장(부분)으로
-    if(!A) return; aud.pause(); aud2.pause(); A.inC = false; setPos(A.key, 0);
+    if(!A) return; aud.pause(); aud2.pause(); A.inC = false; setPos(A.key, 0); S.vvLast = {code:A.code, ch:A.ch, v:0, t:0, d:0, at:Date.now()}; save();
     if(!S.auto){ A = null; curAud = null; paintPlay2(); return; }
     if(A.o && A.o.nextBtn){ const b = A.o.nextBtn; A = null; curAud = null; setTimeout(() => { if(document.contains(b)) b.click(); }, 600); return; }
     const nx = A.nx; A = null; curAud = null; if(!nx) return paintPlay2();
@@ -1444,9 +1460,11 @@ const VVP = (() => {
   aud2.addEventListener('play', () => { document.body.classList.add('vvplaying'); setBar(true); paintPlay(); $('#pPlay').innerHTML = IC.pause; $('#mPlay').innerHTML = IC.pause; });
   aud2.addEventListener('pause', () => { paintPlay(); });
   aud.addEventListener('play', () => { if(A && curAud === A.key){ document.body.classList.add('vvplaying'); setBar(true); } });
-  aud.addEventListener('pause', () => { if(!(A && A.inC)) document.body.classList.remove('vvplaying'); });
+  aud.addEventListener('pause', () => { if(!(A && A.inC)) document.body.classList.remove('vvplaying'); remember(); save(); });
+  addEventListener('pagehide', () => { remember(); try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} });
   // 재생 버튼: 해설을 읽는 중이면 해설 쪽을 멈추고 켠다
-  $('#pPlay').addEventListener('click', e => { if(A && A.inC){ e.stopImmediatePropagation(); aud2.paused ? aud2.play() : aud2.pause(); paintPlay(); $('#pPlay').innerHTML = aud2.paused ? IC.play : IC.pause; $('#mPlay').innerHTML = $('#pPlay').innerHTML; } }, true);
+  let RES = null;                                     // 이어 듣기 준비 상태 {btn, v}
+  $('#pPlay').addEventListener('click', e => { if(!A && RES && document.contains(RES.btn) && audioIdle()){ e.stopImmediatePropagation(); RES.btn.click(); return; } if(A && A.inC){ e.stopImmediatePropagation(); aud2.paused ? aud2.play() : aud2.pause(); paintPlay(); $('#pPlay').innerHTML = aud2.paused ? IC.play : IC.pause; $('#mPlay').innerHTML = $('#pPlay').innerHTML; } }, true);
   $('#pBack').addEventListener('click', e => { if(A && A.inC){ e.stopImmediatePropagation(); aud2.currentTime = Math.max(0, aud2.currentTime - 15); } }, true);
   $('#pFwd').addEventListener('click', e => { if(A && A.inC){ e.stopImmediatePropagation(); const c = A.curSeg || A.tm.c.find(x => x[0] === A.lastC); aud2.currentTime = Math.min(c ? c[2] : aud2.duration, aud2.currentTime + 15); } }, true);
   $('#pRate').addEventListener('click', () => { aud2.playbackRate = S.rate; });
@@ -1475,13 +1493,28 @@ const VVP = (() => {
   }
   // 과 녹음으로 바뀌면 절별대조 상태를 접는다
   const _load = loadAudio; loadAudio = function(it){ if(A && curAud !== A.key){ A = null; $('#pComm').hidden = true; document.body.classList.remove('vvplaying'); } return _load(it); };
-  function userSeek(){                                // 재생 위치 슬라이더를 옮기면 읽던 해설을 접고 그 자리부터 성구를 읽는다
+  function seekTime(t){                               // 재생 위치 슬라이더를 옮긴 자리부터 성구를 읽는다 (해설·장 소개를 읽던 중이면 접는다)
+    if(!A || curAud !== A.key){ aud.currentTime = t; return; }
+    if(A.inC){ aud2.pause(); A.inC = false; A.resumeAt = null; }
+    A.lastC = null; $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
+    const verify = (tries) => setTimeout(() => {
+      if(!A || curAud !== A.key || aud.paused) return;
+      if(Math.abs(aud.currentTime - t) < 4) return;
+      if(aud.src.startsWith('blob:') && tries > 0){ aud._url = null; aud.src = A.vUrl; aud.addEventListener('loadedmetadata', () => { aud.currentTime = t; aud.play().catch(() => {}); }, {once:true}); verify(tries - 1); }
+      else { aud.currentTime = t; }
+    }, 1800);
+    if(aud.readyState >= 1){ aud.currentTime = t; aud.play().catch(() => {}); }
+    else { aud.muted = true; aud.addEventListener('loadedmetadata', () => { aud.currentTime = t; }, {once:true}); aud.addEventListener('seeked', () => { aud.muted = false; }, {once:true}); setTimeout(() => { aud.muted = false; }, 2500); aud.play().catch(() => { aud.muted = false; }); }
+    verify(1); paintVerse(true); paintPlay2();
+  }
+  function userSeek(){                                // (예전 이름) 재생 위치 슬라이더를 옮기면 읽던 해설을 접고 그 자리부터 성구를 읽는다
     if(!A || curAud !== A.key || !A.inC) return;
     aud2.pause(); A.inC = false; A.resumeAt = null; A.lastC = null; $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
     aud.play().catch(() => {}); paintVerse(true); paintPlay2();
   }
-  return {attach, seekTo, userSeek, active: () => !!A, inComm: () => !!(A && A.inC)};
+  return {attach, seekTo, userSeek, seekTime, dur: () => (A && curAud === A.key ? (aud.duration || A.dur) : 0), active: () => !!A, inComm: () => !!(A && A.inC)};
 })();
+window.VVP = VVP;                                   // 플레이어 공용 코드가 window.VVP 로 찾는다 (const 는 window 에 안 붙어, 막대 옮기기·숨김 판단이 절별대조를 못 보던 문제)
 
 
 /* 내가 쓴 글·암송 구절은 기기 목소리로 읽어 준다 */
@@ -1886,7 +1919,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.08-0605';
+const BUILD = '2026.10.08-0832';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
