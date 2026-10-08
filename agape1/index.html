@@ -256,7 +256,7 @@ body.playing .sn{cursor:pointer}
 .bk.lec{background:#e9f0f7;border-color:#8fb0d6}.bk.lec small{color:#2f5a86}.bk.lec b{color:#1f3d5c}
 .bk.song{background:#fdecef;border-color:#e39aa8}.bk.song small{color:#9c3b50}.bk.song b{color:#6e2436}
 .songrow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.songrow .no{flex:0 0 26px;text-align:right;font:700 12px var(--sans);color:#9c3b50}.songrow .tt{flex:1;min-width:0}.songrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.35}.songrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.songrow .sp{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #e39aa8;background:var(--paper);color:#9c3b50;display:inline-flex;align-items:center;justify-content:center;padding:0}.songrow .sp svg{width:20px;height:20px}.songrow .sp.none{width:auto;height:26px;padding:0 9px;border-radius:999px;border-color:var(--line);color:var(--faint);font-size:11px}.songrow.now .tt b{color:#9c3b50}.songrow.now .sp{background:#fdecef}
+.songrow .sp{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #e39aa8;background:var(--paper);color:#9c3b50;display:inline-flex;align-items:center;justify-content:center;padding:0}.songrow .sp svg{width:20px;height:20px}.songrow .sp.none{width:auto;height:26px;padding:0 9px;border-radius:999px;border-color:var(--line);color:var(--faint);font-size:11px}.songrow .sp.yt{width:auto;height:30px;padding:0 10px;border-radius:999px;border-color:#c33;color:#c33;font:700 12px var(--sans);text-decoration:none;white-space:nowrap}.songrow.now .tt b{color:#9c3b50}.songrow.now .sp{background:#fdecef}
 .lyrics{margin:14px 0 0}.lyrics p{white-space:pre-line;font:calc(var(--fs) * 1.02)/1.8 var(--serif);margin:0 0 1.3em;word-break:keep-all}
 .songhead{font:700 calc(var(--fs) * .85) var(--sans);color:#9c3b50;margin:22px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--line)}
 .lecbook{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left}.lecbook .n{flex:0 0 30px;font-size:12px;color:var(--faint);text-align:right}.lecbook b{flex:1;font-weight:500;font-size:calc(var(--fs) * .84)}.lecbook span{font-size:12px;color:var(--faint)}.lecbook.none{opacity:.5}
@@ -911,17 +911,18 @@ const SONG = (() => {
   const fail = e => { $('#view').innerHTML = `<div class="empty" style="padding:60px 0">${esc(e.message)}<br><span class="hint">인터넷에 연결되어 있는지 확인해 주세요</span></div>`; };
   const key = s => 'song:' + s.id;
   const withAudio = () => D.songs.filter(s => s.audio);
+  const yt = s => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(s.title.replace(/\s*\(.*?\)\s*$/, '') + (s.section === '찬양' ? ' 찬양' : ' 노래'));   // 음원이 없는 곡은 유튜브 검색으로
   function row(s, i){
     const on = curAud === key(s);
     return `<div class="songrow${on ? ' now' : ''}" data-href="#/song/${esc(s.id)}"><div class="no">${i + 1}</div><div class="tt"><b>${esc(s.title)}</b>${s.first ? `<small>${esc(s.first)}</small>` : ''}</div>
-      ${s.audio ? `<button class="sp" data-play="${esc(s.id)}" aria-label="듣기">${on && !aud.paused ? IC.pause : IC.play}</button>` : '<span class="sp none">가사</span>'}</div>`;
+      ${s.audio ? `<button class="sp" data-play="${esc(s.id)}" aria-label="듣기">${on && !aud.paused ? IC.pause : IC.play}</button>` : `<a class="sp yt" href="${yt(s)}" target="_blank" rel="noopener">▶ 유튜브</a>`}</div>`;
   }
   async function home(){
     $('#hTitle').textContent = '뉴스타트노래'; back('#/');
     $('#view').innerHTML = '<div class="empty" style="padding:60px 0">노래 목록을 불러오는 중…</div>';
     try{ await load(); }catch(e){ return fail(e); }
     const nA = withAudio().length;
-    let h = head('뉴스타트노래', KICK) + `<p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">▶를 누르면 바로 들리고, 제목을 누르면 가사가 나옵니다. 음원이 있는 노래 ${nA}곡은 이어듣기가 켜져 있으면 차례로 이어집니다.</p>
+    let h = head('뉴스타트노래', KICK) + `<p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">▶를 누르면 바로 들리고, 제목을 누르면 가사가 나옵니다. 음원이 있는 노래 ${nA}곡은 이어듣기가 켜져 있으면 차례로 이어지고, 음원이 없는 노래는 ▶ 유튜브로 찾아 들을 수 있습니다.</p>
       <div class="homeTools"><button id="songAll">🎵 음원 있는 노래 모두 듣기</button></div>`;
     for(const sec of ['찬양', '노래', '음원']){ const list = D.songs.filter(s => s.section === sec); if(!list.length) continue; h += `<div class="songhead">${NAMES[sec]} · ${list.length}곡</div>` + list.map((s, i) => row(s, i)).join(''); }
     $('#view').innerHTML = h + '<div style="height:40px"></div>'; bind(); hidePlayerIfIdle(); window.scrollTo(0, 0);
@@ -929,6 +930,7 @@ const SONG = (() => {
   }
   function bind(){
     $('#view').querySelectorAll('[data-play]').forEach(b => b.onclick = e => { e.stopPropagation(); const s = D.songs.find(x => x.id === b.dataset.play); if(!s) return; if(curAud === key(s)) $('#pPlay').click(); else play(s); setTimeout(paintRows, 50); });
+    $('#view').querySelectorAll('.songrow .yt').forEach(a => a.onclick = e => e.stopPropagation());
     $('#view').querySelectorAll('.songrow').forEach(r => r.onclick = () => { location.hash = r.dataset.href.slice(1); });
   }
   function paintRows(){ $('#view').querySelectorAll('.songrow').forEach(r => { const id = r.dataset.href.split('/').pop(); const on = curAud === 'song:' + id; r.classList.toggle('now', on); const b = r.querySelector('[data-play]'); if(b) b.innerHTML = on && !aud.paused ? IC.pause : IC.play; }); const pb = $('#songPlay'); if(pb) paintBtn(pb); }
@@ -939,7 +941,7 @@ const SONG = (() => {
     const list = D.songs.filter(x => x.section === s.section), i = list.indexOf(s), pv = list[i - 1], nx = list[i + 1];
     $('#hTitle').textContent = s.title; back('#/song');
     $('#view').innerHTML = head(s.title, `뉴스타트노래 · ${NAMES[s.section] || ''}${s.toc ? ' · 노래책 ' + esc(s.toc) : ''}`) +
-      (s.audio ? `<div class="vvtools"><button class="vvlisten" id="songPlay" data-song="${esc(s.id)}"></button><span></span></div>` : `<p class="hint" style="font-size:13px;color:var(--faint)">이 노래는 가사만 있고 음원은 아직 없습니다.</p>`) +
+      (s.audio ? `<div class="vvtools"><button class="vvlisten" id="songPlay" data-song="${esc(s.id)}"></button><span></span></div>` : `<div class="vvtools"><a class="vvlisten" style="text-decoration:none;text-align:center" href="${yt(s)}" target="_blank" rel="noopener">▶ 유튜브에서 이 노래 찾아 듣기</a><span></span></div><p class="hint" style="font-size:13px;color:var(--faint);margin:-4px 0 10px">이 노래는 앱 안에 음원이 없어 유튜브 검색으로 연결합니다.</p>`) +
       `<div class="lyrics">${(s.verses || []).map(v => `<p>${esc(v)}</p>`).join('')}</div>` +
       `<div class="nav2">${pv ? `<button data-href="#/song/${esc(pv.id)}"><small>이전</small>${esc(pv.title)}</button>` : '<span></span>'}${nx ? `<button data-href="#/song/${esc(nx.id)}" style="text-align:right"><small>다음</small>${esc(nx.title)}</button>` : ''}</div><div style="height:40px"></div>`;
     const b = $('#songPlay'); if(b){ paintBtn(b); b.onclick = () => { if(curAud === key(s)) $('#pPlay').click(); else play(s); setTimeout(() => paintBtn(b), 50); }; }
@@ -2053,7 +2055,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.08-2218';
+const BUILD = '2026.10.08-2231';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
