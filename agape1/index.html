@@ -258,7 +258,7 @@ body.playing .sn{cursor:pointer}
 .songrow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.songrow .no{flex:0 0 26px;text-align:right;font:700 12px var(--sans);color:#9c3b50}.songrow .tt{flex:1;min-width:0}.songrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.35}.songrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .songrow .sp{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #e39aa8;background:var(--paper);color:#9c3b50;display:inline-flex;align-items:center;justify-content:center;padding:0}.songrow .sp svg{width:20px;height:20px}.songrow .sp.none{width:auto;height:26px;padding:0 9px;border-radius:999px;border-color:var(--line);color:var(--faint);font-size:11px}.songrow .sp.yt{width:auto;height:30px;padding:0 10px;border-radius:999px;border-color:#c33;color:#c33;font:700 12px var(--sans);text-decoration:none;white-space:nowrap}.songrow.now .tt b{color:#9c3b50}.songrow.now .sp{background:#fdecef}
 .lyrics{margin:14px 0 0}.lyrics p{white-space:pre-line;font:calc(var(--fs) * 1.02)/1.8 var(--serif);margin:0 0 1.3em;word-break:keep-all}
-.songhead{font:700 calc(var(--fs) * .85) var(--sans);color:#9c3b50;margin:22px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.songhead{display:flex;align-items:center;justify-content:space-between;gap:8px;font:700 calc(var(--fs) * .85) var(--sans);color:#9c3b50;margin:22px 0 4px;padding-bottom:6px;border-bottom:1px solid var(--line)}.songhead button{flex:0 0 auto;padding:6px 11px;border-radius:999px;border:1px solid #e39aa8;background:#fdecef;color:#9c3b50;font:700 12px var(--sans);white-space:nowrap}
 .lecbook{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left}.lecbook .n{flex:0 0 30px;font-size:12px;color:var(--faint);text-align:right}.lecbook b{flex:1;font-weight:500;font-size:calc(var(--fs) * .84)}.lecbook span{font-size:12px;color:var(--faint)}.lecbook.none{opacity:.5}
 .chgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(54px,1fr));gap:8px;margin:12px 0 24px}.chgrid button{padding:10px 0;border-radius:10px;border:1px solid var(--line);background:var(--paper);font-size:14px}.chgrid button.has{border-color:#8fb0d6;background:#e9f0f7;font-weight:700}.chgrid button.vs{border-style:dashed}
 .lecrow{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}.lecrow .no{flex:0 0 58px;font:700 12px var(--sans);color:#2f5a86;padding-top:3px}.lecrow .tt{flex:1;min-width:0}.lecrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.4}.lecrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:3px}.lecrow .act{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}.lecrow .act a,.lecrow .act button{display:block;padding:7px 10px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font:12px var(--sans);color:var(--soft);text-decoration:none;text-align:center}.lecrow .act a{border-color:#c33;color:#c33;font-weight:700}.lecrow .act button.on{border-color:var(--acc);background:var(--accbg);color:var(--acc)}.lecrow.done .tt b{color:var(--faint);text-decoration:line-through}
@@ -922,14 +922,14 @@ const SONG = (() => {
     $('#view').innerHTML = '<div class="empty" style="padding:60px 0">노래 목록을 불러오는 중…</div>';
     try{ await load(); }catch(e){ return fail(e); }
     const nA = withAudio().length;
-    let h = head('뉴스타트노래', KICK) + `<p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">▶를 누르면 바로 들리고, 제목을 누르면 가사가 나옵니다. 음원이 있는 노래 ${nA}곡은 이어듣기가 켜져 있으면 차례로 이어지고, 음원이 없는 노래는 ▶ 유튜브 뮤직으로 찾아 들을 수 있습니다.</p>
-      <div class="homeTools"><button id="songAll">🎵 음원 있는 노래 모두 듣기</button></div>`;
-    for(const sec of ['찬양', '노래', '음원']){ const list = D.songs.filter(s => s.section === sec); if(!list.length) continue; h += `<div class="songhead">${NAMES[sec]} · ${list.length}곡</div>` + list.map((s, i) => row(s, i)).join(''); }
+    let h = head('뉴스타트노래', KICK) + `<p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">▶를 누르면 바로 들리고, 제목을 누르면 가사가 나옵니다. 묶음마다 "모두 듣기"를 누르면 그 묶음의 음원 있는 노래(모두 ${nA}곡)가 차례로 이어지고, 음원이 없는 노래는 ▶ 유튜브 뮤직으로 찾아 들을 수 있습니다.</p>`;
+    for(const sec of ['찬양', '노래', '음원']){ const list = D.songs.filter(s => s.section === sec); if(!list.length) continue; const na = list.filter(s => s.audio).length;
+      h += `<div class="songhead"><span>${NAMES[sec]} · ${list.length}곡</span>${na ? `<button data-all="${sec}">▶ 모두 듣기 ${na}곡</button>` : ''}</div>` + list.map((s, i) => row(s, i)).join(''); }
     $('#view').innerHTML = h + '<div style="height:40px"></div>'; bind(); hidePlayerIfIdle(); window.scrollTo(0, 0);
-    const all = $('#songAll'); if(all) all.onclick = () => { const f = withAudio()[0]; if(f) play(f); paintRows(); };
   }
   function bind(){
     $('#view').querySelectorAll('[data-play]').forEach(b => b.onclick = e => { e.stopPropagation(); const s = D.songs.find(x => x.id === b.dataset.play); if(!s) return; if(curAud === key(s)) $('#pPlay').click(); else play(s); setTimeout(paintRows, 50); });
+    $('#view').querySelectorAll('[data-all]').forEach(b => b.onclick = () => { const f = withAudio().find(x => x.section === b.dataset.all); if(f){ play(f); toast(`${NAMES[b.dataset.all]} 묶음의 음원 있는 노래를 차례로 들려 드립니다`); } setTimeout(paintRows, 50); });
     $('#view').querySelectorAll('.songrow .yt').forEach(a => a.onclick = e => e.stopPropagation());
     $('#view').querySelectorAll('.songrow').forEach(r => r.onclick = () => { location.hash = r.dataset.href.slice(1); });
   }
@@ -947,8 +947,9 @@ const SONG = (() => {
     const b = $('#songPlay'); if(b){ paintBtn(b); b.onclick = () => { if(curAud === key(s)) $('#pPlay').click(); else play(s); setTimeout(() => paintBtn(b), 50); }; }
     hidePlayerIfIdle(); window.scrollTo(0, 0);
   }
+  let scope = null;                                   // 이어듣기 묶음(section): 튼 곡의 묶음 안에서만 다음 곡으로
   function play(s){
-    bindAud(); if(window.VVP) VVP.release();
+    bindAud(); if(window.VVP) VVP.release(); scope = s.section;
     const id = key(s);
     if(curAud !== id){
       curAud = id; aud.src = BASE + s.audio + '.m4a'; aud.playbackRate = S.rate;
@@ -958,7 +959,7 @@ const SONG = (() => {
     }
     setBar(true); aud.play().catch(() => toast('녹음 파일을 열 수 없습니다')); paintPlay();
   }
-  function next(){ if(!D || !curAud || !curAud.startsWith('song:')) return null; const list = withAudio(), i = list.findIndex(s => key(s) === curAud); return i >= 0 ? list[i + 1] || null : null; }
+  function next(){ if(!D || !curAud || !curAud.startsWith('song:')) return null; const list = withAudio().filter(s => !scope || s.section === scope), i = list.findIndex(s => key(s) === curAud); return i >= 0 ? list[i + 1] || null : null; }
   let bound = false;
   function bindAud(){                                  // 플레이어(aud)는 이 모듈보다 뒤에서 만들어지므로, 처음 쓸 때 이벤트를 건다
     if(bound) return; bound = true;
@@ -2055,7 +2056,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.08-2233';
+const BUILD = '2026.10.08-2243';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
