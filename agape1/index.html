@@ -1233,8 +1233,10 @@ for(const a of [aud, $('#aud2')]) for(const ev of ['loadedmetadata', 'play', 'pl
 $('#pAuto').onclick = () => { S.auto = !S.auto; paintRate(); save(); toast(S.auto ? '다 들으면 다음 장(과)으로 이어집니다' : '이어 듣기를 껐습니다 — 이 장(과)만 듣고 멈춥니다'); };
 function paintRate(){ $('#pRate').textContent = S.rate.toFixed(1) + '×'; $('#pAuto').style.color = S.auto ? 'var(--acc)' : 'var(--faint)'; $('#pAuto').classList.toggle('on', !!S.auto); $('#pAuto').textContent = S.auto ? '이어듣기' : '이어듣기 끔'; }
 paintRate(); paintMin();
-aud.onplay = () => { lastT = null; markDay(); paintPlay(); };
-aud.onpause = () => { lastT = null; paintPlay(); if(curAud) setPos(curAud, aud.currentTime); save(); SYNC.later(); };
+const LW = {want:false, at:0};                                   // 과 듣기 '듣는 중' 상태 — 화면 꺼진 아이폰이 다음 과 재생을 거절했을 때 화면이 켜지면 스스로 이어 튼다
+aud.onplay = () => { lastT = null; markDay(); paintPlay(); if(!(window.VVP && VVP.active())) LW.want = true; };
+aud.onpause = () => { lastT = null; paintPlay(); if(curAud) setPos(curAud, aud.currentTime); save(); SYNC.later(); if(!(window.VVP && VVP.active()) && Date.now() - LW.at > 2000) LW.want = false; };
+setInterval(() => { if(!(window.VVP && VVP.active()) && LW.want && curAud && aud.paused && aud.src && document.visibilityState === 'visible' && Date.now() - LW.at > 2000) aud.play().catch(() => {}); }, 3000);
 aud.onloadedmetadata = () => { $('#tDur').textContent = fmt(aud.duration); };
 let posT = 0, lastT = null;
 aud.ontimeupdate = () => {
@@ -1252,7 +1254,7 @@ aud.onended = () => {
   if(!nx) return;
   const follow = location.hash === '#/l/' + curAud;
   curAud = null; aud.pause();
-  loadAudio(nx); aud.play().catch(() => {});          // 타이머 없이 바로 다음 과를 걸고 튼다 (아이폰이 화면 꺼진 채 소리가 끊기면 앱을 멈춰 세워, 늦게 도는 타이머는 건너뛰던 문제)
+  LW.at = Date.now(); loadAudio(nx); aud.play().catch(() => {}); LW.want = true;   // 타이머 없이 바로 다음 과를 걸고 튼다 (아이폰이 화면 꺼진 채 소리가 끊기면 앱을 멈춰 세워, 늦게 도는 타이머는 건너뛰던 문제)
   if(follow) location.hash = '/l/' + nx.id;           // 그 과 화면을 보고 있었으면 다음 과 화면으로
 };
 let seeking = false;
@@ -1394,7 +1396,7 @@ const VVP = (() => {
     $('#pComm').hidden = false; paintComm(); setBar(true); paintPlay(); paintVerse(true);
   }
   function begin(t){                                   // 읽기 시작: 처음(0)이면 장 소개(제목 + 읽는 열쇠)부터, 아니면 그 자리부터
-    if(!A) return; A.started = true; A.pos = 0; A.lastC = null;
+    if(!A) return; A.started = true; A.pos = 0; A.lastC = null; A.wantPlay = true; A.beganAt = Date.now();
     $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
     if(S.vvComm) prefetch(A.cSrc);                     // 이 장의 해설 파일은 지금부터 받아 둔다
     setTimeout(() => prefetchNext(A && A.nx), 4000);   // 다음 장 파일은 조금 뒤에
@@ -1440,8 +1442,9 @@ const VVP = (() => {
     src = src || A.cSrc;
     A.lastC = v[0]; A.inC = true; A.resumeAt = resumeAt; A.curSeg = c; aud.pause();
     setSrc(aud2, src); aud2.playbackRate = S.rate;
-    const go = () => { aud2.currentTime = c[1]; aud2.play().catch(() => { A.inC = false; aud.play(); }); };
-    if(aud2.readyState >= 1) go(); else aud2.addEventListener('loadedmetadata', go, {once:true});
+    try{ aud2.currentTime = c[1]; }catch(e){}                                              // 메타데이터 전이면 '시작 위치'로 기억되어 로드 뒤 적용된다
+    aud2.addEventListener('loadedmetadata', () => { if(A && A.inC && A.curSeg === c && Math.abs(aud2.currentTime - c[1]) > 0.5) aud2.currentTime = c[1]; }, {once:true});
+    aud2.play().catch(e => { if(A && A.inC && !(e && e.name === 'AbortError')){ A.inC = false; aud.play().catch(() => {}); } });   // 기다리지 않고 바로. 파일을 못 열 때만 성구로 넘어가고, 시스템이 멈춘 것(AbortError)은 그대로 둔다(감시 장치가 이어 튼다)
     $('#pTitle').textContent = A.title + (v[0] === 0 ? ' · 장 소개' : ` · ${v[0]}절 해설`); $('#mTitle').textContent = $('#pTitle').textContent; paintVerse(true); paintPlay2();
   }
   aud2.addEventListener('timeupdate', () => {
@@ -1464,7 +1467,7 @@ const VVP = (() => {
     const nx = A.nx; A = null; curAud = null; if(!nx) return paintPlay2();
     const m = nx.match(/^#\/vv\/([a-z0-9]+)\/(\d+)/), nb = m && BOOKS().find(b => b.code === m[1]);
     if(!nb){ location.hash = nx.slice(1); setTimeout(() => { const b = $('#vvListen'); if(b) b.click(); }, 900); return; }
-    const ch = +m[2]; let tm = null;
+    const ch = +m[2]; let tm = TMS[nb.code] || null;                                                              // 이미 받아 둔 타이밍이면 기다리지 않고(동기) 바로 튼다 — 화면 꺼진 아이폰에서 끊기지 않게
     for(let i = 0; i < 8 && !tm; i++){ tm = await tmOf(nb); if(!tm) await new Promise(r => setTimeout(r, 1500)); }     // 인터넷이 잠깐 끊겨도 몇 번 더 받아 본다
     if(!tm || !tm[ch]){ location.hash = nx.slice(1); return toast('다음 장의 녹음을 받지 못했습니다. 🎧 이 장 듣기를 눌러 주세요'); }
     if(A) return;                                                        // 기다리는 사이 다른 것을 틀었으면 그대로 둔다
@@ -1474,8 +1477,18 @@ const VVP = (() => {
   function paintPlay2(){ const playing = !aud.paused || !aud2.paused; document.body.classList.toggle('vvplaying', !!A && playing); paintPlay(); }
   aud2.addEventListener('play', () => { document.body.classList.add('vvplaying'); setBar(true); paintPlay(); $('#pPlay').innerHTML = IC.pause; $('#mPlay').innerHTML = IC.pause; });
   aud2.addEventListener('pause', () => { paintPlay(); });
-  aud.addEventListener('play', () => { if(A && curAud === A.key){ document.body.classList.add('vvplaying'); setBar(true); } });
-  aud.addEventListener('pause', () => { if(!(A && A.inC)) document.body.classList.remove('vvplaying'); remember(); save(); });
+  aud.addEventListener('play', () => { if(A && curAud === A.key){ document.body.classList.add('vvplaying'); setBar(true); A.wantPlay = true; } });
+  aud.addEventListener('pause', () => { if(!(A && A.inC)) document.body.classList.remove('vvplaying'); remember(); save();
+    if(A && curAud === A.key && aud2.paused && Date.now() - (A.beganAt || 0) > 2000) A.wantPlay = false; });     // 두 트랙이 다 멈췄으면 사용자가 멈춘 것 (장을 바꾸는 중의 멈춤은 뺀다)
+  aud2.addEventListener('play', () => { if(A) A.wantPlay = true; });
+  aud2.addEventListener('pause', () => { if(A && aud.paused && Date.now() - (A.beganAt || 0) > 2000) A.wantPlay = false; });
+  // 감시 장치: 듣는 중이어야 하는데 두 트랙이 다 멈춰 있으면(화면 꺼진 아이폰이 재생 요청을 거절한 뒤 등) 화면이 켜졌을 때 스스로 이어서 튼다
+  function watchdog(){
+    if(!A || !A.started || !A.wantPlay || curAud !== A.key || !aud.paused || !aud2.paused || document.visibilityState !== 'visible') return;
+    if(Date.now() - (A.beganAt || 0) < 2000) return;
+    (A.inC ? aud2 : aud).play().catch(() => {});
+  }
+  setInterval(watchdog, 3000); document.addEventListener('visibilitychange', () => setTimeout(watchdog, 300));
   addEventListener('pagehide', () => { remember(); try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} });
   // 재생 버튼: 해설을 읽는 중이면 해설 쪽을 멈추고 켠다
   $('#pPlay').addEventListener('click', e => { if(pressPlay()) e.stopImmediatePropagation(); }, true);
@@ -1514,7 +1527,7 @@ const VVP = (() => {
     return true;
   }
   // 과 녹음으로 바뀌면 절별대조 상태를 접는다
-  const _load = loadAudio; loadAudio = function(it){ if(A && curAud !== A.key){ A = null; $('#pComm').hidden = true; document.body.classList.remove('vvplaying'); } return _load(it); };
+  const _load = loadAudio; loadAudio = function(it){ const r = _load(it); if(A && curAud !== A.key){ A = null; $('#pComm').hidden = true; document.body.classList.remove('vvplaying'); } return r; };   // 과 녹음이 실제로 걸린 뒤에 절별대조 상태를 접는다
   function seekTime(t){                               // 재생 위치 슬라이더를 옮긴 자리부터 성구를 읽는다 (해설·장 소개를 읽던 중이면 접는다)
     if(!A || curAud !== A.key){ aud.currentTime = t; return; }
     if(A.inC){ aud2.pause(); A.inC = false; A.resumeAt = null; }
@@ -1535,7 +1548,7 @@ const VVP = (() => {
     aud2.pause(); A.inC = false; A.resumeAt = null; A.lastC = null; $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
     aud.play().catch(() => {}); paintVerse(true); paintPlay2();
   }
-  return {attach, seekTo, userSeek, seekTime, pressPlay, dur: () => (A && curAud === A.key ? (aud.duration || A.dur) : 0),
+  return {attach, seekTo, userSeek, seekTime, pressPlay, dbg: () => A && {started:A.started, wantPlay:A.wantPlay, inC:A.inC, beganAt:A.beganAt}, dur: () => (A && curAud === A.key ? (aud.duration || A.dur) : 0),
           active: () => !!A && (A.started || location.hash.startsWith(`#/vv/${A.code}/${A.ch}`)),      // 시작 전인 장은 그 화면에서만 플레이어를 붙잡는다
           inComm: () => !!(A && A.inC)};
 })();
@@ -1952,7 +1965,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.08-1418';
+const BUILD = '2026.10.08-1523';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
