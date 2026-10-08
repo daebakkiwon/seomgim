@@ -1369,7 +1369,7 @@ const VVP = (() => {
       return;
     }
     // 장 화면: 플레이어를 바로 고정한다 (심화편처럼). ▶를 누르면 읽기 시작, 멈춘 자리가 있으면 거기부터
-    if(A && A.key === key){ A.o = o; paintVerse(true); setBar(true); return; }
+    if(A && A.key === key){ A.o = o; paintVerse(true); setBar(true); setTimeout(() => scrollToNow(), 60); return; }   // 돌아왔으면 읽던 절로 화면을 내린다
     if(!aud.paused || !aud2.paused){ setBar(true); return; }   // 다른 장을 듣는 중이면 그대로 둔다 (절 번호를 누르면 이 장으로 바뀐다)
     load(book, ch, nx, o);
   }
@@ -1414,6 +1414,7 @@ const VVP = (() => {
   }
   function stopAll(){ aud.pause(); aud2.pause(); if(A){ A.inC = false; } }
   const verseAt = t => { const v = A.tm.v; let r = null; for(const x of v) if(x[1] <= t + 0.05) r = x; else break; return r; };
+  function scrollToNow(){ const row = document.querySelector('.vs.now'); if(row && S.follow !== false) scrollRowIntoView(row); }
   function paintVerse(force){
     if(!A) return;
     const cur = A.inC ? A.lastC : (verseAt(aud.currentTime) || [])[0];
@@ -1442,9 +1443,13 @@ const VVP = (() => {
     src = src || A.cSrc;
     A.lastC = v[0]; A.inC = true; A.resumeAt = resumeAt; A.curSeg = c; aud.pause();
     setSrc(aud2, src); aud2.playbackRate = S.rate;
-    try{ aud2.currentTime = c[1]; }catch(e){}                                              // 메타데이터 전이면 '시작 위치'로 기억되어 로드 뒤 적용된다
-    aud2.addEventListener('loadedmetadata', () => { if(A && A.inC && A.curSeg === c && Math.abs(aud2.currentTime - c[1]) > 0.5) aud2.currentTime = c[1]; }, {once:true});
-    aud2.play().catch(e => { if(A && A.inC && !(e && e.name === 'AbortError')){ A.inC = false; aud.play().catch(() => {}); } });   // 기다리지 않고 바로. 파일을 못 열 때만 성구로 넘어가고, 시스템이 멈춘 것(AbortError)은 그대로 둔다(감시 장치가 이어 튼다)
+    if(aud2.readyState >= 1){ aud2.currentTime = c[1]; aud2.muted = false; }
+    else {                                                                                  // 파일이 막 바뀐 직후: 위치가 맞을 때까지 소리를 꺼 둔다 (파일 맨 앞이 잠깐 섞여 들리던 문제) — 재생 요청은 바로 보낸다
+      aud2.muted = c[1] > 0.3; try{ aud2.currentTime = c[1]; }catch(e){}
+      const fix = () => { if(!(A && A.inC && A.curSeg === c)) { aud2.muted = false; return; } if(Math.abs(aud2.currentTime - c[1]) > 0.5) aud2.currentTime = c[1]; const un = () => { aud2.muted = false; }; aud2.addEventListener('seeked', un, {once:true}); setTimeout(un, 1500); if(Math.abs(aud2.currentTime - c[1]) <= 0.5) un(); };
+      aud2.addEventListener('loadedmetadata', fix, {once:true}); setTimeout(() => { aud2.muted = false; }, 4000);
+    }
+    aud2.play().catch(e => { if(A && A.inC && !(e && e.name === 'AbortError')){ A.inC = false; aud2.muted = false; aud.play().catch(() => {}); } });   // 기다리지 않고 바로. 파일을 못 열 때만 성구로 넘어가고, 시스템이 멈춘 것(AbortError)은 그대로 둔다(감시 장치가 이어 튼다)
     $('#pTitle').textContent = A.title + (v[0] === 0 ? ' · 장 소개' : ` · ${v[0]}절 해설`); $('#mTitle').textContent = $('#pTitle').textContent; paintVerse(true); paintPlay2();
   }
   aud2.addEventListener('timeupdate', () => {
@@ -1477,10 +1482,10 @@ const VVP = (() => {
   function paintPlay2(){ const playing = !aud.paused || !aud2.paused; document.body.classList.toggle('vvplaying', !!A && playing); paintPlay(); }
   aud2.addEventListener('play', () => { document.body.classList.add('vvplaying'); setBar(true); paintPlay(); $('#pPlay').innerHTML = IC.pause; $('#mPlay').innerHTML = IC.pause; });
   aud2.addEventListener('pause', () => { paintPlay(); });
-  aud.addEventListener('play', () => { if(A && curAud === A.key){ document.body.classList.add('vvplaying'); setBar(true); A.wantPlay = true; } });
+  aud.addEventListener('play', () => { if(A && curAud === A.key){ document.body.classList.add('vvplaying'); setBar(true); A.wantPlay = true; paintVerse(true); scrollToNow(); } });
   aud.addEventListener('pause', () => { if(!(A && A.inC)) document.body.classList.remove('vvplaying'); remember(); save();
     if(A && curAud === A.key && aud2.paused && Date.now() - (A.beganAt || 0) > 2000) A.wantPlay = false; });     // 두 트랙이 다 멈췄으면 사용자가 멈춘 것 (장을 바꾸는 중의 멈춤은 뺀다)
-  aud2.addEventListener('play', () => { if(A) A.wantPlay = true; });
+  aud2.addEventListener('play', () => { if(A){ A.wantPlay = true; paintVerse(true); scrollToNow(); } });
   aud2.addEventListener('pause', () => { if(A && aud.paused && Date.now() - (A.beganAt || 0) > 2000) A.wantPlay = false; });
   // 감시 장치: 듣는 중이어야 하는데 두 트랙이 다 멈춰 있으면(화면 꺼진 아이폰이 재생 요청을 거절한 뒤 등) 화면이 켜졌을 때 스스로 이어서 튼다
   function watchdog(){
@@ -1533,8 +1538,9 @@ const VVP = (() => {
     if(A.inC){ aud2.pause(); A.inC = false; A.resumeAt = null; }
     A.started = true; A.pos = 0;                      // 중간 어디서든 시작했으면 '처음 시작'이 아니다 → 장 소개는 다시 읽지 않는다
     A.lastC = null; $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
+    const myId = A.seekId = (A.seekId || 0) + 1;           // 그 뒤에 또 옮겼으면 이 확인은 버린다 (앞서 누른 절로 되감아 두 절이 섞여 들리던 문제)
     const verify = (tries) => setTimeout(() => {
-      if(!A || curAud !== A.key || aud.paused) return;
+      if(!A || curAud !== A.key || aud.paused || A.seekId !== myId || A.inC) return;
       if(Math.abs(aud.currentTime - t) < 4) return;
       if(aud.src.startsWith('blob:') && tries > 0){ aud._url = null; aud.src = A.vUrl; aud.addEventListener('loadedmetadata', () => { aud.currentTime = t; aud.play().catch(() => {}); }, {once:true}); verify(tries - 1); }
       else { aud.currentTime = t; }
@@ -1965,7 +1971,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.08-1523';
+const BUILD = '2026.10.08-2130';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
