@@ -254,6 +254,7 @@ body.playing .sn{cursor:pointer}
 .bk.locked{opacity:.75}
 .bk.daily{background:#fff4dc;border-color:#e2b65a}.bk.daily small{color:#a4651a}.bk.daily b{color:#6b4512}
 .bk.lec{background:#e9f0f7;border-color:#8fb0d6}.bk.lec small{color:#2f5a86}.bk.lec b{color:#1f3d5c}
+body.songmode #pRate{display:none}
 .bk.song{background:#fdecef;border-color:#e39aa8}.bk.song small{color:#9c3b50}.bk.song b{color:#6e2436}
 .songrow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.songrow .no{flex:0 0 26px;text-align:right;font:700 12px var(--sans);color:#9c3b50}.songrow .tt{flex:1;min-width:0}.songrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.35}.songrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .songrow .sp{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #e39aa8;background:var(--paper);color:#9c3b50;display:inline-flex;align-items:center;justify-content:center;padding:0}.songrow .sp svg{width:20px;height:20px}.songrow .sp.none{width:auto;height:26px;padding:0 9px;border-radius:999px;border-color:var(--line);color:var(--faint);font-size:11px}.songrow .sp.yt{width:auto;height:30px;padding:0 10px;border-radius:999px;border-color:#c33;color:#c33;font:700 12px var(--sans);text-decoration:none;white-space:nowrap}.songrow.now .tt b{color:#9c3b50}.songrow.now .sp{background:#fdecef}
@@ -952,17 +953,33 @@ const SONG = (() => {
     bindAud(); if(window.VVP) VVP.release(); scope = s.section;
     const id = key(s);
     if(curAud !== id){
-      curAud = id; aud.src = BASE + s.audio + '.m4a'; aud.playbackRate = S.rate;
+      curAud = id; aud.src = BASE + s.audio + '.m4a'; aud.playbackRate = 1;              // 노래는 늘 제 속도로
       const t = '뉴스타트노래 · ' + s.title; $('#pTitle').textContent = t; $('#mTitle').textContent = t;
       if('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({title: s.title, artist: '뉴스타트노래', album: APPNAME, artwork: [{src: 'icon-512.png', sizes: '512x512', type: 'image/png'}]});
       $('#pComm').hidden = true;
     }
-    setBar(true); aud.play().catch(() => toast('녹음 파일을 열 수 없습니다')); paintPlay();
+    setMode(true); setBar(true); aud.play().catch(() => toast('녹음 파일을 열 수 없습니다')); paintPlay();
   }
   function next(){ if(!D || !curAud || !curAud.startsWith('song:')) return null; const list = withAudio().filter(s => !scope || s.section === scope), i = list.findIndex(s => key(s) === curAud); return i >= 0 ? list[i + 1] || null : null; }
+  const isSong = () => !!(curAud && curAud.startsWith('song:'));
+  const ICP = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM18 5v14L9 12z"/></svg>', ICN = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM6 5v14l9-7z"/></svg>';
+  let ORIG = null, mode = false;
+  function setMode(on){                                // 노래 모드: 속도 버튼 숨김, 15초 버튼 → 이전 곡·다음 곡
+    if(on === mode) return; mode = on;
+    const b = $('#pBack'), f = $('#pFwd'); if(!ORIG) ORIG = {b: b.innerHTML, f: f.innerHTML, bl: b.getAttribute('aria-label'), fl: f.getAttribute('aria-label')};
+    document.body.classList.toggle('songmode', on);
+    b.innerHTML = on ? ICP : ORIG.b; f.innerHTML = on ? ICN : ORIG.f; b.setAttribute('aria-label', on ? '이전 곡' : ORIG.bl); f.setAttribute('aria-label', on ? '다음 곡' : ORIG.fl);
+  }
+  function list(){ return withAudio().filter(s => !scope || s.section === scope); }
+  function prev(){ const L = list(), i = L.findIndex(s => key(s) === curAud); if(aud.currentTime > 3 || i <= 0){ aud.currentTime = 0; aud.play().catch(() => {}); return; } play(L[i - 1]); if(location.hash.startsWith('#/song/')) location.hash = '/song/' + L[i - 1].id; }
+  function skip(){ const n = next(); if(!n) return toast('이 묶음의 마지막 노래입니다'); play(n); if(location.hash.startsWith('#/song/')) location.hash = '/song/' + n.id; }
   let bound = false;
   function bindAud(){                                  // 플레이어(aud)는 이 모듈보다 뒤에서 만들어지므로, 처음 쓸 때 이벤트를 건다
     if(bound) return; bound = true;
+    $('#pBack').addEventListener('click', e => { if(isSong()){ e.stopImmediatePropagation(); prev(); } }, true);
+    $('#pFwd').addEventListener('click', e => { if(isSong()){ e.stopImmediatePropagation(); skip(); } }, true);
+    aud.addEventListener('loadstart', () => setMode(isSong()));     // 과·절별대조 녹음으로 바뀌면 원래 버튼으로
+    if('mediaSession' in navigator){ try{ navigator.mediaSession.setActionHandler('previoustrack', () => { if(isSong()) prev(); }); navigator.mediaSession.setActionHandler('nexttrack', () => { if(isSong()) skip(); }); }catch(e){} }
     aud.addEventListener('ended', () => { if(!curAud || !curAud.startsWith('song:') || !S.auto) return; const n = next(); if(n){ LW.at = Date.now(); play(n); LW.want = true; if(location.hash.startsWith('#/song/')) location.hash = '/song/' + n.id; } });
     aud.addEventListener('play', () => setTimeout(paintRows, 30)); aud.addEventListener('pause', () => setTimeout(paintRows, 30));
   }
@@ -1313,7 +1330,7 @@ $('#pBack').onclick = () => aud.currentTime = Math.max(0, aud.currentTime - 15);
 $('#pFwd').onclick = () => aud.currentTime = Math.min(aud.duration || 0, aud.currentTime + 15);
 $('#pRate').onclick = () => { S.rate = RATES[(RATES.indexOf(S.rate) + 1) % RATES.length]; aud.playbackRate = S.rate; paintRate(); save(); };
 // 아이폰(iOS)은 새 녹음 파일을 열 때마다 재생 속도를 1.0으로 되돌리므로, 파일을 열거나 재생을 시작할 때마다 고른 속도로 다시 맞춘다 (장이 바뀔 때·해설 파일로 넘어갈 때 속도가 달라지던 문제)
-for(const a of [aud, $('#aud2')]) for(const ev of ['loadedmetadata', 'play', 'playing']) a.addEventListener(ev, () => { a.defaultPlaybackRate = S.rate; if(Math.abs(a.playbackRate - S.rate) > 0.01) a.playbackRate = S.rate; });
+for(const a of [aud, $('#aud2')]) for(const ev of ['loadedmetadata', 'play', 'playing']) a.addEventListener(ev, () => { const r = (a === aud && curAud && curAud.startsWith('song:')) ? 1 : S.rate; a.defaultPlaybackRate = r; if(Math.abs(a.playbackRate - r) > 0.01) a.playbackRate = r; });   // 노래는 제 속도(1.0)
 $('#pAuto').onclick = () => { S.auto = !S.auto; paintRate(); save(); toast(S.auto ? '다 들으면 다음 장(과)으로 이어집니다' : '이어 듣기를 껐습니다 — 이 장(과)만 듣고 멈춥니다'); };
 function paintRate(){ $('#pRate').textContent = S.rate.toFixed(1) + '×'; $('#pAuto').style.color = S.auto ? 'var(--acc)' : 'var(--faint)'; $('#pAuto').classList.toggle('on', !!S.auto); $('#pAuto').textContent = S.auto ? '이어듣기' : '이어듣기 끔'; }
 paintRate(); paintMin();
@@ -2056,7 +2073,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.08-2243';
+const BUILD = '2026.10.08-2248';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
