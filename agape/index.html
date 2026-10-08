@@ -1518,6 +1518,7 @@ const VVP = (() => {
   function seekTime(t){                               // 재생 위치 슬라이더를 옮긴 자리부터 성구를 읽는다 (해설·장 소개를 읽던 중이면 접는다)
     if(!A || curAud !== A.key){ aud.currentTime = t; return; }
     if(A.inC){ aud2.pause(); A.inC = false; A.resumeAt = null; }
+    A.started = true; A.pos = 0;                      // 중간 어디서든 시작했으면 '처음 시작'이 아니다 → 장 소개는 다시 읽지 않는다
     A.lastC = null; $('#pTitle').textContent = A.title; $('#mTitle').textContent = A.title;
     const verify = (tries) => setTimeout(() => {
       if(!A || curAud !== A.key || aud.paused) return;
@@ -1951,7 +1952,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.08-1247';
+const BUILD = '2026.10.08-1258';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
