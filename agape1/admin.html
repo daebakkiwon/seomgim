@@ -17,12 +17,19 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,
 button,input,select,textarea{font:inherit;color:inherit}
 .wrap{max-width:1000px;margin:0 auto;padding:0 16px}
 header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
-header .wrap{display:flex;align-items:center;gap:10px;height:56px}
-header h1{font-size:17px;margin:0;flex:1}
-.tabs{display:flex;gap:6px}
-.tab{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:7px 14px;cursor:pointer;position:relative}
+header .wrap{display:flex;align-items:center;gap:10px;min-height:52px;flex-wrap:wrap;padding-top:6px;padding-bottom:6px;row-gap:6px}
+header h1{font-size:16px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tabs{display:flex;gap:5px;flex-wrap:nowrap}
+.tab{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 11px;cursor:pointer;position:relative;font-size:13px;line-height:1.3;white-space:nowrap}
 .tab.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.tab .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--rec);color:#fff;font-size:12px;text-align:center}
+.tab .cnt{display:inline-block;min-width:17px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--rec);color:#fff;font-size:11px;text-align:center}
+@media (max-width:640px){                       /* 휴대폰: 제목 줄 아래에 메뉴 줄, 글자·여백 작게 */
+  header .wrap{gap:6px;padding-top:8px;padding-bottom:8px}
+  header h1{flex:1 1 100%;font-size:15px}
+  .tabs{flex:1 1 100%;justify-content:flex-start}
+  .tab{flex:1 1 auto;text-align:center;padding:6px 8px;font-size:13px}
+  header h1 .backApp{display:none}              /* '나가기' 메뉴가 같은 일을 한다 */
+}
 .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}
 .login{max-width:380px;margin:60px auto}
 .login h2{margin:0 0 6px;font-size:20px}
@@ -73,7 +80,7 @@ tr.p:hover td{background:var(--accbg)}
 </head>
 <body>
 <header><div class="wrap"><h1>아가페 성경공부 · 관리 <a class="backApp" id="backApp" href="./index.html">← 성경공부 화면으로</a></h1>
-  <div class="tabs" id="tabs" hidden><button class="tab on" data-t="p">진도</button><button class="tab" data-t="q">질문<span class="cnt" id="qCnt" hidden></span></button><button class="tab" data-t="a">승인<span class="cnt" id="aCnt" hidden></span></button><button class="tab" id="out">나가기 → 성경공부</button></div>
+  <div class="tabs" id="tabs" hidden><button class="tab on" data-t="p">진도</button><button class="tab" data-t="q">질문<span class="cnt" id="qCnt" hidden></span></button><button class="tab" data-t="a">승인<span class="cnt" id="aCnt" hidden></span></button><button class="tab" id="out">나가기 →</button></div>
 </div></header>
 <main class="wrap" id="view"><div class="empty">불러오는 중…</div></main>
 
