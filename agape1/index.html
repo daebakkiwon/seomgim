@@ -261,7 +261,7 @@ body.songmode #pRate{display:none}
 .bk.exer{background:#e6f4ec;border-color:#8fc7a6}.bk.exer small{color:#2f7a5a}.bk.exer b{color:#1f5238}
 .bk.dict{background:#eef0f8;border-color:#9aa6d6}.bk.dict small{color:#3f4d8f}.bk.dict b{color:#263166}
 .dictrow{display:flex;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.dictrow .no{flex:0 0 24px;text-align:right;font:700 12px var(--sans);color:#3f4d8f}.dictrow .ic{flex:0 0 auto;font-size:22px}.dictrow .tt{flex:1;min-width:0}.dictrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .9);line-height:1.35}.dictrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:3px;line-height:1.4}.dictrow .arr{color:var(--faint)}
-.hv{padding:12px 0;border-bottom:1px solid var(--line)}.hv .hr{display:flex;justify-content:space-between;align-items:center;gap:8px}.hv .hr b{color:#3f4d8f;font-size:calc(var(--fs) * .9)}.hv .ht{font:calc(var(--fs) * 1)/1.75 var(--serif);margin:6px 0;word-break:keep-all}.hv .ht i{font-style:normal;color:var(--faint);font-size:.72em;margin-right:4px}.hv .hm{font-size:calc(var(--fs) * .84);line-height:1.6;color:var(--soft);background:var(--accbg);border-radius:10px;padding:8px 11px}
+.hv{padding:12px 0;border-bottom:1px solid var(--line)}.hv .hr{display:flex;justify-content:space-between;align-items:center;gap:8px}.hv .hr b{color:#3f4d8f;font-size:calc(var(--fs) * .9)}.hv .ht{font:calc(var(--fs) * 1)/1.75 var(--serif);margin:6px 0;word-break:keep-all}.hv .ht i{font-style:normal;color:var(--faint);font-size:.72em;margin-right:4px}.hv .hm{font-size:calc(var(--fs) * .88);line-height:1.6;color:var(--ink);background:var(--accbg);border-radius:10px;padding:8px 11px;margin:6px 0 4px}
 .hv.now{background:var(--accbg);border-radius:12px;padding-left:10px;padding-right:10px;margin:0 -10px}.apsec [data-mark].now{background:var(--accbg);border-radius:12px;padding:0 10px;margin:0 -10px}
 .dplay{display:inline-flex;align-items:center;gap:4px}.dplay svg{width:16px;height:16px}.songhead .dplay{padding:6px 11px;border-radius:999px;border:1px solid #9aa6d6;background:#eef0f8;color:#3f4d8f;font:700 12px var(--sans)}.dictrow .sp{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #9aa6d6;background:var(--paper);color:#3f4d8f;display:inline-flex;align-items:center;justify-content:center;padding:0}.dictrow .sp svg{width:20px;height:20px}.dictrow .sp.on,.songhead .dplay.on{background:#dfe4f6}
 .apsec h3{font:700 calc(var(--fs) * .9) var(--sans);color:#3f4d8f;margin:20px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}.apsec p{font:calc(var(--fs) * .96)/1.8 var(--serif);margin:0 0 .9em;word-break:keep-all;white-space:pre-line}.apsec .vref{display:block;padding:8px 0;border-bottom:1px dashed var(--line);text-decoration:none;color:inherit}.apsec .vref b{color:#3f4d8f;font-size:calc(var(--fs) * .88)}.apsec .vref span{display:block;color:var(--soft);font-size:calc(var(--fs) * .84);line-height:1.5;margin-top:2px}
@@ -987,7 +987,7 @@ const DICT = (() => {
       g.verses.forEach((v, vi) => {
         const text = v.text.map(t => t.t).join(' '), on = S.verses && S.verses[MYV.key(v.ref)];
         h += `<div class="hv" data-mark="${vi}" data-g="${g.no}"><div class="hr"><b>${esc(v.ref)}</b><button class="vstar${on ? ' on' : ''}" data-vr="${esc(v.ref)}" data-vt="${esc(text)}" title="나의 성경구절에 저장">${on ? '★' : '☆'}</button></div>
-          <p class="ht">${v.text.map(t => `<i>${t.v}</i>${esc(t.t)}`).join(' ')}</p><div class="hm">${esc(v.meaning)}</div></div>`;
+          <div class="hm">${esc(v.meaning)}</div><p class="ht">${v.text.map(t => `<i>${t.v}</i>${esc(t.t)}`).join(' ')}</p></div>`;
       });
     }
     const first = H.groups.find(g => g.audio);
@@ -2241,7 +2241,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.18-2236';
+const BUILD = '2026.10.18-2340';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
