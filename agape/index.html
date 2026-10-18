@@ -258,6 +258,8 @@ body.playing .sn{cursor:pointer}
 .bk.lec{background:#e9f0f7;border-color:#8fb0d6}.bk.lec small{color:#2f5a86}.bk.lec b{color:#1f3d5c}
 body.songmode #pRate{display:none}
 .bk.song{background:#fdecef;border-color:#e39aa8}.bk.song small{color:#9c3b50}.bk.song b{color:#6e2436}
+.bk.exer{background:#e6f4ec;border-color:#8fc7a6}.bk.exer small{color:#2f7a5a}.bk.exer b{color:#1f5238}
+.exrow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);text-decoration:none;color:inherit}.exrow .no{flex:0 0 22px;text-align:right;font:700 12px var(--sans);color:#2f7a5a}.exrow img{width:96px;height:54px;object-fit:cover;border-radius:8px;flex:0 0 auto;background:var(--accbg)}.exrow .tt{flex:1;min-width:0}.exrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.35}.exrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.exrow .go{flex:0 0 auto;padding:6px 10px;border-radius:999px;border:1px solid #c33;color:#c33;font:700 12px var(--sans);white-space:nowrap}
 .songrow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}.songrow .no{flex:0 0 26px;text-align:right;font:700 12px var(--sans);color:#9c3b50}.songrow .tt{flex:1;min-width:0}.songrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.35}.songrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .songrow .sp{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #e39aa8;background:var(--paper);color:#9c3b50;display:inline-flex;align-items:center;justify-content:center;padding:0}.songrow .sp svg{width:20px;height:20px}.songrow .sp.none{width:auto;height:26px;padding:0 9px;border-radius:999px;border-color:var(--line);color:var(--faint);font-size:11px}.songrow .sp.yt{width:auto;height:30px;padding:0 10px;border-radius:999px;border-color:#c33;color:#c33;font:700 12px var(--sans);text-decoration:none;white-space:nowrap}.songrow.now .tt b{color:#9c3b50}.songrow.now .sp{background:#fdecef}
 .lyrics{margin:14px 0 0}.lyrics p{white-space:pre-line;font:calc(var(--fs) * 1.02)/1.8 var(--serif);margin:0 0 1.3em;word-break:keep-all}
@@ -432,6 +434,7 @@ function route(){
   if(h === '/verses') return MYV.view();
   if(h.startsWith('/lec')) return LEC.route(h.slice(4));
   if(h.startsWith('/song')) return SONG.route(h.slice(5));
+  if(h.startsWith('/exer')) return EXER.route(h.slice(5));
   if(h.startsWith('/ask')) return viewAsk(h.slice(5));
   viewHome();
 }
@@ -485,7 +488,7 @@ function viewHome(){
       const ls = ALL_LESSONS.filter(l => l.bk === b.id), d = ls.filter(l => S.notes[l.id]?.done).length;
       const prog = b.vv ? Object.keys(S.vv.read).length + '/' + b.total + '장' : d + '/' + ls.length + '과';
       const lock = !canUse(b.id), req = S.req && S.req[b.id];
-      return `<button class="bk${b.id === B.id ? ' on' : ''}${lock ? ' locked' : ''}" data-href="#/b/${b.id}"><small>${esc(b.short || b.no + '권')}${lock ? ' ' + LOCK : ''}</small><b>${esc(b.title)}</b><span>${lock ? (req ? '승인 기다리는 중' : '승인 후 공부') : prog}</span></button>`; }).join('')}<button class="bk daily" data-href="#/daily"><small>🌅 오늘</small><b>오늘의 말씀</b><span>${Object.keys(S.daily?.read || {}).length ? '읽은 날 ' + Object.keys(S.daily.read).length : '하루 한 절'}</span></button><button class="bk lec${LEC.locked() ? ' locked' : ''}" data-href="#/lec"><small>🎧 유튜브${LEC.locked() ? ' ' + LOCK : ''}</small><b>강의듣기</b><span>${LEC.locked() ? '승인 후 듣기' : Object.keys(S.lec.done).length ? '들은 강의 ' + Object.keys(S.lec.done).length : '서막부터 성경 순서로'}</span></button><button class="bk song" data-href="#/song"><small>🎵 노래</small><b>뉴스타트노래</b><span>함께 부르는 노래책</span></button></div>` : '';
+      return `<button class="bk${b.id === B.id ? ' on' : ''}${lock ? ' locked' : ''}" data-href="#/b/${b.id}"><small>${esc(b.short || b.no + '권')}${lock ? ' ' + LOCK : ''}</small><b>${esc(b.title)}</b><span>${lock ? (req ? '승인 기다리는 중' : '승인 후 공부') : prog}</span></button>`; }).join('')}<button class="bk daily" data-href="#/daily"><small>🌅 오늘</small><b>오늘의 말씀</b><span>${Object.keys(S.daily?.read || {}).length ? '읽은 날 ' + Object.keys(S.daily.read).length : '하루 한 절'}</span></button><button class="bk lec${LEC.locked() ? ' locked' : ''}" data-href="#/lec"><small>🎧 유튜브${LEC.locked() ? ' ' + LOCK : ''}</small><b>강의듣기</b><span>${LEC.locked() ? '승인 후 듣기' : Object.keys(S.lec.done).length ? '들은 강의 ' + Object.keys(S.lec.done).length : '서막부터 성경 순서로'}</span></button><button class="bk song" data-href="#/song"><small>🎵 노래</small><b>뉴스타트노래</b><span>함께 부르는 노래책</span></button><button class="bk exer" data-href="#/exer"><small>💪 운동</small><b>건강운동모음</b><span>따라 하는 스트레칭</span></button></div>` : '';
   if(!canUse(B.id)){                                           // 잠긴 권: 목차 대신 승인 안내
     const req = S.req && S.req[B.id];
     $('#view').innerHTML = `${shelf}<section class="hero"><div class="series">${esc(B.series)}</div><h2>${esc(B.title)}</h2><div class="by">${esc(B.by || '')}</div></section>
@@ -905,6 +908,33 @@ const MYV = (() => {
 })();
 
 /* ---------- 강의듣기 (유튜브 뉴스타트 성경강의 · 성경 순서로 찾기 + 정주행 코스) — 강의판에만 ---------- */
+/* ---------- 건강운동모음 (유튜브 운동 영상 목록, exercise.json) ----------
+   항목을 더 넣을 때는 exercise.json 의 items 에 {id, title, v(유튜브 영상 id), by} 를 추가하고 두 판에 올리면 된다 */
+const EXER = (() => {
+  let D = null, loading = null;
+  const back = (href) => { $('#bBack').style.visibility = 'visible'; $('#bBack').dataset.href = href; };
+  async function load(){
+    if(D) return D; if(loading) return loading;
+    loading = fetch('exercise.json?d=' + new Date().toISOString().slice(0, 10)).then(r => { if(!r.ok) throw new Error('운동 목록을 불러오지 못했습니다'); return r.json(); }).then(j => { D = j; return D; }).finally(() => loading = null);
+    return loading;
+  }
+  const yt = x => `https://www.youtube.com/watch?v=${encodeURIComponent(x.v)}${x.list ? '&list=' + encodeURIComponent(x.list) : ''}`;
+  const thumb = x => `https://img.youtube.com/vi/${encodeURIComponent(x.v)}/mqdefault.jpg`;
+  async function home(){
+    $('#hTitle').textContent = '건강운동모음'; back('#/');
+    $('#view').innerHTML = '<div class="empty" style="padding:60px 0">운동 목록을 불러오는 중…</div>';
+    try{ await load(); }catch(e){ $('#view').innerHTML = `<div class="empty" style="padding:60px 0">${esc(e.message)}<br><span class="hint">인터넷에 연결되어 있는지 확인해 주세요</span></div>`; return; }
+    const items = D.items || [];
+    $('#view').innerHTML = `<section class="lhead"><div class="kicker">뉴스타트 건강 · 따라 하는 운동 영상</div><h2>${esc(D.title || '건강운동모음')}</h2></section>
+      <p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">영상을 누르면 유튜브가 열립니다. 순서대로 따라 해 보세요. 필요한 운동 영상이 더 있으면 인도자에게 알려 주세요.</p>` +
+      items.map((x, i) => `<a class="exrow" href="${yt(x)}" target="_blank" rel="noopener"><div class="no">${i + 1}</div><img src="${thumb(x)}" alt="" loading="lazy"><div class="tt"><b>${esc(x.title)}</b>${x.by ? `<small>${esc(x.by)}</small>` : ''}</div><span class="go">▶ 유튜브</span></a>`).join('') +
+      (items.length ? '' : '<div class="empty">아직 올라온 운동 영상이 없습니다.</div>') + '<div style="height:40px"></div>';
+    hidePlayerIfIdle(); window.scrollTo(0, 0);
+  }
+  function route(){ return home(); }
+  return {route};
+})();
+
 /* ---------- 뉴스타트노래 (노래책 가사 + 음원) ----------
    데이터 songs.json(songs/build_songs.py 가 만든다) · 음원은 agape-vv-nt/songs/{id}.m4a (HE-AAC 64k) */
 const SONG = (() => {
@@ -2087,7 +2117,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.09-1907';
+const BUILD = '2026.10.18-2150';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
