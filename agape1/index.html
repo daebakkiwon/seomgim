@@ -150,12 +150,12 @@ textarea:focus{border-color:var(--acc)}
   padding:8px 0 calc(8px + env(safe-area-inset-bottom));box-shadow:0 -6px 20px rgba(0,0,0,.06)}
 .player.hide{display:none}
 .player .mini{display:none;align-items:center;gap:8px;padding:2px 0}
-.player .mini .mt{flex:1;min-width:0;font:13px var(--sans);color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.player .mini .mt{flex:1;min-width:0;font:13px var(--sans);color:var(--soft);overflow:hidden;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.35}
 .player .mini .ms{font:12px var(--sans);color:var(--acc)}
 .player .mini #mPlay{width:40px;height:40px;border-radius:50%;background:var(--acc);color:#fff;min-width:40px}
 .player .mini #mPlay svg{width:20px;height:20px}
 .player .ptitle{display:flex;align-items:center;gap:6px}
-.player .ptitle span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player .ptitle span{flex:1;min-width:0;overflow:hidden;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.35}
 .player .pmin{font-size:12px;color:var(--faint);min-width:0;height:28px;padding:0 6px}
 .player .pcomm{font-size:12px;font-weight:600;min-width:0;height:26px;padding:0 9px;border-radius:999px;border:1px solid var(--line);color:var(--faint);white-space:nowrap;flex:0 0 auto}
 .player .pcomm.on{border-color:var(--acc);background:var(--accbg);color:var(--acc)}
@@ -945,7 +945,10 @@ const DICT = (() => {
   function paintNow(force){
     if(!P || !pageIs(P.key)){ document.querySelectorAll('[data-mark].now').forEach(e => e.classList.remove('now')); return; }   // 다른 사도·질문 화면에서는 칠하지 않는다
     const m = markAt(aud.currentTime); const cur = document.querySelector('[data-mark].now');
-    if(!force && cur && cur.dataset.mark === String(m)) return;
+    if(!force && cur && cur.dataset.mark === String(m)){                 // 같은 문장: 1.5초마다 화면 안에 있는지만 본다(손으로 넘긴 뒤 4초 지나면 다시 데려옴)
+      if(!aud.paused && Date.now() - (paintNow.chk || 0) > 1500){ paintNow.chk = Date.now(); reveal(cur); }
+      return;
+    }
     document.querySelectorAll('[data-mark].now').forEach(e => e.classList.remove('now'));
     if(m == null || m === 'head') return;
     const g = P.key.startsWith('dict:heal:') ? P.key.split(':')[2] : null;             // 치유 40구절은 묶음마다 절 번호가 0부터라 묶음 안에서 찾는다
@@ -956,7 +959,8 @@ const DICT = (() => {
     if(S.follow === false) return; if(!force && Date.now() - userAt < 4000) return;
     const bar = $('#player').offsetHeight, vis = innerHeight - bar, r = el.getBoundingClientRect();
     if(!force && r.top >= 70 && r.bottom <= vis * 0.72) return;
-    window.scrollTo({top: Math.max(0, scrollY + r.top - vis * 0.3), behavior: force ? 'auto' : 'smooth'});
+    const y = Math.max(0, scrollY + r.top - vis * 0.3);
+    if(force){ glideId++; window.scrollTo(0, y); } else glideTo(y);
   }
   const markTime = m => { const t = (P && P.tm || []).find(x => String(x[0]) === String(m)); return t ? t[1] : null; };
   document.addEventListener('click', e => {                     // 문장(절)을 누르면 그 자리부터 듣는다
@@ -1011,7 +1015,7 @@ const DICT = (() => {
   const playAp = (id, at) => { const x = (D.apostles.items || []).find(y => y.id === id); if(!x || !x.audio) return toast('이 사도의 녹음은 아직 없습니다'); toggle(...apArgs(x), at); };
   const qItems = () => (D.qna ? D.qna.parts.flatMap(p => p.items) : []);
   const qArgs = q => { const L = qItems(), i = L.findIndex(y => y.id === q.id), nx = L.slice(i + 1).find(y => y.audio);
-    return ['dict:qna:' + q.id, q.audio, q.tm, `질문있어요 · Q${q.no}`, () => nx ? (() => { if(location.hash.startsWith('#/dict/qna')) location.hash = '/dict/qna/' + nx.id; playQ(nx.id, 0); }) : null, `Q${q.no}. ${q.q}`]; };
+    return ['dict:qna:' + q.id, q.audio, q.tm, `Q${q.no}. ${q.q}`, () => nx ? (() => { if(location.hash.startsWith('#/dict/qna')) location.hash = '/dict/qna/' + nx.id; playQ(nx.id, 0); }) : null, `Q${q.no}. ${q.q}`]; };
   const openQ = (id, at) => { const q = qItems().find(y => y.id === id); if(!q) return; if(curAud === 'dict:qna:' + id && !aud.paused && at == null) return playQ(id); location.hash = '/dict/qna/' + id; playQ(id, at); };
   const playQ = (id, at) => { const q = qItems().find(y => y.id === id); if(!q || !q.audio) return toast('이 질문의 녹음은 아직 없습니다'); toggle(...qArgs(q), at); };
   const healArgs = g => { const nx = D.heal.groups.find(x => x.no > g.no && x.audio); return ['dict:heal:' + g.no, g.audio, g.tm, `치유 40구절 · ${g.no}. ${g.title}`, () => nx ? (() => playHeal(nx.no, 0)) : null, `치유 40구절 ${g.no}. ${g.title}`]; };
@@ -1067,7 +1071,7 @@ const DICT = (() => {
     const pv = L[i - 1], nx = L[i + 1];
     $('#hTitle').textContent = x.name; back('#/dict/apostles');
     const sec = (k, t, arr) => (arr && arr.length) ? `<div><h3>${esc(t)}</h3><p>${sn(k, arr)}</p></div>` : '';
-    $('#view').innerHTML = head(x.name, `열두 사도 · ${x.aka}`) + `<div class="vvtools">${x.audio ? dbtn('dict:ap:' + x.id, '이 사도 듣기') : `<button class="chip2" id="apSpeak">🔈 읽어 주기</button>`}<span>${esc(x.traits || '')}</span></div><div class="apsec">` +
+    $('#view').innerHTML = head(x.name, `열두 사도 · ${x.aka}`) + (x.audio ? (x.traits ? `<p class="hint" style="font-size:13px;color:var(--soft);margin:-4px 0 6px">${esc(x.traits)}</p>` : '') : `<div class="vvtools"><button class="chip2" id="apSpeak">🔈 읽어 주기</button><span>${esc(x.traits || '')}</span></div>`) + `<div class="apsec">` +
       sec('origin', '출신과 배경', x.origin) + sec('life', '생애', x.life) + sec('thought', '사상과 신앙', x.thought) +
       ((x.verses || []).length ? `<div><h3>관련 말씀</h3>` + x.verses.map((v, i) => { const l = refLink(v.ref); return `<a class="vref" data-mark="verses:${i}" ${l ? `href="${l}"` : ''}><b>${esc(v.ref)}</b><span>${esc(v.why)}</span></a>`; }).join('') + '</div>' : '') +
       sec('tradition', '전승', x.tradition) + `</div>
@@ -1095,9 +1099,9 @@ const DICT = (() => {
     try{ await load(); }catch(e){ return fail(e); }
     const L = qItems(), i = L.findIndex(q => q.id === id), q = L[i]; if(!q || ED === 'agape') return qna();
     const pv = L[i - 1], nx = L[i + 1], part = D.qna.parts.find(p => p.items.includes(q));
-    $('#hTitle').textContent = `Q${q.no}`; back('#/dict/qna');
+    $('#hTitle').textContent = `Q${q.no}. ${q.q}`; back('#/dict/qna');
     let k = 0; const ans = q.answer.map(para => `<p>${para.map(t => `<span class="sn" data-mark="a:${k++}">${esc(t)}</span>`).join(' ')}</p>`).join('');
-    $('#view').innerHTML = `<section class="lhead"><div class="kicker">${esc(`질문있어요 · ${part ? part.title : ''}`)}</div><h2><span data-mark="q:0">Q${q.no}. ${esc(q.q)}</span></h2></section>` + `<div class="vvtools">${q.audio ? dbtn('dict:qna:' + q.id, '이 질문 듣기') : '<span></span>'}<span></span></div><div class="apsec">
+    $('#view').innerHTML = `<section class="lhead"><div class="kicker">${esc(`질문있어요 · ${part ? part.title : ''}`)}</div><h2><span data-mark="q:0">Q${q.no}. ${esc(q.q)}</span></h2></section>` + `<div class="apsec">
       <div><h3>박사님의 답</h3>${ans}</div>
       ${q.verses ? `<div><h3>근거 말씀</h3><p><span class="sn" data-mark="v:0">${esc(q.verses)}</span></p></div>` : ''}
       ${(q.agape || []).length ? `<div><h3>아가페로 새기는 한 문장</h3><div class="hm" style="font-size:calc(var(--fs) * .95);line-height:1.7">${sn('g', q.agape)}</div></div>` : ''}
@@ -1345,7 +1349,7 @@ const LEC = (() => {
     items.forEach((c, i) => { const sec = c.sec || mainBook(c.x); if(sec !== cur){ cur = sec; h += `<div class="lechead">${esc(sec)}</div>`; } h += row(c.x, (c.p || []).join(', '), c.s || '', i); });
     h += '<div style="height:40px"></div>';
     $('#view').innerHTML = h; bind(); window.scrollTo(0, 0);
-    const nb = $('#lecNext'); if(nb) nb.onclick = () => { const el = $('#view').querySelectorAll('.lecrow')[nextI]; if(el){ el.scrollIntoView({behavior:'smooth', block:'center'}); el.style.outline = '2px solid var(--acc)'; setTimeout(() => el.style.outline = '', 2500); } };
+    const nb = $('#lecNext'); if(nb) nb.onclick = () => { const el = $('#view').querySelectorAll('.lecrow')[nextI]; if(el){ const r = el.getBoundingClientRect(); glideTo(scrollY + r.top - (innerHeight - $('#player').offsetHeight) / 2 + r.height / 2); el.style.outline = '2px solid var(--acc)'; setTimeout(() => el.style.outline = '', 2500); } };
   }
   function mainBook(x){ const s = {}; for(const [b, c, w] of x.r) s[b] = (s[b] || 0) + w; return Object.entries(s).sort((a, b) => b[1] - a[1])[0]?.[0] || ''; }
   function route(h){                                   // '' | '/course' | '/b/3' | '/b/3/12' | '/b/pro'
@@ -1535,13 +1539,31 @@ const aud = $('#aud'); let curAud = null;
 const RATES = [0.8, 0.9, 1, 1.2, 1.5];
 const fmt = s => isFinite(s) ? `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}` : '0:00';
 // 읽는 줄이 보이도록 화면을 내린다. 아이폰(홈 화면 앱)에서 scrollIntoView({behavior:'smooth'})를 쓰면 고정된 플레이어가 조금씩 위로 밀리는 웹킷 결함이 있어 window.scrollTo 로 옮긴다.
+/* 화면을 부드럽게 옮기기 — 브라우저의 smooth 스크롤은 아이폰 홈 화면 앱·휴대폰 화면에서 아예 움직이지 않는 때가 있어
+   (색은 들어오는데 글이 안 올라가던 문제), 즉시 이동 scrollTo(0, y)를 잘게 나눠 직접 움직이고,
+   그마저 돌지 못하면(화면이 가려져 그리기가 멈춘 때 등) 끝에 한 번에 그 자리로 옮긴다. 손가락이 닿으면 멈춘다. */
+let glideId = 0;
+function glideTo(y){
+  const max = Math.max(0, document.documentElement.scrollHeight - innerHeight);
+  y = Math.round(Math.max(0, Math.min(y, max)));
+  const from = window.scrollY, d = y - from; if(Math.abs(d) < 3) return;
+  const id = ++glideId, t0 = performance.now(), dur = Math.min(650, 250 + Math.abs(d) * 0.35);
+  const step = now => {
+    if(id !== glideId) return;
+    const k = Math.min(1, (now - t0) / dur), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    window.scrollTo(0, Math.round(from + d * e)); if(k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  setTimeout(() => { if(id === glideId && Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); }, dur + 200);
+}
+['touchstart', 'wheel'].forEach(ev => addEventListener(ev, () => { glideId++; }, {passive:true}));
 function scrollRowIntoView(el){
   const r = el.getBoundingClientRect(), bar = $('#player').offsetHeight;
   if(r.top >= 70 && r.bottom <= innerHeight - bar - 40) return;
-  const top = window.scrollY + r.top - (innerHeight - bar) / 2 + r.height / 2;
-  window.scrollTo({top: Math.max(0, top), behavior: 'smooth'});
+  glideTo(window.scrollY + r.top - (innerHeight - bar) / 2 + r.height / 2);
 }
 function setBar(on){ $('#player').classList.toggle('hide', !on); document.documentElement.style.setProperty('--barH', on ? $('#player').offsetHeight + 'px' : '0px'); }
+if('ResizeObserver' in window) new ResizeObserver(() => { if(!$('#player').classList.contains('hide')) document.documentElement.style.setProperty('--barH', $('#player').offsetHeight + 'px'); }).observe($('#player'));   // 제목이 두 줄이 되는 등 플레이어 높이가 바뀌면 아래 여백도 맞춘다
 function loadAudio(it){
   if(!it.audio){ if(audioIdle()) setBar(false); return; }
   if(curAud !== it.id){
@@ -2327,7 +2349,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.19-2218';
+const BUILD = '2026.10.20-0653';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
