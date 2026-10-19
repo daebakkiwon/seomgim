@@ -262,7 +262,7 @@ body.songmode #pRate{display:none}
 .bk.dict{background:#eef0f8;border-color:#9aa6d6}.bk.dict small{color:#3f4d8f}.bk.dict b{color:#263166}
 .dictrow{display:flex;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);cursor:pointer}.dictrow .no{flex:0 0 24px;text-align:right;font:700 12px var(--sans);color:#3f4d8f}.dictrow .ic{flex:0 0 auto;font-size:22px}.dictrow .tt{flex:1;min-width:0}.dictrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .9);line-height:1.35}.dictrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:3px;line-height:1.4}.dictrow .arr{color:var(--faint)}
 .hv{padding:12px 0;border-bottom:1px solid var(--line)}.hv .hr{display:flex;justify-content:space-between;align-items:center;gap:8px}.hv .hr b{color:#3f4d8f;font-size:calc(var(--fs) * .9)}.hv .ht{font:calc(var(--fs) * 1)/1.75 var(--serif);margin:6px 0;word-break:keep-all}.hv .ht i{font-style:normal;color:var(--faint);font-size:.72em;margin-right:4px}.hv .hm{font-size:calc(var(--fs) * .88);line-height:1.6;color:var(--ink);background:var(--accbg);border-radius:10px;padding:8px 11px;margin:6px 0 4px}
-.hv.now{background:var(--accbg);border-radius:12px;padding-left:10px;padding-right:10px;margin:0 -10px}.apsec .sn.now,.apsec .vref.now{background:var(--accbg);border-radius:6px;box-shadow:0 0 0 3px var(--accbg)}.apsec .sn{transition:background .2s}
+.hv.now{background:var(--accbg);border-radius:12px;padding-left:10px;padding-right:10px;margin:0 -10px}.apsec .sn.now,.apsec .vref.now,.lhead [data-mark].now{background:var(--accbg);border-radius:6px;box-shadow:0 0 0 3px var(--accbg)}.apsec .sn{transition:background .2s;cursor:pointer}.hv .ht,.hv .hm{cursor:pointer}
 .dplay{display:inline-flex;align-items:center;gap:4px}.dplay svg{width:16px;height:16px}.songhead .dplay{padding:6px 11px;border-radius:999px;border:1px solid #9aa6d6;background:#eef0f8;color:#3f4d8f;font:700 12px var(--sans)}.dictrow .sp{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #9aa6d6;background:var(--paper);color:#3f4d8f;display:inline-flex;align-items:center;justify-content:center;padding:0}.dictrow .sp svg{width:20px;height:20px}.dictrow .sp.on,.songhead .dplay.on{background:#dfe4f6}
 .apsec h3{font:700 calc(var(--fs) * .9) var(--sans);color:#3f4d8f;margin:20px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}.apsec p{font:calc(var(--fs) * .96)/1.8 var(--serif);margin:0 0 .9em;word-break:keep-all;white-space:pre-line}.apsec .vref{display:block;padding:8px 0;border-bottom:1px dashed var(--line);text-decoration:none;color:inherit}.apsec .vref b{color:#3f4d8f;font-size:calc(var(--fs) * .88)}.apsec .vref span{display:block;color:var(--soft);font-size:calc(var(--fs) * .84);line-height:1.5;margin-top:2px}
 .exrow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);text-decoration:none;color:inherit}.exrow .no{flex:0 0 22px;text-align:right;font:700 12px var(--sans);color:#2f7a5a}.exrow img{width:96px;height:54px;object-fit:cover;border-radius:8px;flex:0 0 auto;background:var(--accbg)}.exrow .tt{flex:1;min-width:0}.exrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.35}.exrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.exrow .go{flex:0 0 auto;padding:6px 10px;border-radius:999px;border:1px solid #c33;color:#c33;font:700 12px var(--sans);white-space:nowrap}
@@ -930,9 +930,10 @@ const DICT = (() => {
   const fail = e => { $('#view').innerHTML = `<div class="empty" style="padding:60px 0">${esc(e.message)}<br><span class="hint">인터넷에 연결되어 있는지 확인해 주세요</span></div>`; };
   const codeOf = name => (((DATA.vv && DATA.vv.books) || []).find(b => b.name === name) || {}).code;   // 책 이름 → 절별대조 코드
   // ---- 녹음 재생 (dict/만들기.py 가 만든 m4a + 타이밍). curAud 'dict:heal:1' / 'dict:ap:peter'
-  let P = null;                                                 // {key, tm, title, next}
+  let P = null;                                                 // {key, tm, title, next, start}
   const isMine = () => !!(P && curAud === P.key);
-  let bound = false;
+  let bound = false, userAt = 0, PAGE = null;                    // userAt: 사용자가 직접 화면을 넘긴 시각(잠시 자동 이동을 멈춤) · PAGE: 지금 보는 듣기 화면
+  ['wheel', 'touchmove', 'keydown'].forEach(ev => addEventListener(ev, () => { userAt = Date.now(); }, {passive:true}));
   function bindAud(){
     if(bound) return; bound = true;
     aud.addEventListener('timeupdate', () => { if(isMine()) paintNow(); });
@@ -940,19 +941,54 @@ const DICT = (() => {
     aud.addEventListener('play', () => { if(isMine()) paintNow(true); });
   }
   function markAt(t){ if(!P || !P.tm) return null; let r = null; for(const x of P.tm) if(x[1] <= t + 0.05) r = x; else break; return r ? r[0] : null; }
+  const pageIs = key => !PAGE ? false : PAGE.kind === 'heal' ? key.startsWith('dict:heal:') : PAGE.kind === 'ap' ? key === 'dict:ap:' + PAGE.x.id : key === 'dict:qna:' + PAGE.q.id;   // 지금 보는 화면이 그 항목인지
   function paintNow(force){
+    if(!P || !pageIs(P.key)){ document.querySelectorAll('[data-mark].now').forEach(e => e.classList.remove('now')); return; }   // 다른 사도·질문 화면에서는 칠하지 않는다
     const m = markAt(aud.currentTime); const cur = document.querySelector('[data-mark].now');
     if(!force && cur && cur.dataset.mark === String(m)) return;
     document.querySelectorAll('[data-mark].now').forEach(e => e.classList.remove('now'));
     if(m == null || m === 'head') return;
-    const el = document.querySelector(`[data-mark="${m}"]`); if(!el) return;
-    el.classList.add('now'); if(S.follow !== false) scrollRowIntoView(el);        // 읽는 문장이 화면 가운데로 오게
+    const g = P.key.startsWith('dict:heal:') ? P.key.split(':')[2] : null;             // 치유 40구절은 묶음마다 절 번호가 0부터라 묶음 안에서 찾는다
+    const el = document.querySelector(g ? `.hv[data-g="${g}"][data-mark="${m}"]` : `[data-mark="${m}"]`); if(!el) return;
+    el.classList.add('now'); reveal(el, force);
   }
+  function reveal(el, force){                                   // 읽는 문장이 화면 위쪽 1/3 자리에 보이게. 사용자가 방금 화면을 넘겼으면 4초 동안은 두고 본다
+    if(S.follow === false) return; if(!force && Date.now() - userAt < 4000) return;
+    const bar = $('#player').offsetHeight, vis = innerHeight - bar, r = el.getBoundingClientRect();
+    if(!force && r.top >= 70 && r.bottom <= vis * 0.72) return;
+    window.scrollTo({top: Math.max(0, scrollY + r.top - vis * 0.3), behavior: force ? 'auto' : 'smooth'});
+  }
+  const markTime = m => { const t = (P && P.tm || []).find(x => String(x[0]) === String(m)); return t ? t[1] : null; };
+  document.addEventListener('click', e => {                     // 문장(절)을 누르면 그 자리부터 듣는다
+    if(!PAGE || !location.hash.startsWith('#/dict/')) return;
+    const el = e.target.closest('[data-mark]'); if(!el || e.target.closest('button, a, .vstar')) return;
+    let args = null;
+    if(PAGE.kind === 'heal'){ const row = el.closest('.hv'); const g = row && D.heal.groups.find(x => String(x.no) === row.dataset.g); args = g && g.audio ? healArgs(g) : null; }
+    else if(PAGE.kind === 'ap') args = PAGE.x.audio ? apArgs(PAGE.x) : null;
+    else if(PAGE.kind === 'q') args = PAGE.q.audio ? qArgs(PAGE.q) : null;
+    if(!args) return;
+    const t = ((args[2] || []).find(x => String(x[0]) === el.dataset.mark) || [])[1]; if(t == null) return;
+    if(curAud !== args[0] || aud.error) setup(...args, t); else { aud.currentTime = t; if(P) P.start = null; }   // 직접 옮겼으면 저장된 자리로 되돌리지 않는다
+    userAt = 0; setBar(true); aud.play().catch(() => toast('녹음 파일을 열 수 없습니다')); paintPlay(); setTimeout(paintBtns, 50);
+  });
+  const lastOf = (items, keyOf) => {                             // 이 주제에서 듣던 항목: 지금 걸린 것 > 가장 최근에 멈춘 것
+    let best = null, at = -1;
+    for(const x of items){ const k = keyOf(x); if(k === curAud) return x; const p = S.pos[k]; if(p > 3 && (S.posAt[k] || 0) > at){ best = x; at = S.posAt[k] || 0; } }
+    return best;
+  };
   const sn = (sec, arr) => (arr || []).map((t, i) => `<span class="sn" data-mark="${sec}:${i}">${esc(t)}</span>`).join(' ');   // 문장마다 표식
-  function setup(key, file, tm, title, next, mediaTitle){      // 플레이어에 걸어 두기(재생은 하지 않음)
+  function setup(key, file, tm, title, next, mediaTitle, at, quiet){  // 플레이어에 걸어 두기(재생은 하지 않음). at: 시작할 자리(초) — 없으면 지난번 멈춘 곳. quiet: 안내 토스트 없이
     bindAud(); if(window.VVP) VVP.release();
-    curAud = key; P = {key, tm: tm || [], title, next}; aud.src = D.base + file + '.m4a'; aud.playbackRate = S.rate;
-    $('#pTitle').textContent = title; $('#mTitle').textContent = title; $('#pComm').hidden = true; $('#tCur').textContent = '0:00'; $('#pSeek').value = 0;
+    const saved = S.pos[key], start = at != null ? at : (saved > 3 ? saved : 0);
+    curAud = key; P = {key, tm: tm || [], title, next, start}; aud.src = D.base + file + '.m4a' + (D.ver ? '?v=' + D.ver : ''); aud.playbackRate = S.rate;
+    if(start) try{ aud.currentTime = start; }catch(e){}          // 메타데이터 전이라도 걸어 두면 브라우저가 기억해 둔다
+    aud.addEventListener('loadedmetadata', () => {
+      if(curAud !== key || !P || P.start == null) return; const st = P.start; P.start = null;
+      if(st > 0 && aud.duration && st >= aud.duration - 3){ aud.currentTime = 0; paintNow(true); return; }   // 거의 끝에서 멈춘 것은 처음부터
+      if(st > 0 && st < aud.duration - 3 && Math.abs(aud.currentTime - st) > 1) aud.currentTime = st;
+      paintNow(true); if(at == null && st > 3 && !quiet) toast('지난번 멈춘 곳입니다 ▶ 누르면 여기서부터 들려 드려요');
+    }, {once:true});
+    $('#pTitle').textContent = title; $('#mTitle').textContent = title; $('#pComm').hidden = true; $('#tCur').textContent = fmt(start); $('#pSeek').value = 0;
     if('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({title: mediaTitle || title, artist: '성경잡학사전', album: APPNAME, artwork: [{src: 'icon-512.png', sizes: '512x512', type: 'image/png'}]});
     setBar(true); paintPlay();
   }
@@ -961,22 +997,26 @@ const DICT = (() => {
     if(!aud.paused || !$('#aud2').paused){ setBar(true); return; }
     setup(key, ...rest);
   }
-  function play(key, file, tm, title, next, mediaTitle){
-    if(curAud !== key || aud.error) setup(key, file, tm, title, next, mediaTitle);   // 파일을 못 열었던 상태(error)면 다시 불러온다
+  function play(key, file, tm, title, next, mediaTitle, at){   // at: 시작 위치(초). 없으면 지난번 멈춘 곳
+    if(curAud !== key || aud.error){ setup(key, file, tm, title, next, mediaTitle, at, true); if(at == null && P.start > 3) toast('지난번 멈춘 곳(' + fmt(P.start) + ')부터 이어서 들려 드립니다'); }   // 파일을 못 열었던 상태(error)면 다시 불러온다
+    else if(at != null){ aud.currentTime = at; if(P) P.start = null; }
     setBar(true); aud.play().catch(() => toast('녹음 파일을 열 수 없습니다')); paintPlay(); setTimeout(paintBtns, 50);
   }
-  function toggle(key, ...rest){ if(curAud === key){ $('#pPlay').click(); setTimeout(paintBtns, 50); } else play(key, ...rest); }
+  function toggle(key, ...rest){ if(curAud === key && rest[5] == null){ $('#pPlay').click(); setTimeout(paintBtns, 50); } else play(key, ...rest); }
   function paintBtns(){ $('#view').querySelectorAll('[data-dplay]').forEach(b => { const on = curAud === b.dataset.dplay && !aud.paused; b.classList.toggle('on', on); b.innerHTML = (on ? IC.pause : IC.play) + (b.dataset.label ? ' ' + (on ? '듣는 중' : b.dataset.label) : ''); }); }
-  const playHeal = no => { const g = D.heal.groups.find(x => String(x.no) === String(no)); if(!g || !g.audio) return toast('이 묶음의 녹음은 아직 없습니다'); toggle(...healArgs(g)); };
+  const playHeal = (no, at) => { const g = D.heal.groups.find(x => String(x.no) === String(no)); if(!g || !g.audio) return toast('이 묶음의 녹음은 아직 없습니다'); toggle(...healArgs(g), at); };
   const apArgs = x => { const L = D.apostles.items || [], i = L.findIndex(y => y.id === x.id), nx = L.slice(i + 1).find(y => y.audio);
-    return ['dict:ap:' + x.id, x.audio, x.tm, `열두 사도 · ${x.name}`, () => nx ? (() => { if(location.hash.startsWith('#/dict/apostles/')) location.hash = '/dict/apostles/' + nx.id; playAp(nx.id); }) : null, x.name]; };
-  const playAp = id => { const x = (D.apostles.items || []).find(y => y.id === id); if(!x || !x.audio) return toast('이 사도의 녹음은 아직 없습니다'); toggle(...apArgs(x)); };
+    return ['dict:ap:' + x.id, x.audio, x.tm, `열두 사도 · ${x.name}`, () => nx ? (() => { if(location.hash.startsWith('#/dict/apostles')) location.hash = '/dict/apostles/' + nx.id; playAp(nx.id, 0); }) : null, x.name]; };
+  const openAp = (id, at) => { const x = (D.apostles.items || []).find(y => y.id === id); if(!x) return; if(curAud === 'dict:ap:' + id && !aud.paused && at == null) return playAp(id); location.hash = '/dict/apostles/' + id; playAp(id, at); };   // 목록에서 ▶: 글이 보이는 화면으로 가서 듣는다
+  const playAp = (id, at) => { const x = (D.apostles.items || []).find(y => y.id === id); if(!x || !x.audio) return toast('이 사도의 녹음은 아직 없습니다'); toggle(...apArgs(x), at); };
   const qItems = () => (D.qna ? D.qna.parts.flatMap(p => p.items) : []);
   const qArgs = q => { const L = qItems(), i = L.findIndex(y => y.id === q.id), nx = L.slice(i + 1).find(y => y.audio);
-    return ['dict:qna:' + q.id, q.audio, q.tm, `질문있어요 · Q${q.no}`, () => nx ? (() => { if(location.hash.startsWith('#/dict/qna/')) location.hash = '/dict/qna/' + nx.id; playQ(nx.id); }) : null, `Q${q.no}. ${q.q}`]; };
-  const playQ = id => { const q = qItems().find(y => y.id === id); if(!q || !q.audio) return toast('이 질문의 녹음은 아직 없습니다'); toggle(...qArgs(q)); };
-  const healArgs = g => { const nx = D.heal.groups.find(x => x.no > g.no && x.audio); return ['dict:heal:' + g.no, g.audio, g.tm, `치유 40구절 · ${g.no}. ${g.title}`, () => nx ? (() => playHeal(nx.no)) : null, `치유 40구절 ${g.no}. ${g.title}`]; };
-  const dbtn = (key, label) => `<button class="chip2 dplay" data-dplay="${esc(key)}" data-label="${esc(label)}">${IC.play} ${esc(label)}</button>`;
+    return ['dict:qna:' + q.id, q.audio, q.tm, `질문있어요 · Q${q.no}`, () => nx ? (() => { if(location.hash.startsWith('#/dict/qna')) location.hash = '/dict/qna/' + nx.id; playQ(nx.id, 0); }) : null, `Q${q.no}. ${q.q}`]; };
+  const openQ = (id, at) => { const q = qItems().find(y => y.id === id); if(!q) return; if(curAud === 'dict:qna:' + id && !aud.paused && at == null) return playQ(id); location.hash = '/dict/qna/' + id; playQ(id, at); };
+  const playQ = (id, at) => { const q = qItems().find(y => y.id === id); if(!q || !q.audio) return toast('이 질문의 녹음은 아직 없습니다'); toggle(...qArgs(q), at); };
+  const healArgs = g => { const nx = D.heal.groups.find(x => x.no > g.no && x.audio); return ['dict:heal:' + g.no, g.audio, g.tm, `치유 40구절 · ${g.no}. ${g.title}`, () => nx ? (() => playHeal(nx.no, 0)) : null, `치유 40구절 ${g.no}. ${g.title}`]; };
+  const dbtn = (key, label, from0) => `<button class="chip2 dplay" data-dplay="${esc(key)}" data-label="${esc(label)}"${from0 ? ' data-from="0"' : ''}>${IC.play} ${esc(label)}</button>`;
+  const fromOf = b => b.dataset.from != null ? 0 : undefined;                     // '처음부터 모두 듣기' 버튼은 0 부터
   const refLink = ref => { const m = ref.match(/^(\S+) (\d+):/); const c = m && codeOf(m[1]); return c ? `#/vv/${c}/${m[2]}` : ''; };
   async function home(){
     $('#hTitle').textContent = '성경잡학사전'; back('#/');
@@ -987,7 +1027,7 @@ const DICT = (() => {
       <div class="dictrow" data-href="#/dict/heal"><span class="ic">🌿</span><div class="tt"><b>${esc(D.heal.title)}</b><small>${esc(D.heal.sub)} · ${nH}구절, 개역개정 본문과 한 줄 뜻</small></div><span class="arr">›</span></div>
       <div class="dictrow" data-href="#/dict/apostles"><span class="ic">👥</span><div class="tt"><b>${esc(D.apostles.title)}</b><small>${esc(D.apostles.sub)} · ${nA ? nA + '명' : '준비 중'}</small></div><span class="arr">›</span></div>
       ${D.qna && ED !== 'agape' ? `<div class="dictrow" data-href="#/dict/qna"><span class="ic">❓</span><div class="tt"><b>${esc(D.qna.title)}</b><small>${esc(D.qna.sub)} · ${qItems().length}문</small></div><span class="arr">›</span></div>` : ''}<div style="height:40px"></div>`;
-    bindRows(); hidePlayerIfIdle(); window.scrollTo(0, 0);
+    PAGE = null; bindRows(); if(curAud && curAud.startsWith('dict:')) setBar(true); else hidePlayerIfIdle(); window.scrollTo(0, 0);
   }
   function bindRows(){ $('#view').querySelectorAll('.dictrow[data-href]').forEach(r => r.onclick = () => { location.hash = r.dataset.href.slice(1); }); }
   async function heal(){
@@ -1003,10 +1043,10 @@ const DICT = (() => {
       });
     }
     const first = H.groups.find(g => g.audio);
-    $('#view').innerHTML = h.replace('</p>', `</p>${first ? `<div class="vvtools">${dbtn('dict:heal:' + first.no, '처음부터 모두 듣기')}<span></span></div>` : ''}`) + '<div style="height:40px"></div>';
+    $('#view').innerHTML = h.replace('</p>', `</p>${first ? `<div class="vvtools">${dbtn('dict:heal:' + first.no, '처음부터 모두 듣기', true)}<span></span></div>` : ''}`) + '<div style="height:40px"></div>';
     $('#view').querySelectorAll('.vstar').forEach(b => b.onclick = () => { const on = MYV.toggle(b.dataset.vr, b.dataset.vt, {t:'dict', k:'heal'}); b.classList.toggle('on', on); b.textContent = on ? '★' : '☆'; toast(on ? '나의 성경구절에 저장했습니다 📖' : '나의 성경구절에서 뺐습니다'); });
-    $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = () => playHeal(b.dataset.dplay.split(':')[2]));
-    window.scrollTo(0, 0); const cg = H.groups.find(g => 'dict:heal:' + g.no === curAud) || first; if(cg) prepare(...healArgs(cg)); else hidePlayerIfIdle();
+    $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = () => playHeal(b.dataset.dplay.split(':')[2], fromOf(b)));
+    PAGE = {kind: 'heal'}; window.scrollTo(0, 0); const cg = lastOf(H.groups.filter(g => g.audio), g => 'dict:heal:' + g.no) || first; if(cg) prepare(...healArgs(cg)); else hidePlayerIfIdle();
     paintBtns(); paintNow(true);
   }
   async function apostles(){
@@ -1014,12 +1054,12 @@ const DICT = (() => {
     const A = D.apostles; $('#hTitle').textContent = '열두 사도'; back('#/dict');
     let h = head(A.title, '성경잡학사전 · ' + A.sub) + `<p class="hint" style="font-size:13px;color:var(--soft);line-height:1.7">${esc(A.intro)}</p>`;
     const first = (A.items || []).find(x => x.audio);
-    if(first) h += `<div class="vvtools">${dbtn('dict:ap:' + first.id, '처음부터 모두 듣기')}<span></span></div>`;
+    if(first) h += `<div class="vvtools">${dbtn('dict:ap:' + first.id, '처음부터 모두 듣기', true)}<span></span></div>`;
     h += (A.items || []).map((x, i) => `<div class="dictrow" data-href="#/dict/apostles/${esc(x.id)}"><div class="no">${i + 1}</div><div class="tt"><b>${esc(x.name)}</b><small>${esc(x.aka)}${x.traits ? ' · ' + esc(x.traits) : ''}</small></div>${x.audio ? `<button class="sp dplay" data-dplay="dict:ap:${esc(x.id)}" aria-label="듣기">${IC.play}</button>` : '<span class="arr">›</span>'}</div>`).join('');
     if(!(A.items || []).length) h += '<div class="empty">아직 준비 중입니다.</div>';
     $('#view').innerHTML = h + '<div style="height:40px"></div>'; bindRows();
-    $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = e => { e.stopPropagation(); playAp(b.dataset.dplay.split(':')[2]); });
-    window.scrollTo(0, 0); const ca = (A.items || []).find(x => 'dict:ap:' + x.id === curAud) || first; if(ca) prepare(...apArgs(ca)); else hidePlayerIfIdle(); paintBtns();
+    $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = e => { e.stopPropagation(); openAp(b.dataset.dplay.split(':')[2], fromOf(b)); });
+    PAGE = null; window.scrollTo(0, 0); const ca = lastOf((A.items || []).filter(x => x.audio), x => 'dict:ap:' + x.id) || first; if(ca) prepare(...apArgs(ca)); else hidePlayerIfIdle(); paintBtns();
   }
   async function apostle(id){
     try{ await load(); }catch(e){ return fail(e); }
@@ -1035,7 +1075,7 @@ const DICT = (() => {
     const J = a => (a || []).join(' ');
     const sp = $('#apSpeak'); if(sp) sp.onclick = () => speak([x.name + '. ' + x.aka, '출신과 배경. ' + J(x.origin), '생애. ' + J(x.life), '사상과 신앙. ' + J(x.thought), '전승. ' + J(x.tradition)].join('. '));
     $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = () => playAp(x.id));
-    window.scrollTo(0, 0); if(x.audio) prepare(...apArgs(x)); else hidePlayerIfIdle(); paintBtns(); paintNow(true);
+    PAGE = {kind: 'ap', x}; window.scrollTo(0, 0); if(x.audio) prepare(...apArgs(x)); else hidePlayerIfIdle(); paintBtns(); paintNow(true);
   }
   async function qna(){
     try{ await load(); }catch(e){ return fail(e); }
@@ -1043,13 +1083,13 @@ const DICT = (() => {
     $('#hTitle').textContent = '질문있어요'; back('#/dict');
     const first = qItems().find(q => q.audio);
     let h = head(Q.title, '성경잡학사전 · ' + Q.sub) + `<p class="hint" style="font-size:13px;color:var(--soft);line-height:1.7">${esc((Q.intro || [])[0] || '')}</p>`;
-    if(first) h += `<div class="vvtools">${dbtn('dict:qna:' + first.id, '처음부터 모두 듣기')}<span></span></div>`;
+    if(first) h += `<div class="vvtools">${dbtn('dict:qna:' + first.id, '처음부터 모두 듣기', true)}<span></span></div>`;
     for(const p of Q.parts){
       h += `<div class="songhead"><span>${esc(p.title)}</span></div>` + p.items.map(q => `<div class="dictrow" data-href="#/dict/qna/${esc(q.id)}"><div class="no">Q${q.no}</div><div class="tt"><b>${esc(q.q)}</b></div>${q.audio ? `<button class="sp dplay" data-dplay="dict:qna:${esc(q.id)}" aria-label="듣기">${IC.play}</button>` : '<span class="arr">›</span>'}</div>`).join('');
     }
     $('#view').innerHTML = h + '<div style="height:40px"></div>'; bindRows();
-    $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = e => { e.stopPropagation(); playQ(b.dataset.dplay.split(':')[2]); });
-    window.scrollTo(0, 0); const cq = qItems().find(q => 'dict:qna:' + q.id === curAud) || first; if(cq) prepare(...qArgs(cq)); else hidePlayerIfIdle(); paintBtns();
+    $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = e => { e.stopPropagation(); openQ(b.dataset.dplay.split(':')[2], fromOf(b)); });
+    PAGE = null; window.scrollTo(0, 0); const cq = lastOf(qItems().filter(q => q.audio), q => 'dict:qna:' + q.id) || first; if(cq) prepare(...qArgs(cq)); else hidePlayerIfIdle(); paintBtns();
   }
   async function question(id){
     try{ await load(); }catch(e){ return fail(e); }
@@ -1057,14 +1097,14 @@ const DICT = (() => {
     const pv = L[i - 1], nx = L[i + 1], part = D.qna.parts.find(p => p.items.includes(q));
     $('#hTitle').textContent = `Q${q.no}`; back('#/dict/qna');
     let k = 0; const ans = q.answer.map(para => `<p>${para.map(t => `<span class="sn" data-mark="a:${k++}">${esc(t)}</span>`).join(' ')}</p>`).join('');
-    $('#view').innerHTML = head(`Q${q.no}. ${q.q}`, `질문있어요 · ${part ? part.title : ''}`) + `<div class="vvtools">${q.audio ? dbtn('dict:qna:' + q.id, '이 질문 듣기') : '<span></span>'}<span></span></div><div class="apsec">
+    $('#view').innerHTML = `<section class="lhead"><div class="kicker">${esc(`질문있어요 · ${part ? part.title : ''}`)}</div><h2><span data-mark="q:0">Q${q.no}. ${esc(q.q)}</span></h2></section>` + `<div class="vvtools">${q.audio ? dbtn('dict:qna:' + q.id, '이 질문 듣기') : '<span></span>'}<span></span></div><div class="apsec">
       <div><h3>박사님의 답</h3>${ans}</div>
       ${q.verses ? `<div><h3>근거 말씀</h3><p><span class="sn" data-mark="v:0">${esc(q.verses)}</span></p></div>` : ''}
       ${(q.agape || []).length ? `<div><h3>아가페로 새기는 한 문장</h3><div class="hm" style="font-size:calc(var(--fs) * .95);line-height:1.7">${sn('g', q.agape)}</div></div>` : ''}
       ${q.source ? `<p class="hint" style="font-size:12px;color:var(--faint);margin-top:14px">출처: ${esc(q.source)}</p>` : ''}</div>
       <div class="nav2">${pv ? `<button data-href="#/dict/qna/${esc(pv.id)}"><small>이전</small>Q${pv.no}. ${esc(pv.q.slice(0, 22))}</button>` : '<span></span>'}${nx ? `<button data-href="#/dict/qna/${esc(nx.id)}" style="text-align:right"><small>다음</small>Q${nx.no}. ${esc(nx.q.slice(0, 22))}</button>` : ''}</div><div style="height:40px"></div>`;
     $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = () => playQ(q.id));
-    window.scrollTo(0, 0); if(q.audio) prepare(...qArgs(q)); else hidePlayerIfIdle(); paintBtns(); paintNow(true);
+    PAGE = {kind: 'q', q}; window.scrollTo(0, 0); if(q.audio) prepare(...qArgs(q)); else hidePlayerIfIdle(); paintBtns(); paintNow(true);
   }
   function route(h){
     if(h === '/heal') return heal();
@@ -1074,8 +1114,9 @@ const DICT = (() => {
     m = h.match(/^\/qna\/([\w-]+)/); if(m) return question(m[1]);
     return home();
   }
-  return {route};
+  return {route, moved(){ if(P && isMine()) P.start = null; }};              // 사용자가 자리를 옮기면(15초·막대) 저장된 자리로 되돌리지 않는다
 })();
+window.DICT = DICT;
 
 /* ---------- 건강운동모음 (유튜브 운동 영상 목록, exercise.json) ----------
    항목을 더 넣을 때는 exercise.json 의 items 에 {id, title, v(유튜브 영상 id), by} 를 추가하고 두 판에 올리면 된다 */
@@ -1537,8 +1578,8 @@ $('#pSleep').onclick = () => {
 };
 function paintPlay(){ $('#mPlay').innerHTML = aud.paused ? IC.play : IC.pause; $('#pPlay').innerHTML = aud.paused ? IC.play : IC.pause; $('#pPlay').setAttribute('aria-label', aud.paused ? '재생' : '일시정지'); }
 $('#pPlay').onclick = () => { if(!aud.src) return; speechSynthesis?.cancel(); aud.paused ? aud.play().catch(() => toast('녹음 파일을 열 수 없습니다')) : aud.pause(); };
-$('#pBack').onclick = () => aud.currentTime = Math.max(0, aud.currentTime - 15);
-$('#pFwd').onclick = () => aud.currentTime = Math.min(aud.duration || 0, aud.currentTime + 15);
+$('#pBack').onclick = () => { if(window.DICT) DICT.moved(); aud.currentTime = Math.max(0, aud.currentTime - 15); };
+$('#pFwd').onclick = () => { if(window.DICT) DICT.moved(); aud.currentTime = Math.min(aud.duration || 0, aud.currentTime + 15); };
 $('#pRate').onclick = () => { S.rate = RATES[(RATES.indexOf(S.rate) + 1) % RATES.length]; aud.playbackRate = S.rate; paintRate(); save(); };
 // 아이폰(iOS)은 새 녹음 파일을 열 때마다 재생 속도를 1.0으로 되돌리므로, 파일을 열거나 재생을 시작할 때마다 고른 속도로 다시 맞춘다 (장이 바뀔 때·해설 파일로 넘어갈 때 속도가 달라지던 문제)
 for(const a of [aud, $('#aud2')]) for(const ev of ['loadedmetadata', 'play', 'playing']) a.addEventListener(ev, () => { const r = (a === aud && curAud && curAud.startsWith('song:')) ? 1 : S.rate; a.defaultPlaybackRate = r; if(Math.abs(a.playbackRate - r) > 0.01) a.playbackRate = r; });   // 노래는 제 속도(1.0)
@@ -1572,7 +1613,7 @@ aud.onended = () => {
 let seeking = false;
 $('#pSeek').oninput = () => { seeking = true; $('#tCur').textContent = fmt($('#pSeek').value / 1000 * (aud.duration || 0)); };
 $('#pSeek').onchange = () => { seeking = false; const D = aud.duration || (window.VVP && VVP.dur()) || 0, t = $('#pSeek').value / 1000 * D;
-  if(window.VVP && VVP.active()) VVP.seekTime(t); else aud.currentTime = t; };
+  if(window.DICT) DICT.moved(); if(window.VVP && VVP.active()) VVP.seekTime(t); else aud.currentTime = t; };
 if('mediaSession' in navigator){
   navigator.mediaSession.setActionHandler('seekbackward', () => $('#pBack').click());
   navigator.mediaSession.setActionHandler('seekforward', () => $('#pFwd').click());
@@ -2286,7 +2327,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.19-1009';
+const BUILD = '2026.10.19-2218';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
