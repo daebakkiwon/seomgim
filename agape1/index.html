@@ -942,10 +942,21 @@ const DICT = (() => {
     aud.addEventListener('timeupdate', () => { if(isMine()) paintNow(); });
     aud.addEventListener('ended', () => { if(!isMine() || !S.auto) return; const n = P.next && P.next(); if(n){ LW.at = Date.now(); n(); LW.want = true; } });
     aud.addEventListener('play', () => {
-      if(!isMine()) return; paintNow(true);
+      if(!isMine()) return; if(!showMine()) paintNow(true);
       if(S.follow === false && !bindAud.warned){ bindAud.warned = true; toast("설정의 '듣는 동안 화면'이 '화면 그대로 두기'로 되어 있어 글이 따라 올라가지 않습니다. 오른쪽 위 설정에서 '읽는 곳 따라 내리기'를 눌러 주세요", 6000); }
     });
   }
+  // 듣는 항목의 글이 화면에 보이게 — 목록이나 다른 질문 화면에서 ▶ 를 눌렀거나, 화면을 껐다 켰을 때 그 항목 화면으로 간다 (사전 안에서만)
+  const homeOf = key => { const [, k, id] = key.split(':'); return k === 'qna' ? '#/dict/qna/' + id : k === 'ap' ? '#/dict/apostles/' + id : '#/dict/heal'; };
+  function showMine(){
+    if(!P || !isMine() || !location.hash.startsWith('#/dict') || pageIs(P.key)) return false;
+    const h = homeOf(P.key); if(location.hash === h) return false;              // 그 화면으로 가는 중(그리는 중)
+    location.hash = h.slice(1); return true;
+  }
+  document.addEventListener('visibilitychange', () => {                          // 다시 켜면: 다른 화면이면 그 항목으로, 같은 화면이면 읽는 문장으로 바로
+    if(document.visibilityState !== 'visible' || !isMine() || aud.paused) return;
+    if(!showMine()) paintNow(true);
+  });
   function markAt(t){ if(!P || !P.tm) return null; let r = null; for(const x of P.tm) if(x[1] <= t + 0.05) r = x; else break; return r ? r[0] : null; }
   const pageIs = key => !PAGE ? false : PAGE.kind === 'heal' ? key.startsWith('dict:heal:') : PAGE.kind === 'ap' ? key === 'dict:ap:' + PAGE.x.id : key === 'dict:qna:' + PAGE.q.id;   // 지금 보는 화면이 그 항목인지
   function paintNow(force){
@@ -2364,7 +2375,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.20-0713';
+const BUILD = '2026.10.20-1041';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
