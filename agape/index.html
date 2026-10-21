@@ -1115,16 +1115,18 @@ const DICT = (() => {
     const pv = L[i - 1], nx = L[i + 1], part = D.qna.parts.find(p => p.items.includes(q));
     $('#hTitle').textContent = `Q${q.no}. ${q.q}`; back('#/dict/qna');
     let k = 0; const ans = q.answer.map(para => `<p>${para.map(t => `<span class="sn" data-mark="a:${k++}">${esc(t)}</span>`).join(' ')}</p>`).join('');
-    $('#view').innerHTML = `<section class="lhead"><div class="kicker">${esc(`질문있어요 · ${part ? part.title : ''}`)}</div><h2><span data-mark="q:0">Q${q.no}. ${esc(q.q)}</span></h2></section>` + `<div class="apsec">
+    $('#view').innerHTML = `<section class="lhead"><div class="kicker">${esc(`질문있어요 · ${part ? part.title : ''}`)}</div><h2><span data-mark="q:0">Q${q.no}. ${esc(q.q)}</span></h2></section>` + (q.audio ? '' : `<div class="vvtools"><button class="chip2" id="qSpeak">🔈 읽어 주기</button><span>녹음은 준비 중입니다</span></div>`) + `<div class="apsec">
       <div><h3>박사님의 답</h3>${ans}</div>
       ${(q.vlist || []).length ? `<div><h3>근거 말씀</h3>${q.vlist.map((r, i) => `<div class="qv"><a class="qvr" href="#/vv/${esc(r.code)}/${r.ch}">${esc(r.ref)} ›</a>` +
           (r.whole ? `<p class="qvt"><span class="sn" data-mark="v:${i}:0">${r.ch}${esc(r.unit)} 전체를 가리킵니다. 위의 구절 이름을 누르면 절별대조에서 읽을 수 있습니다.</span></p>`
                    : `<p class="qvt">${r.text.map((t, j) => `<span class="sn" data-mark="v:${i}:${j}"><i>${esc(t.v)}</i>${esc(t.t)}</span>`).join(' ')}</p>`) + '</div>').join('')}</div>`
         : q.verses ? `<div><h3>근거 말씀</h3><p><span class="sn" data-mark="v:0">${esc(q.verses)}</span></p></div>` : ''}
       ${(q.agape || []).length ? `<div><h3>아가페로 새기는 한 문장</h3><div class="hm" style="font-size:calc(var(--fs) * .95);line-height:1.7">${sn('g', q.agape)}</div></div>` : ''}
+      ${(q.clue || []).length ? `<div><h3>박사님이 남기신 단서</h3><p style="font-size:calc(var(--fs) * .92);color:var(--soft)">${sn('c', q.clue)}</p></div>` : ''}
       ${q.source ? `<p class="hint" style="font-size:12px;color:var(--faint);margin-top:14px">출처: ${esc(q.source)}</p>` : ''}</div>
       <div class="nav2">${pv ? `<button data-href="#/dict/qna/${esc(pv.id)}"><small>이전</small>Q${pv.no}. ${esc(pv.q.slice(0, 22))}</button>` : '<span></span>'}${nx ? `<button data-href="#/dict/qna/${esc(nx.id)}" style="text-align:right"><small>다음</small>Q${nx.no}. ${esc(nx.q.slice(0, 22))}</button>` : ''}</div><div style="height:40px"></div>`;
     $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = () => playQ(q.id));
+    const qs = $('#qSpeak'); if(qs) qs.onclick = () => speak([`질문 ${q.no}. ${q.q}`, '박사님의 답. ' + q.answer.map(p => p.join(' ')).join(' '), '아가페로 새기는 한 문장. ' + (q.agape || []).join(' ')].join(' '));
     PAGE = {kind: 'q', q}; window.scrollTo(0, 0); if(q.audio) prepare(...qArgs(q)); else hidePlayerIfIdle(); paintBtns(); paintNow(true);
   }
   function route(h){
@@ -2371,7 +2373,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.20-1054';
+const BUILD = '2026.10.21-1542';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
