@@ -63,6 +63,9 @@ header.top h1{font:600 clamp(14px, 4.6vw, 17px) var(--sans);margin:0 4px;flex:1;
 .cont b{display:block;font-size:17px}
 .cont span{font-size:13px;opacity:.85}
 .cont svg{width:28px;height:28px;flex:0 0 auto}
+a.cont.ytpl{text-decoration:none;background:var(--paper);color:var(--ink);border:1px solid var(--line);margin:4px 0 14px}
+a.cont.ytpl .yi{flex:0 0 auto;width:34px;height:24px;border-radius:7px;background:#e62117;color:#fff;font-size:12px;display:inline-flex;align-items:center;justify-content:center;opacity:1}
+a.cont.ytpl b{font-size:16px}a.cont.ytpl div span{color:var(--soft);opacity:1}
 .homeTools{display:flex;gap:8px;margin:8px 0 6px}
 .homeTools button{flex:1;padding:12px 8px;border-radius:12px;border:1px solid var(--line);background:var(--paper);font-size:14px}
 .part{margin-top:26px}
@@ -1290,6 +1293,7 @@ const LEC = (() => {
   }
   const locked = () => ED === 'agape' && !(S.access && (S.access.b2 || S.access.b3 || S.access.b4 || S.access.b5));   // 말씀판은 인도자 승인(2권 이상) 뒤에
   const KICK = ED === 'agape' ? '뉴스타트 성경강의 · 유튜브' : '이상구 박사 뉴스타트 성경강의 · 유튜브';
+  const YTPL = 'https://www.youtube.com/@newstartmedia/playlists';      // 뉴스타트미디어 채널 재생목록(새 기수가 맨 앞) — 최근 강의 듣기
   function bind(){
     $('#view').querySelectorAll('[data-done]').forEach(b => b.onclick = () => { const v = b.dataset.done; if(S.lec.done[v]) delete S.lec.done[v]; else { S.lec.done[v] = Date.now(); S.lec.last = v; } save(); SYNC.now();
       const on = !!S.lec.done[v]; b.classList.toggle('on', on); b.textContent = on ? '✓ 들었어요' : '들었어요'; b.closest('.lecrow').classList.toggle('done', on); if(on) toast('들은 강의로 표시했습니다 🎧'); });
@@ -1360,7 +1364,8 @@ const LEC = (() => {
     $('#hTitle').textContent = '강의듣기'; back('#/');
     const items = D.course.map(c => typeof c === 'string' ? {v:c} : c).map(c => ({...c, x:BYVID[c.v]})).filter(c => c.x);
     const done = items.filter(c => S.lec.done[c.v]).length, nextI = items.findIndex(c => !S.lec.done[c.v]);
-    let h = head('강의듣기', KICK) + `<div class="sub" style="margin:-6px 0 10px;color:var(--soft)">서막(하늘의 전쟁)부터 요한계시록까지 · ${items.length}강 · 들은 강의 ${done}</div>
+    let h = head('강의듣기', KICK) + `<a class="cont ytpl" href="${YTPL}" target="_blank" rel="noopener"><span class="yi">▶</span><div><b>유튜브 재생목록</b><span>최근 강의는 여기서 · 새 기수 재생목록이 맨 앞에 나옵니다</span></div></a>
+      <div class="sub" style="margin:-6px 0 10px;color:var(--soft)">서막(하늘의 전쟁)부터 요한계시록까지 · ${items.length}강 · 들은 강의 ${done}</div>
       <p class="hint" style="font-size:13px;color:var(--faint);line-height:1.6">${esc(D.intro || '같은 주제는 최근 강의 하나만 남기고, 성경이 설명되는 순서대로 늘어놓았습니다.')} ▶ 유튜브를 누르면 영상이 열리고, 들은 뒤 “들었어요”를 누르면 기기끼리 함께 기억합니다.</p>
       ${nextI >= 0 ? `<button class="cont" id="lecNext">🎧<div><b>${done ? '이어서 듣기' : '처음부터 듣기'}</b><span>${nextI + 1}. ${esc(items[nextI].x.t || items[nextI].x.g + '기 ' + items[nextI].x.l + '강')}</span></div></button>` : '<div class="empty">코스를 모두 들으셨습니다 🌿</div>'}
       <div class="homeTools"><button data-href="#/lec/find">🔍 성경 순서로 모든 강의 찾기</button></div>`;
@@ -2373,7 +2378,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.21-1542';
+const BUILD = '2026.10.22-2346';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
