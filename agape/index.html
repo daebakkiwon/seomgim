@@ -268,7 +268,8 @@ body.songmode #pRate{display:none}
 .hv.now{background:var(--accbg);border-radius:12px;padding-left:10px;padding-right:10px;margin:0 -10px}.apsec .sn.now,.apsec .vref.now,.lhead [data-mark].now{background:var(--accbg);border-radius:6px;box-shadow:0 0 0 3px var(--accbg)}.apsec .sn{transition:background .2s;cursor:pointer}.hv .ht,.hv .hm{cursor:pointer}
 .dplay{display:inline-flex;align-items:center;gap:4px}.dplay svg{width:16px;height:16px}.songhead .dplay{padding:6px 11px;border-radius:999px;border:1px solid #9aa6d6;background:#eef0f8;color:#3f4d8f;font:700 12px var(--sans)}.dictrow .sp{flex:0 0 auto;width:40px;height:40px;border-radius:50%;border:1px solid #9aa6d6;background:var(--paper);color:#3f4d8f;display:inline-flex;align-items:center;justify-content:center;padding:0}.dictrow .sp svg{width:20px;height:20px}.dictrow .sp.on,.songhead .dplay.on{background:#dfe4f6}
 .apsec h3{font:700 calc(var(--fs) * .9) var(--sans);color:#3f4d8f;margin:20px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}.apsec p{font:calc(var(--fs) * .96)/1.8 var(--serif);margin:0 0 .9em;word-break:keep-all;white-space:pre-line}.apsec .vref{display:block;padding:8px 0;border-bottom:1px dashed var(--line);text-decoration:none;color:inherit}
-.qv{padding:8px 0 10px;border-bottom:1px dashed var(--line)}.qv:last-child{border-bottom:0}
+.qv{padding:8px 0 10px;border-bottom:1px dashed var(--line)}
+.qrow .no{flex:0 0 36px;font-size:11.5px;line-height:1.25;word-break:keep-all}.qkind{font:12.5px var(--sans);color:var(--faint);margin-top:6px}.qv:last-child{border-bottom:0}
 .qvr{display:inline-block;font:600 calc(var(--fs) * .86) var(--sans);color:#3f4d8f;text-decoration:none;padding:2px 0}
 .qvt{font:calc(var(--fs) * .97)/1.75 var(--serif);margin:4px 0 0;word-break:keep-all}.qvt i{font-style:normal;color:var(--faint);font-size:.72em;margin-right:3px}.apsec .vref b{color:#3f4d8f;font-size:calc(var(--fs) * .88)}.apsec .vref span{display:block;color:var(--soft);font-size:calc(var(--fs) * .84);line-height:1.5;margin-top:2px}
 .exrow{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);text-decoration:none;color:inherit}.exrow .no{flex:0 0 22px;text-align:right;font:700 12px var(--sans);color:#2f7a5a}.exrow img{width:96px;height:54px;object-fit:cover;border-radius:8px;flex:0 0 auto;background:var(--accbg)}.exrow .tt{flex:1;min-width:0}.exrow .tt b{display:block;font-weight:600;font-size:calc(var(--fs) * .88);line-height:1.35}.exrow .tt small{display:block;color:var(--faint);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.exrow .go{flex:0 0 auto;padding:6px 10px;border-radius:999px;border:1px solid #c33;color:#c33;font:700 12px var(--sans);white-space:nowrap}
@@ -1033,8 +1034,9 @@ const DICT = (() => {
   const openAp = (id, at) => { const x = (D.apostles.items || []).find(y => y.id === id); if(!x) return; if(curAud === 'dict:ap:' + id && !aud.paused && at == null) return playAp(id); location.hash = '/dict/apostles/' + id; playAp(id, at); };   // 목록에서 ▶: 글이 보이는 화면으로 가서 듣는다
   const playAp = (id, at) => { const x = (D.apostles.items || []).find(y => y.id === id); if(!x || !x.audio) return toast('이 사도의 녹음은 아직 없습니다'); toggle(...apArgs(x), at); };
   const qItems = () => (D.qna ? D.qna.parts.flatMap(p => p.items) : []);
+  const qkind = q => q.kind ? q.kind + (q.asker && q.asker !== '홈페이지 질문자' ? ' · ' + q.asker : '') : '';   // 주제 정리 / 강의 질의응답 · 청중 / 홈페이지 질의응답
   const qArgs = q => { const L = qItems(), i = L.findIndex(y => y.id === q.id), nx = L.slice(i + 1).find(y => y.audio);
-    return ['dict:qna:' + q.id, q.audio, q.tm, `Q${q.no}. ${q.q}`, () => nx ? (() => { if(location.hash.startsWith('#/dict/qna')) location.hash = '/dict/qna/' + nx.id; playQ(nx.id, 0); }) : null, `Q${q.no}. ${q.q}`]; };
+    return ['dict:qna:' + q.id, q.audio, q.tm, `${q.label || 'Q' + q.no}. ${q.q}`, () => nx ? (() => { if(location.hash.startsWith('#/dict/qna')) location.hash = '/dict/qna/' + nx.id; playQ(nx.id, 0); }) : null, `${q.label || 'Q' + q.no}. ${q.q}`]; };
   const openQ = (id, at) => { const q = qItems().find(y => y.id === id); if(!q) return; if(curAud === 'dict:qna:' + id && !aud.paused && at == null) return playQ(id); location.hash = '/dict/qna/' + id; playQ(id, at); };
   const playQ = (id, at) => { const q = qItems().find(y => y.id === id); if(!q || !q.audio) return toast('이 질문의 녹음은 아직 없습니다'); toggle(...qArgs(q), at); };
   const healArgs = g => { const nx = D.heal.groups.find(x => x.no > g.no && x.audio); return ['dict:heal:' + g.no, g.audio, g.tm, `치유 40구절 · ${g.no}. ${g.title}`, () => nx ? (() => playHeal(nx.no, 0)) : null, `치유 40구절 ${g.no}. ${g.title}`]; };
@@ -1106,7 +1108,7 @@ const DICT = (() => {
     const first = qItems().find(q => q.audio);
     let h = head(Q.title, '성경잡학사전 · ' + Q.sub) + `<p class="hint" style="font-size:13px;color:var(--soft);line-height:1.7">${esc((Q.intro || [])[0] || '')}</p>`;
     for(const p of Q.parts){
-      h += `<div class="songhead"><span>${esc(p.title)}</span></div>` + p.items.map(q => `<div class="dictrow" data-href="#/dict/qna/${esc(q.id)}"><div class="no">Q${q.no}</div><div class="tt"><b>${esc(q.q)}</b></div>${q.audio ? `<button class="sp dplay" data-dplay="dict:qna:${esc(q.id)}" aria-label="듣기">${IC.play}</button>` : '<span class="arr">›</span>'}</div>`).join('');
+      h += `<div class="songhead"><span>${esc(p.title)}</span></div>` + (p.intro ? `<p class="hint" style="font-size:12.5px;color:var(--faint);line-height:1.6;margin:4px 0 2px">${esc(p.intro)}</p>` : '') + p.items.map(q => `<div class="dictrow qrow" data-href="#/dict/qna/${esc(q.id)}"><div class="no">${esc(q.label || 'Q' + q.no)}</div><div class="tt"><b>${esc(q.q)}</b>${qkind(q) ? `<small>${esc(qkind(q))}</small>` : ''}</div>${q.audio ? `<button class="sp dplay" data-dplay="dict:qna:${esc(q.id)}" aria-label="듣기">${IC.play}</button>` : '<span class="arr">›</span>'}</div>`).join('');
     }
     $('#view').innerHTML = h + '<div style="height:40px"></div>'; bindRows();
     $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = e => { e.stopPropagation(); openQ(b.dataset.dplay.split(':')[2], fromOf(b)); });
@@ -1116,20 +1118,20 @@ const DICT = (() => {
     try{ await load(); }catch(e){ return fail(e); }
     const L = qItems(), i = L.findIndex(q => q.id === id), q = L[i]; if(!q || ED === 'agape') return qna();
     const pv = L[i - 1], nx = L[i + 1], part = D.qna.parts.find(p => p.items.includes(q));
-    $('#hTitle').textContent = `Q${q.no}. ${q.q}`; back('#/dict/qna');
+    $('#hTitle').textContent = `${q.label || 'Q' + q.no}. ${q.q}`; back('#/dict/qna');
     let k = 0; const ans = q.answer.map(para => `<p>${para.map(t => `<span class="sn" data-mark="a:${k++}">${esc(t)}</span>`).join(' ')}</p>`).join('');
-    $('#view').innerHTML = `<section class="lhead"><div class="kicker">${esc(`질문있어요 · ${part ? part.title : ''}`)}</div><h2><span data-mark="q:0">Q${q.no}. ${esc(q.q)}</span></h2></section>` + (q.audio ? '' : `<div class="vvtools"><button class="chip2" id="qSpeak">🔈 읽어 주기</button><span>녹음은 준비 중입니다</span></div>`) + `<div class="apsec">
+    $('#view').innerHTML = `<section class="lhead"><div class="kicker">${esc(`질문있어요 · ${part ? part.title : ''}`)}</div><h2><span data-mark="q:0">${esc(q.label || 'Q' + q.no)}. ${esc(q.q)}</span></h2>${qkind(q) ? `<div class="qkind">■ ${esc(qkind(q))}</div>` : ''}</section>` + (q.audio ? '' : `<div class="vvtools"><button class="chip2" id="qSpeak">🔈 읽어 주기</button><span>녹음은 준비 중입니다</span></div>`) + `<div class="apsec">
       <div><h3>박사님의 답</h3>${ans}</div>
       ${(q.vlist || []).length ? `<div><h3>근거 말씀</h3>${q.vlist.map((r, i) => `<div class="qv"><a class="qvr" href="#/vv/${esc(r.code)}/${r.ch}">${esc(r.ref)} ›</a>` +
           (r.whole ? `<p class="qvt"><span class="sn" data-mark="v:${i}:0">${r.ch}${esc(r.unit)} 전체를 가리킵니다. 위의 구절 이름을 누르면 절별대조에서 읽을 수 있습니다.</span></p>`
                    : `<p class="qvt">${r.text.map((t, j) => `<span class="sn" data-mark="v:${i}:${j}"><i>${esc(t.v)}</i>${esc(t.t)}</span>`).join(' ')}</p>`) + '</div>').join('')}</div>`
         : q.verses ? `<div><h3>근거 말씀</h3><p><span class="sn" data-mark="v:0">${esc(q.verses)}</span></p></div>` : ''}
       ${(q.agape || []).length ? `<div><h3>아가페로 새기는 한 문장</h3><div class="hm" style="font-size:calc(var(--fs) * .95);line-height:1.7">${sn('g', q.agape)}</div></div>` : ''}
-      ${(q.clue || []).length ? `<div><h3>박사님이 남기신 단서</h3><p style="font-size:calc(var(--fs) * .92);color:var(--soft)">${sn('c', q.clue)}</p></div>` : ''}
+      ${(q.notes || []).map((nt, k) => `<div><h3>${esc(nt.title)}</h3><p style="font-size:calc(var(--fs) * .92);color:var(--soft)">${sn('o' + k, nt.s)}</p></div>`).join('')}
       ${q.source ? `<p class="hint" style="font-size:12px;color:var(--faint);margin-top:14px">출처: ${esc(q.source)}</p>` : ''}</div>
-      <div class="nav2">${pv ? `<button data-href="#/dict/qna/${esc(pv.id)}"><small>이전</small>Q${pv.no}. ${esc(pv.q.slice(0, 22))}</button>` : '<span></span>'}${nx ? `<button data-href="#/dict/qna/${esc(nx.id)}" style="text-align:right"><small>다음</small>Q${nx.no}. ${esc(nx.q.slice(0, 22))}</button>` : ''}</div><div style="height:40px"></div>`;
+      <div class="nav2">${pv ? `<button data-href="#/dict/qna/${esc(pv.id)}"><small>이전</small>${pv.label || 'Q' + pv.no}. ${esc(pv.q.slice(0, 22))}</button>` : '<span></span>'}${nx ? `<button data-href="#/dict/qna/${esc(nx.id)}" style="text-align:right"><small>다음</small>${nx.label || 'Q' + nx.no}. ${esc(nx.q.slice(0, 22))}</button>` : ''}</div><div style="height:40px"></div>`;
     $('#view').querySelectorAll('[data-dplay]').forEach(b => b.onclick = () => playQ(q.id));
-    const qs = $('#qSpeak'); if(qs) qs.onclick = () => speak([`질문 ${q.no}. ${q.q}`, '박사님의 답. ' + q.answer.map(p => p.join(' ')).join(' '), '아가페로 새기는 한 문장. ' + (q.agape || []).join(' ')].join(' '));
+    const qs = $('#qSpeak'); if(qs) qs.onclick = () => speak([`${q.label || '질문 ' + q.no}. ${q.q}`, '박사님의 답. ' + q.answer.map(p => p.join(' ')).join(' '), '아가페로 새기는 한 문장. ' + (q.agape || []).join(' ')].join(' '));
     PAGE = {kind: 'q', q}; window.scrollTo(0, 0); if(q.audio) prepare(...qArgs(q)); else hidePlayerIfIdle(); paintBtns(); paintNow(true);
   }
   function route(h){
@@ -2378,7 +2380,7 @@ addEventListener('load', () => SYNC.init());
 /* ---------- 새 버전 자동 적용 ----------
    홈 화면 앱은 닫지 않으면 옛 화면을 계속 쓰므로, 열 때·돌아올 때마다 version.json 을 확인해
    새 버전이면 기록을 저장한 뒤 다시 불러온다 (같은 버전으로 두 번 이상은 다시 부르지 않음). */
-const BUILD = '2026.10.22-2346';
+const BUILD = '2026.10.24-1004';
 async function checkUpdate(){
   if(!/^https?:/.test(location.protocol) || BUILD.startsWith('__')) return;
   if(checkUpdate.at && Date.now() - checkUpdate.at < 60000) return;
